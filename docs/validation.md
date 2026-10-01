@@ -1,6 +1,6 @@
 # 首版交付验收
 
-本记录对应本文件所在的首版快照，验收日期为 2026-10-01。代码范围为 [release-files.txt](release-files.txt) 的 306 个文件；公开仓库采用独立的一条根提交，未复制本地开发历史，没有远程地址，也未执行推送。改动与维护限制见 [release-audit.md](release-audit.md)。
+功能源码验收基于 `183856c` 首版提交，日期为 2026-10-01。当时以独立根提交发布 306 个文件，未复制本地开发历史。后续补充项目介绍与 4 张合成演示截图，未改变应用运行源码；当前文件范围见 [release-files.txt](release-files.txt)。改动与维护限制见 [release-audit.md](release-audit.md)，上线后的回归状态见 [GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)。
 
 ## 安装与运行
 

@@ -1,8 +1,28 @@
 # 织识 · weave
 
-把散落的资料编译成互相链接、可以持续维护的个人知识库。
+[![检查状态](https://github.com/qinyuhao84-ship-it/weave/actions/workflows/ci.yml/badge.svg)](https://github.com/qinyuhao84-ship-it/weave/actions/workflows/ci.yml) · [MIT](LICENSE) · Next.js / TypeScript / SQLite
+
+**把散落的资料编译成互相链接、可以持续维护的个人知识库。**
+
+*A local-first knowledge wiki: turn your documents into linked Markdown pages, review changes, and ask questions with citations.*
 
 织识是一个 **开源、本地运行、单用户**的知识管理工具，受 [Karpathy 的 LLM Wiki 理念](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)启发。模型从资料中生成 Markdown 词条，经人工审阅写入，再用于检索问答与知识库体检。使用者自行配置模型服务，资料保存在自己的电脑上。
+
+## 为什么做织识
+
+收藏文件不等于形成知识：同一个概念散落在不同资料里，相关结论难以连接，资料更新后也很难发现旧知识已经过时。织识把“读资料”延伸成一个可以回溯的循环：
+
+```text
+资料 → 模型分析 → 人工审阅 → Markdown 词条与双链
+                                ↓
+                    检索问答 → 引用核对 → 归档与维护
+```
+
+你可以先整理一组学习笔记，把重复出现的概念编译为词条，再围绕问题检索证据；新增资料时继续补充知识，并由体检流程协助发现死链、重复与潜在矛盾。
+
+![织识知识库：词条目录、类型筛选和双链统计](docs/screenshots/knowledge.png)
+
+> 界面截图使用临时知识库与合成学习笔记。问答与导入建议来自本地模拟模型，展示操作流程，不代表真实模型质量；不含个人资料或真实服务凭据。[截图说明](docs/screenshots/README.md)
 
 ## 核心流程
 
@@ -12,15 +32,35 @@
 
 Markdown 是词条真源，可用 Obsidian 或文本编辑器打开。SQLite 还保存不可由 Markdown 重建的聊天、来源、草稿和审阅记录，必须一同备份。
 
+## 界面预览
+
+### 带引用的知识问答
+
+根据相关词条回答问题，查看证据，再把有用的回答归档为知识。
+
+![织识问答：流式答案、引用与归档入口](docs/screenshots/chat.png)
+
+### 资料写入前的人工审阅
+
+查看模型建议、编辑草稿并确认写入；用户决定知识库最终保存什么。
+
+![织识导入审阅：词条建议与草稿正文](docs/screenshots/review.png)
+
+### 双链图谱
+
+从概念关系进入词条，查看关联内容，发现知识之间的联系。
+
+![织识图谱：关联节点与词条类型](docs/screenshots/graph.png)
+
 ## 快速开始
 
 首版正式支持 **macOS**；Linux 有 CI 回归配置，Windows 尚未验收。需要 Git、Node.js **26.3.1**、pnpm **11.7.0**。Node 版本见 `.node-version`。
 
-安装指定 Node 后，安装 pnpm，并将 `<repository-url>` 替换为 GitHub 的克隆地址：
+安装指定 Node 后，安装 pnpm 并克隆仓库：
 
 ```bash
 npm install --global pnpm@11.7.0
-git clone <repository-url> weave
+git clone https://github.com/qinyuhao84-ship-it/weave.git
 cd weave
 pnpm install --frozen-lockfile
 pnpm build
@@ -92,7 +132,7 @@ pnpm start
 
 ## 工程与贡献
 
-采用 Next.js App Router、React、TypeScript、Drizzle 和 SQLite。架构与取舍见 [架构说明](docs/architecture.md)，复测方法见 [性能基准](docs/performance-audit.md)，交付结果见 [验收记录](docs/validation.md)和[代码审计](docs/release-audit.md)。
+采用 Next.js App Router、React、TypeScript、Drizzle 和 SQLite。项目介绍与技术要点见 [项目说明](docs/project-introduction.md)。架构与取舍见 [架构说明](docs/architecture.md)，复测方法见 [性能基准](docs/performance-audit.md)，交付结果见 [验收记录](docs/validation.md)和[代码审计](docs/release-audit.md)。上线回归状态见 [GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)。
 
 ```bash
 pnpm lint

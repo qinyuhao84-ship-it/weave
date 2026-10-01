@@ -116,9 +116,15 @@ docs/chat-experience.md
 docs/interface.md
 docs/model-service-validation.md
 docs/performance-audit.md
+docs/project-introduction.md
 docs/release-audit.md
 docs/release-files.txt
 docs/releasing.md
+docs/screenshots/README.md
+docs/screenshots/chat.png
+docs/screenshots/graph.png
+docs/screenshots/knowledge.png
+docs/screenshots/review.png
 docs/validation.md
 drizzle.config.ts
 drizzle/0000_colossal_rocket_racer.sql
