@@ -36,7 +36,7 @@
 
 首版源码在干净克隆和隔离知识库中完成安装、生产构建、严格类型与 lint 检查；44 个文件的 728 项测试和 16 项浏览器测试通过。故障注入覆盖回滚再次失败与 Git 暂存恢复；浏览器检查覆盖完整业务流程、设置、搜索取消、窄屏、键盘和 HTML 预览隔离。
 
-[验收记录](validation.md)保留环境、范围与源码指纹；[性能基准](performance-audit.md)提供 300 与 1,000 词条的原始 JSON 和复测方法；[GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)展示后续自动回归。模拟测试证明应用流程，不能证明真实模型事实判断或通用回答质量。
+[验收记录](validation.md)保留环境、范围与源码指纹；[性能基准](performance-audit.md)提供 300 与 1,000 词条的原始 JSON 和复测方法；[GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)展示后续自动回归；[首轮修复后的 macOS / Linux 回归与密钥扫描](https://github.com/qinyuhao84-ship-it/weave/actions/runs/36874861409)已通过。模拟测试证明应用流程，不能证明真实模型事实判断或通用回答质量。
 
 ## 简历介绍参考
 

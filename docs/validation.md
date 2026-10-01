@@ -2,6 +2,14 @@
 
 功能源码验收基于 `183856c` 首版提交，日期为 2026-10-01。当时以独立根提交发布 306 个文件，未复制本地开发历史。后续补充项目介绍与 4 张合成演示截图，并修复 CI 根提交扫描范围和历史测试的 Git 身份夹具，未改变应用运行源码；当前文件范围见 [release-files.txt](release-files.txt)。改动与维护限制见 [release-audit.md](release-audit.md)，上线后的回归状态见 [GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)。
 
+## GitHub 上线验证
+
+公开仓库：[qinyuhao84-ship-it/weave](https://github.com/qinyuhao84-ship-it/weave)。功能与 CI 修复提交 `585e997` 的 [双平台回归与密钥扫描](https://github.com/qinyuhao84-ship-it/weave/actions/runs/36874861409)已全部通过：macOS / Ubuntu 的安装、lint、构建、类型检查、单元测试与浏览器验收，以及 Gitleaks 完整历史扫描。
+
+匿名克隆可获取发布清单中的 312 个文件；公开网页、README 与 4 张截图可在未登录状态下访问。已启用 GitHub 密钥扫描、推送保护与私密漏洞报告。后续版本结果以 Actions 为准，不将本次通过作为所有平台或所有真实模型的支持承诺。
+
+上线验收后仅补充本文档与项目介绍，运行源码、测试、依赖及 CI 配置均与已通过提交一致；没有改写已公开历史。
+
 ## 安装与运行
 
 从独立发布仓库执行 `git clone` 到全新目录，以空 pnpm store 安装，去除作者的模型、解析和 Git 身份环境变量，没有复制 `.env*`、知识库或位置配置。初次安装下载 704 个当前平台包，SQLite 原生模块安装成功；随后同步最终锁文件并执行 frozen install。未使用作者的 pnpm 包缓存；系统编译工具和 Node 头文件缓存仍来自当前机器。
@@ -65,7 +73,7 @@ print(digest.hexdigest())
 
 ## 未完成或不支持的验证
 
-- Linux 的 Actions 配置需在 GitHub 首次运行后确认；Windows 不在首版正式支持范围。
+- Linux 已通过 CI 自动回归；macOS 仍为首版正式支持平台。Windows 不在首版正式支持范围。
 - 未调用真实模型、安装完整 OCR 或发送个人资料；模拟测试不证明回答质量，数字 PDF 之外的解析能力需单独验收。
 - 仍有大型工作区与流水线；文件、SQLite 和 Git 不提供断电级跨系统原子事务。只支持本机单用户、单应用进程。
 - 公开默认配置不包含认证体系，不能直接作为多人或公网服务上线。下一步推送 GitHub 代码后需检查首次 CI；网站部署不属于此次交付。
