@@ -1,6 +1,6 @@
 # 首版交付验收
 
-功能源码验收基于 `183856c` 首版提交，日期为 2026-10-01。当时以独立根提交发布 306 个文件，未复制本地开发历史。后续补充项目介绍与 4 张合成演示截图，未改变应用运行源码；当前文件范围见 [release-files.txt](release-files.txt)。改动与维护限制见 [release-audit.md](release-audit.md)，上线后的回归状态见 [GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)。
+功能源码验收基于 `183856c` 首版提交，日期为 2026-10-01。当时以独立根提交发布 306 个文件，未复制本地开发历史。后续补充项目介绍与 4 张合成演示截图，并修复 CI 根提交扫描范围和历史测试的 Git 身份夹具，未改变应用运行源码；当前文件范围见 [release-files.txt](release-files.txt)。改动与维护限制见 [release-audit.md](release-audit.md)，上线后的回归状态见 [GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)。
 
 ## 安装与运行
 
@@ -39,9 +39,11 @@
 
 ## 验收源码指纹
 
+指纹包含上线后对 CI 与 Git 测试夹具的修正；应用运行源码未改变。
+
 下列 SHA-256 对发布清单中除 `docs/` 和根目录 Markdown 文档外的文件计算，包含源码、脚本、测试、迁移、依赖、配置及 CI；独立克隆与公开目录一致。指纹用于对应本轮检查结果，不替代签名或后续版本验收。
 
-`a75f229a12e3d4cf96a26f64547590c37cf8fbb375e955ba796192ce7603a24e`
+`ac50145a22923efd689f18fc4aa95c48d0b7c1ecda14dce84c71fd48c19be47f`
 
 复算方法（在干净提交中执行）：
 

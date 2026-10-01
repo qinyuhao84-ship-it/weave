@@ -296,7 +296,8 @@ describe("超出首屏的数据仍可到达", () => {
   });
   it("51条历史可翻页，提交标识不含空白", () => {
     createPage({ type: "concept", title: "历史", content: "正文" });
-    for (let i = 0; i < 51; i++) execFileSync("git", ["commit", "--allow-empty", "-m", `记录${i}`], { cwd: VAULT_ROOT, stdio: "ignore" });
+    // 测试自行生成历史，不依赖机器上的 Git 身份或签名配置。
+    for (let i = 0; i < 51; i++) execFileSync("git", ["-c", "user.name=测试夹具", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-m", `记录${i}`], { cwd: VAULT_ROOT, stdio: "ignore" });
     const earlier = logVault(50, 50); expect(earlier.length).toBeGreaterThan(0); expect(earlier.every(commit => /^[0-9a-f]{40}$/.test(commit.sha))).toBe(true);
   });
 });
