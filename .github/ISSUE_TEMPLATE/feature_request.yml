@@ -1,0 +1,15 @@
+name: 功能建议
+description: 说明本机个人知识管理中遇到的具体需求
+title: "[Feature] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 希望解决的问题
+      description: 说明具体使用场景与现有流程的不足。
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: 建议方案与替代方式

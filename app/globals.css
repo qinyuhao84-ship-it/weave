@@ -1,0 +1,853 @@
+@import "tailwindcss";
+
+/* 等待状态的扫光只覆盖文字；减少动态效果时保持静态可读。 */
+/* KaTeX 的样式表。rehype-katex 会同时输出 MathML 与依赖定位样式的 HTML 副本，
+   没有这张表就藏不掉前者、也摆不正后者 —— 公式会**被渲染两遍且挤成一团**，
+   比完全不支持公式还差。字体是 @font-face 声明的，只有页面真的出现公式时才会下载。 */
+@import "katex/dist/katex.min.css";
+
+/* 纸面上的香槟金：扫光覆盖字形，计时与正文保持安静。 */
+:root { --waiting-accent: #87612c; --waiting-text: #44392b; --waiting-highlight: #916726; }
+.dark { --waiting-accent: #d7b67a; --waiting-text: #e2d9c9; --waiting-highlight: #ffe4ad; }
+.chat-waiting-text {
+  color: var(--waiting-text);
+  background-image: linear-gradient(105deg, var(--waiting-text) 36%, var(--waiting-highlight) 47%, var(--waiting-highlight) 52%, var(--waiting-text) 63%);
+  background-size: 280% 100%;
+  background-position: 100% 0;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: chat-waiting-light 3s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+@keyframes chat-waiting-light { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+.chat-composer-control {
+  display: inline-flex; min-height: 32px; align-items: center;
+  border-radius: 6px; padding: 5px 8px; font-size: 11.5px;
+  color: var(--muted-foreground); transition: color 150ms, background-color 150ms;
+}
+.chat-composer-control:hover { color: var(--foreground); background: var(--muted); }
+.chat-composer-control:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.chat-picker { position: fixed; z-index: 30; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--border); border-radius: 12px; background: var(--popover); color: var(--popover-foreground); padding: 8px; box-shadow: 0 8px 30px #00000014; }
+.chat-composer-control:disabled, .chat-composer-control:has(select:disabled) { cursor: not-allowed; }
+.chat-html-selected { color: var(--waiting-accent); background: color-mix(in srgb, var(--waiting-accent) 9%, transparent); }
+.chat-html-selected:hover { color: var(--waiting-accent); background: color-mix(in srgb, var(--waiting-accent) 14%, transparent); }
+@media (max-width: 640px) { .chat-composer-control { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) {
+  .chat-waiting-text { animation: none; background-image: none; -webkit-text-fill-color: var(--waiting-text); }
+}
+
+/* ============================================================================
+   织识 · 设计令牌层
+   来源：design/design-dna.json（从 AIPRD 源码级提取，非估算）
+   气质内核：安静的纸感容器 + 极高的信息密度 + 只在 AI 工作那一刻放出一道光
+
+   三条不可违反的纪律：
+   1. 主色是近黑 #111。交互外框使用中性色，蓝色外框只用于等待回答。
+   2. 所有灰阶都是黑色叠 alpha，绝不用实色灰。否则图层叠加不一致、暖度会丢。
+   3. 底色是暖米白 #fcfbf9，不是纯白。这是「纸感」的全部来源。
+   ========================================================================= */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 注册角度变量，使 CSS 能对角度做插值 —— 边框扫光的机制基础 */
+@property --ai-border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* ---------------------------------------------------------------- 亮色令牌 */
+:root {
+  color-scheme: light;
+
+  /* 表面 */
+  --background: #fcfbf9;          /* 暖米白 —— 不是 #fff */
+  --foreground: #111111;          /* 近黑 —— 主色与正文同色 */
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+
+  /* 品牌（近黑单色） */
+  --primary: #111111;
+  --primary-foreground: #ffffff;
+
+  /* 灰阶：一律黑色叠 alpha */
+  --secondary: #1111110a;         /* 4%  */
+  --secondary-foreground: #111111;
+  --muted: #1111110a;             /* 4%  */
+  --muted-foreground: #111111ad;  /* 68%，浅灰标签上也满足正文对比度 */
+  --accent: #1111110a;            /* 4%  */
+  --accent-foreground: #111111;
+  --border: #11111114;            /* 8%  */
+  --input: #11111126;             /* 15% */
+  --ring: #2563eb;                /* 全站唯一默认饱和色 */
+
+  /* 语义色 */
+  --success: #166534;
+  --success-foreground: #ffffff;
+  --warning: #92400e;
+  --warning-foreground: #ffffff;
+  --info: #2563eb;
+  --info-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  /* 词条类型色（织识新增）：只用细环与文字，不做填充块 */
+  --type-entity: #2563eb;
+  --type-concept: #166534;
+  --type-source: #92400e;
+  --type-query: #7c3aed;
+  --type-overview: #be185d;
+
+  /* 圆角：三档严格分工 */
+  --radius: 6px;                  /* 微元素、输入框 */
+  --radius-lg: 12px;              /* 内嵌面板 */
+  --radius-xl: 16px;              /* 卡片降级 */
+  --radius-2xl: 22px;             /* 卡片、大容器 */
+  --radius-3xl: 24px;             /* 大色带 */
+  --radius-pill: 9999px;          /* 按钮、徽章 */
+
+  /* 阴影：三档，全部极轻。分层靠边框不靠阴影 */
+  --shadow-ambient: 0 4px 18px #0000000a, 0 1px 3px #00000005;
+  --shadow-dialog: 0 24px 48px #0000000d, 0 8px 16px #00000005;
+  --shadow-inset: inset 0 1px 0 0 #ffffff26, inset 0 0 0 1px #0003, 0 1px 2px #0000000d;
+
+  /* 动效 */
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-signature: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-micro: 150ms;
+  --duration-normal: 200ms;
+  --duration-medium: 300ms;
+  --duration-macro: 600ms;
+}
+
+/* ---------------------------------------------------------------- 暗色令牌 */
+.dark {
+  color-scheme: dark;
+  --background: #111111;
+  --foreground: #fcfbf9;
+  --card: #18181b;
+  --card-foreground: #fcfbf9;
+  --popover: #18181b;
+  --popover-foreground: #fcfbf9;
+  --primary: #fcfbf9;
+  --primary-foreground: #111111;
+  --secondary: #fcfbf914;
+  --secondary-foreground: #fcfbf9;
+  --muted: #fcfbf914;
+  --muted-foreground: #fcfbf999;
+  --accent: #fcfbf914;
+  --accent-foreground: #fcfbf9;
+  --border: #fcfbf926;
+  --input: #fcfbf933;
+  --ring: #3b82f6;
+  --shadow-ambient: 0 4px 18px #0000004d, 0 1px 3px #00000033;
+  --shadow-dialog: 0 24px 48px #00000080, 0 8px 16px #0000004d;
+  --shadow-inset: inset 0 1px 0 0 #ffffff1a, inset 0 0 0 1px #ffffff1a, 0 1px 2px #0000004d;
+
+  /* 语义色与词条类型色必须为暗色单独提亮。
+     亮色那一套是压在暖米白上的，直接搬到 #111 上，
+     蓝 #2563eb 与紫 #8b5cf6 的对比度只剩 3:1 量级，小号类型标签看不清。 */
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+  --destructive: #f87171;
+  /* 提亮底色必须同步复核配对的 -foreground。
+     白字压 #f87171 只有 2.77:1（压提亮前的 #ef4444 是 3.76:1），
+     而全库唯一把 destructive 当底色用的地方是「确认删除」按钮 —— 13px 小字，
+     还是不可逆操作的最后一道确认。暗色下改成近黑前景，对比度 6.83:1，过 AA。
+     全库只有 bg-destructive 一处配对用法（components/ui/index.tsx:44），
+     success / warning / info 目前都只当文字与描边色用，因此不补前景色。 */
+  --destructive-foreground: #111111;
+  --type-entity: #60a5fa;
+  --type-concept: #4ade80;
+  --type-source: #fbbf24;
+  --type-query: #a78bfa;
+  --type-overview: #f472b6;
+}
+
+/* ------------------------------------------------------------ 导航侧栏宽度
+   折叠状态由 app/layout.tsx 的内联脚本在首屏绘制前写到 <html> 的 data-sidebar 上，
+   宽度与文字显隐全部由下面三条规则驱动 —— React 不参与计算，
+   所以服务端渲染的 HTML 与客户端首帧一致，不会闪一下再塌下去。
+   注意文字显隐限定在 .sidebar-collapsible（桌面侧栏）内：
+   移动端的抽屉永远展开，不该被桌面上的折叠偏好连累。 */
+:root {
+  --sidebar-w: 232px;
+  --focus-ring: color-mix(in srgb, var(--foreground) 70%, transparent);
+}
+:root[data-sidebar="collapsed"] {
+  --sidebar-w: 60px;
+}
+.sidebar-collapsible { transition: width 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.sidebar-collapsible .sidebar-label { white-space: nowrap; transition: opacity 140ms ease-out; }
+.sidebar-collapsible .sidebar-item { height: 36px; white-space: nowrap; overflow: hidden; }
+.sidebar-collapsible .sidebar-session { height: 32px; }
+.sidebar-collapsible .sidebar-group-label { height: 38px; overflow: hidden; }
+:root[data-sidebar="collapsed"] .sidebar-collapsible .sidebar-label { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 140ms ease-out, visibility 0s linear 140ms; }
+
+/* 键盘用户可直接越过常驻导航。默认在屏幕外，聚焦后出现在最上层。 */
+.skip-navigation {
+  position: fixed;
+  z-index: 100;
+  top: 12px;
+  left: 12px;
+  transform: translateY(-160%);
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 14px;
+}
+.skip-navigation:focus { transform: none; }
+
+/* 空白随可用高度收敛；软键盘或横屏不能把输入区顶出视口。 */
+.chat-empty-space { height: clamp(0px, calc(100dvh - 32rem), 30dvh); }
+
+/* 编织符号只在空对话初次出现时舒展，内容从第一帧就可见。 */
+@keyframes weave-arrive {
+  from { stroke-dashoffset: 0.22; }
+  to { stroke-dashoffset: 0; }
+}
+.weave-arrival path {
+  stroke-dasharray: 1;
+  animation: weave-arrive 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.weave-arrival path:nth-child(2) { animation-delay: 60ms; }
+.weave-arrival path:nth-child(3) { animation-delay: 120ms; }
+.weave-arrival path:nth-child(4) { animation-delay: 180ms; }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-collapsible, .sidebar-collapsible .sidebar-label { transition: none !important; }
+}
+
+/* 深靛蓝「专注模式」—— 长文阅读与图谱界面可用 */
+.dark[data-theme="focus"] {
+  --background: #0a0a12;
+  --foreground: #ffffff;
+  --card: #13131f;
+  --popover: #1a1a2a;
+  --border: #ffffff14;
+  --muted: #ffffff0f;
+  --muted-foreground: #ffffffb3;
+  --secondary: #ffffff0f;
+  --accent: #ffffff0f;
+}
+
+/* 亮色「专注模式」。
+   原来的选择器是 .dark[data-theme="focus"]，于是亮色下打开这个开关毫无反应。
+   补一套亮色的：把纸压深一档，模拟台灯调暗。
+   暖调不变，灰阶仍然是黑叠 alpha，不是实色灰。
+   用 :not(.dark) 把特异性拉到高于暗色那条，避免两条规则同分靠顺序决胜。 */
+:root:not(.dark)[data-theme="focus"] {
+  --background: #f6f4f1;
+  --card: #fcfbf9;
+  --popover: #fcfbf9;
+  --muted: #1111110d;
+  --secondary: #1111110d;
+  --accent: #1111110d;
+  --border: #1111111a;
+  --muted-foreground: #111111ad;
+}
+
+/* ------------------------------------------------------------------ 主题映射 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--focus-ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-type-entity: var(--type-entity);
+  --color-type-concept: var(--type-concept);
+  --color-type-source: var(--type-source);
+  --color-type-query: var(--type-query);
+  --color-type-overview: var(--type-overview);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Segoe UI", sans-serif;
+  --font-mono: "Berkeley Mono", "JetBrains Mono", "Fira Code", ui-monospace,
+    SFMono-Regular, Menlo, monospace;
+
+  /* Tailwind 语义名 → 织识圆角阶梯的映射。
+     这里是**刻意错位一档**的：基础令牌 --radius-lg 是 12px，
+     但 rounded-lg 在本项目渲染出 16px。原因是 DNA 的阶梯从 6px 起步
+     （Tailwind 默认从 2px 起步），整体上移一档输入框才不会太尖。
+     注意「单一真源」只覆盖使用语义类名的地方：组件里另有 29 处任意值
+     （rounded-[12px]×17、rounded-[16px]×7、rounded-[22px]×3、rounded-[10px]×2），
+     它们恰好等于阶梯的渲染值，但不会跟着这张表变。改表 = 半套换肤，
+     要么连那些任意值一起换，要么先别动。 */
+  --radius-sm: var(--radius);        /* 6px  —— 输入框、微元素 */
+  --radius-md: var(--radius-lg);     /* 12px —— 中等容器 */
+  --radius-lg: var(--radius-xl);     /* 16px —— 内嵌面板 */
+  --radius-xl: var(--radius-2xl);    /* 22px —— 卡片 */
+  --radius-2xl: var(--radius-3xl);   /* 24px —— 大容器 */
+  --radius-pill: var(--radius-pill);
+
+  /* 层级令牌。六个调用点全部写成任意值 z-[var(--z-index-*)]，实测生效
+     （移动端顶栏 computed z-index = 30）。
+     注意不要想当然写成 z-modal / z-header 这类工具类再假定它一定存在 ——
+     Tailwind 的 z-index 命名空间是否吃 --z-index-* 没有在这里验证过，
+     用 var() 是确定可用的那条路。
+     阶梯含义：页内吸顶 < 导航 < 遮罩 < 弹层，也就是「遮罩要盖住导航」。 */
+  --z-index-sticky: 20;
+  --z-index-header: 30;
+  --z-index-overlay: 40;
+  --z-index-modal: 50;
+  --z-index-toast: 60;
+
+  --shadow-ambient: var(--shadow-ambient);
+  --shadow-dialog: var(--shadow-dialog);
+  --shadow-inset: var(--shadow-inset);
+
+  --ease-default: var(--ease-default);
+  --ease-signature: var(--ease-signature);
+
+  /* 字号：刻意绕开标准 scale，用精确值把信息密度做高 */
+  --text-display: 3.4rem;
+  --text-display--line-height: 1.08;
+  --text-display--letter-spacing: -0.03em;
+  --text-display--font-weight: 600;
+
+  --text-h1: 2.9rem;
+  --text-h1--line-height: 1.08;
+  --text-h1--letter-spacing: -0.03em;
+  --text-h1--font-weight: 600;
+
+  --text-h2: 2.1rem;
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.03em;
+  --text-h2--font-weight: 600;
+
+  --text-h3: 1.75rem;
+  --text-h3--line-height: 1.2;
+  --text-h3--letter-spacing: -0.02em;
+  --text-h3--font-weight: 600;
+
+  --text-h4: 1.25rem;
+  --text-h4--line-height: 1.3;
+  --text-h4--letter-spacing: -0.015em;
+  --text-h4--font-weight: 600;
+
+  --text-body: 15px;
+  --text-body--line-height: 1.6;
+
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 1.55;
+
+  --text-caption: 13px;
+  --text-caption--line-height: 1.5;
+
+  --text-micro: 12px;
+  --text-micro--line-height: 1.4;
+
+  --text-overline: 11.5px;
+  --text-overline--line-height: 1.4;
+  --text-overline--letter-spacing: 0.18em;
+  --text-overline--font-weight: 600;
+}
+
+/* -------------------------------------------------------------------- 基础 */
+@layer base {
+  * {
+    border-color: var(--border);
+    /* Firefox 的滚动条 */
+    scrollbar-width: thin;
+    scrollbar-color: var(--input) transparent;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ---------------------------------------------------- 浏览器原生表层
+     这些是「没画但会出现在页面上」的部分：光标、选区、滚动条、焦点环、
+     下划线偏移、数字对齐。它们默认属于浏览器而不属于任何设计系统 ——
+     把它们从调色板里主题化，是「这一页是造出来的而不是拼出来的」最便宜的信号。 */
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--ring) 22%, transparent);
+  }
+
+  /* 光标与选区同色系，输入时的色彩语言才统一 */
+  input,
+  textarea,
+  [contenteditable] {
+    caret-color: var(--ring);
+  }
+
+  /* 表格与统计数字一律等宽对齐 —— 数字跳动是廉价感的常见来源 */
+  table,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 滚动条：细、低调、不做彩色 */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--input);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+    background-clip: padding-box;
+    border: 3px solid transparent;
+  }
+  /* 焦点环。
+     实测（Chromium + CDP）：鼠标点击**按钮**不会命中 :focus-visible，
+     但点击**文本输入框**会 —— 这是浏览器刻意的，输入框必须让人看得见光标在哪。
+     所以输入框上不要写 focus:outline-none 去压它，那会让键盘用户彻底失去位置感。 */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* ------------------------------------------------------------------ 动效库 */
+
+/* ① 「AI 正在工作」边框扫光 —— 本 DNA 最有辨识度的效果 */
+@keyframes ai-border-spin {
+  to {
+    --ai-border-angle: 360deg;
+  }
+}
+.ai-working {
+  --working-border: var(--focus-ring);
+  background-image:
+    linear-gradient(var(--card), var(--card)),
+    conic-gradient(
+      from var(--ai-border-angle),
+      transparent 0deg,
+      var(--working-border) 60deg,
+      transparent 140deg
+    );
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  border: 1.5px solid transparent;
+  animation: ai-border-spin 1.4s linear infinite;
+  /* 扫光驱动的是 conic-gradient，而自定义属性动画不可合成，
+     每帧都要重画整块背景。contain 把重画范围锁死在这个盒子里。 */
+  contain: paint;
+}
+.ai-working[data-working-tone="answer"] { --working-border: var(--ring); }
+
+/* ③ 背景光斑漂浮 —— 两个光斑 delay 错开 -10s 避免同步呼吸 */
+/* 只用 translate，不用 scale。
+   关键帧里带 scale 会让 blur(100px) 的结果每帧失效、必须重做一次高斯模糊。
+   这两个光斑是常驻的，代价全程都在；translate 可以交给合成器，模糊结果能复用。 */
+@keyframes blob-float {
+  0%, 100% { transform: translate(0, 0); }
+  33%      { transform: translate(30px, -30px); }
+  66%      { transform: translate(-20px, 20px); }
+}
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(100px);
+  opacity: 0.06;
+  pointer-events: none;
+  animation: blob-float 20s ease-in-out infinite;
+  will-change: transform;
+}
+.blob:nth-child(2) { animation-delay: -10s; }
+
+/* ④ 消息块入场 —— 流式输出的质感来源 */
+@keyframes msg-in-up {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.msg-in {
+  animation: msg-in-up 0.2s ease-out;
+}
+
+/* ⑤ 图谱「牵一发动全身」的侧栏联动入场 */
+@keyframes panel-in {
+  0%   { opacity: 0; transform: translateX(8px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.panel-in {
+  animation: panel-in 0.3s var(--ease-signature);
+}
+
+/* ⑥ 引用涟漪反馈
+   注意：这个类目前**没有任何生产者**。设计 DNA 把「引用角标被点击时的涟漪」
+   列为要实现的签名效果之一，但尚未接线 —— 图谱那处涟漪是 canvas 手绘的
+   （components/graph/workspace.tsx 用 ctx.arc，靠 useReducedMotion 自行降级），
+   不是这个类。接线点应该是 renderer.tsx 里角标点击的处理。
+   在接上之前，下面的 reduced-motion 覆盖不会生效。 */
+@keyframes citation-ripple {
+  0%   { opacity: 0.5; transform: scale(0.6); }
+  100% { opacity: 0; transform: scale(2.2); }
+}
+.ripple::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--focus-ring);
+  animation: citation-ripple 0.5s ease-out;
+  pointer-events: none;
+}
+
+/* ⑦ 光标闪烁（流式输出末尾） */
+@keyframes caret-blink {
+  0%, 45%   { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
+}
+.streaming-caret::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--foreground);
+  animation: caret-blink 1.1s steps(1) infinite;
+}
+
+/* ---------------------------------------------------------- 无障碍：语义 */
+/* 流式回答专用：屏幕阅读器不该逐字播报，只在段落稳定后读一次 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* -------------------------------------------------------- 无障碍：动效降级 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-property: color, background-color, border-color, opacity !important;
+    transition-duration: 0ms !important;
+    animation: none !important;
+  }
+  .ai-working,
+  .msg-in,
+  .panel-in {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  /* 降级时边框扫光改为静态描边，保留「正在工作」的语义但不转 */
+  .ai-working {
+    border-color: var(--working-border) !important;
+    background-image: none !important;
+    background: var(--card) !important;
+  }
+
+  /* 光斑必须单独处理，不能混进上面那条分组规则。
+     那条规则里有 opacity: 1 !important（用来把消息入场时的 opacity:0 抬起来），
+     而 .blob 的基础不透明度是 0.06 —— 一旦被抬到 1，
+     两个 420px 的 blur(100px) 实色圆（蓝 + 琥珀）就会铺满整页，
+     降级反而成了最刺眼的形态。这里只停动画，不碰不透明度。 */
+  .blob {
+    animation: none !important;
+  }
+
+  /* Spinner（components/ui/index.tsx:73）是「25% 透明度的整圆 + 实心四分之一弧」，
+     静止时仍是一个可辨认的加载图标 —— 所以上面那条 * 规则把它冻在 rotate(0)
+     并不损失可见性，只是让它不转。旋转恰恰是前庭敏感最典型的触发源，
+     这里与 .ai-working 的扫光一样选择停转，两者策略保持一致。 */
+
+  /* 纯装饰的涟漪直接去掉；流式光标保留但不再闪。 */
+  .ripple::after {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+  .streaming-caret::after {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ------------------------------------------------------------ 工具类与排版 */
+/*
+ * 这一整段刻意收进 @layer components，而不是像以前那样裸在层外。
+ *
+ * Tailwind v4 的 @import "tailwindcss" 第一行就是
+ *   @layer theme, base, components, utilities;
+ * 也就是所有工具类都住在 utilities 层里。而 CSS 级联层规则规定：
+ * 无层（unlayered）样式优先于任何 @layer 内的样式，与特异性无关。
+ *
+ * 于是「裸在层外」的 .prose-weave 压死了所有想微调它的工具类 ——
+ * components/ingest/ingest-drawer.tsx 上写的 text-[13px] 是一句空话，
+ * 卡片正文实际按 15px 渲染，比卡片标题（13.5px）还大，视觉层级直接倒挂。
+ * 更要命的是这种失效是静默的：调不动，也不报错，只能靠人肉推断。
+ *
+ * 收进 components 层之后，utilities 层的工具类就能正常覆盖它。
+ */
+@layer components {
+  /* Markdown 渲染：排版的全部旋钮都在这一组变量里。
+     每个「档」只覆盖数字，规则本身一份 —— 否则调一处间距就要在四条标题规则、
+     两条列表规则之间来回对齐，迟早对不齐（这一版之前就是这样：h1 上边距 2.2em、
+     h2 却是 2.4em，二级比一级还松，层级在纵向上是反的）。
+
+     纵向节奏只有两条规则：
+       ① 标题上方永远大于下方（约 3:1），读者才知道下面这截归它管；
+       ② 级别越低，上下都越紧 —— 层级靠字号差和距离差同时表达，不靠横线。
+     每加一条横线，视线就多断一次；在密排中文里，这个代价比它换来的分隔感更贵。 */
+  .prose-weave {
+    --prose-size: 15.5px;
+    --prose-leading: 1.85;
+    --prose-block-gap: 1.45em;
+
+    --prose-h1: 1.9rem;   --prose-h1-top: 2.2em;  --prose-h1-bottom: 0.7em;
+    --prose-h2: 1.4rem;   --prose-h2-top: 2em;    --prose-h2-bottom: 0.65em;
+    --prose-h3: 1.13rem;  --prose-h3-top: 1.7em;  --prose-h3-bottom: 0.5em;
+    --prose-h4: 1rem;     --prose-h4-top: 1.4em;  --prose-h4-bottom: 0.4em;
+
+    --prose-list-gap: 0.5em;
+    --prose-hr-gap: 2.4em;
+
+    font-size: var(--prose-size);
+    line-height: var(--prose-leading);
+    color: var(--foreground);
+  }
+
+  /* 紧凑档：审阅卡片、预览这类「快速扫读」的容器。
+     它们不是长文，照搬长文的段距只会把每张卡片撑得又高又散 ——
+     一次导入会有几十张卡片，每张多 20px 就是多滚动好几屏。 */
+  .prose-weave[data-density="compact"] {
+    --prose-size: 13.5px;
+    --prose-leading: 1.72;
+    --prose-block-gap: 1em;
+    --prose-h1: 1.5rem;   --prose-h1-top: 1.6em;  --prose-h1-bottom: 0.5em;
+    --prose-h2: 1.2rem;   --prose-h2-top: 1.45em; --prose-h2-bottom: 0.45em;
+    --prose-h3: 1.05rem;  --prose-h3-top: 1.25em; --prose-h3-bottom: 0.35em;
+    --prose-h4: 0.98rem;  --prose-h4-top: 1.1em;  --prose-h4-bottom: 0.3em;
+    --prose-list-gap: 0.35em;
+    --prose-hr-gap: 1.6em;
+  }
+
+  /* 对话档：问答回答专用。
+     和长文阅读的区别不在正文（一样 15.5px），而在**标题的体量**：
+     长文里 h2 是「这一章」，对话里 h2 只是「这一段在说什么」，
+     22px 的标题配 15.5px 的正文，一个 4 行的小节里标题就占掉三成高度 ——
+     用户的抱怨是「大标题太宽了，占了太多篇幅」，说的就是这个比例。
+     收窄到 18.9px 之后它仍然明显是标题（字号差 + 字重差都还在），
+     但不再喧宾夺主，标题里的 emoji 也一并回到正常大小。 */
+  .prose-weave[data-density="conversation"] {
+    --prose-leading: 1.8;
+    --prose-block-gap: 1.3em;
+    --prose-h1: 1.45rem;  --prose-h1-top: 1.6em;  --prose-h1-bottom: 0.5em;
+    --prose-h2: 1.18rem;  --prose-h2-top: 1.45em; --prose-h2-bottom: 0.45em;
+    --prose-h3: 1.04rem;  --prose-h3-top: 1.25em; --prose-h3-bottom: 0.35em;
+    --prose-h4: 0.97rem;  --prose-h4-top: 1.05em; --prose-h4-bottom: 0.3em;
+    --prose-list-gap: 0.4em;
+    --prose-hr-gap: 1.7em;
+  }
+
+  .prose-weave > * + * { margin-top: var(--prose-block-gap); }
+  .prose-weave > :first-child { margin-top: 0; }
+
+  .prose-weave h1 {
+    font-size: var(--prose-h1); font-weight: 600; letter-spacing: -0.022em; line-height: 1.25;
+    margin-top: var(--prose-h1-top); margin-bottom: var(--prose-h1-bottom);
+  }
+  .prose-weave h2 {
+    font-size: var(--prose-h2); font-weight: 600; letter-spacing: -0.018em; line-height: 1.3;
+    margin-top: var(--prose-h2-top); margin-bottom: var(--prose-h2-bottom);
+  }
+  .prose-weave h3 {
+    font-size: var(--prose-h3); font-weight: 600; letter-spacing: -0.01em; line-height: 1.4;
+    margin-top: var(--prose-h3-top); margin-bottom: var(--prose-h3-bottom);
+  }
+  .prose-weave h4 {
+    font-size: var(--prose-h4); font-weight: 600; line-height: 1.5;
+    margin-top: var(--prose-h4-top); margin-bottom: var(--prose-h4-bottom);
+  }
+
+  .prose-weave p { margin-top: 0; }
+  .prose-weave strong { font-weight: 600; }
+
+  /* 斜体。中文没有真斜体，浏览器给的是合成倾斜（把字面按角度硬切一刀），
+     所以强调一律优先用加粗，斜体只留给拉丁文术语、书名与原文引用。
+     补一点字距，免得合成倾斜的笔画挤在一起。 */
+  .prose-weave em { font-style: italic; letter-spacing: 0.012em; }
+
+  .prose-weave a {
+    color: var(--foreground);
+    text-decoration: underline;
+    text-decoration-color: var(--input);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 200ms;
+  }
+  .prose-weave a:hover { text-decoration-color: var(--foreground); }
+
+  .prose-weave ul, .prose-weave ol { padding-left: 1.5em; }
+  .prose-weave ul { list-style: disc; }
+  .prose-weave ol { list-style: decimal; }
+  .prose-weave li { margin-top: var(--prose-list-gap); }
+  .prose-weave li > ul, .prose-weave li > ol { margin-top: var(--prose-list-gap); }
+  /* 无序列表的点是纯粹的分隔符，越轻越好；有序列表的编号本身带信息
+     （第几步、第几条），所以它跟前景色而不是次级色，字重也提一档。 */
+  .prose-weave ul > li::marker { color: var(--muted-foreground); }
+  .prose-weave ol > li::marker { color: var(--foreground); font-weight: 600; }
+
+  .prose-weave blockquote {
+    border-left: 2px solid var(--input);
+    padding-left: 1.15em;
+    color: var(--muted-foreground);
+    font-style: normal;
+  }
+
+  /* 行内 code 去掉描边：底色已经把它和正文分开了，
+     再补一圈边框只是在每个代码词旁边多画两条竖线。 */
+  .prose-weave code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    background: var(--muted);
+    border-radius: 4px;
+    padding: 0.12em 0.34em;
+  }
+  .prose-weave pre {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1em 1.15em;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .prose-weave pre code { background: none; padding: 0; font-size: inherit; }
+
+  /* 表格只留横线。全网格会让一张 8 行的表变成三十多条竖线的栅栏，
+     读的时候眼睛要不停地在网格里找对齐。 */
+  .prose-weave table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.94em;
+    display: block;
+    overflow-x: auto;
+  }
+  .prose-weave th, .prose-weave td {
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0.6em 1em 0.6em 0;
+    text-align: left;
+    vertical-align: top;
+  }
+  .prose-weave th {
+    background: none;
+    font-weight: 600;
+    font-size: 0.88em;
+    color: var(--muted-foreground);
+    border-bottom-color: var(--input);
+  }
+
+  .prose-weave hr { border: none; border-top: 1px solid var(--border); margin: var(--prose-hr-gap) 0; }
+  .prose-weave img { border-radius: var(--radius-lg); border: 1px solid var(--border); max-width: 100%; }
+  .prose-weave .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.5em 0; }
+
+  /* 词条双链 [[...]]。
+     以前是「浅底 + 描边 + 全圆角」的胶囊。密排中文段落里一段话出现七八个胶囊时，
+     它们会盖过正文本身成为视觉主体 —— 读起来像在看一堆标签，而不是读一个句子。
+     现在静止时几乎不可见，把注意力让回正文；指针移上去才亮起，给出「这里可点」的反馈。
+
+     只动中性灰（黑叠 alpha），不引入蓝色 —— 蓝在本项目里是焦点环与
+     「AI 正在工作」专用的语义色，不能挪用来做链接态。
+
+     选择器写成 .prose-weave a.wikilink 而不是光秃秃的 .wikilink：
+     上面那条 .prose-weave a 的特异性是 (0,1,1)，而 .wikilink 只有 (0,1,0) ——
+     光写 .wikilink 的话它会被压过去，每条正常双链下面都会拖一条下划线，
+     看起来和死链一模一样，两个状态就再也分不出来了。 */
+  .prose-weave a.wikilink {
+    color: inherit;
+    background: color-mix(in srgb, var(--foreground) 5%, transparent);
+    border-radius: 4px;
+    padding: 0.06em 0.26em;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 150ms;
+  }
+  .prose-weave a.wikilink:hover { background: color-mix(in srgb, var(--foreground) 13%, transparent); }
+
+  /* 死链才需要被看见：虚线告诉用户「这个词条还不存在」，
+     而正常双链不该抢镜。两者的对比度差距本身就是信息。 */
+  .prose-weave a.wikilink-broken {
+    color: var(--muted-foreground);
+    background: none;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-decoration-color: color-mix(in srgb, var(--muted-foreground) 55%, transparent);
+    text-underline-offset: 3px;
+  }
+  .prose-weave a.wikilink-broken:hover {
+    background: none;
+    text-decoration-color: var(--muted-foreground);
+  }
+
+  /* 引用角标 */
+  .citation-ref {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15em;
+    height: 1.15em;
+    padding: 0 0.28em;
+    margin: 0 0.12em;
+    font-size: 0.72em;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--ring);
+    background: color-mix(in srgb, var(--ring) 10%, transparent);
+    border-radius: var(--radius-pill);
+    vertical-align: super;
+    line-height: 1;
+    text-decoration: none;
+    transition: background-color 150ms;
+  }
+  .citation-ref:hover { background: color-mix(in srgb, var(--ring) 20%, transparent); }
+  .citation-ref[data-pending] { color: var(--muted-foreground); background: var(--muted); cursor: default; }
+  .citation-ref[role="button"] { cursor: pointer; }
+}

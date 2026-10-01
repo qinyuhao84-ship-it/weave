@@ -1,0 +1,1 @@
+ALTER TABLE `chat_messages` ADD `dropped_messages` integer DEFAULT 0 NOT NULL;

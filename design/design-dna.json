@@ -1,0 +1,354 @@
+{
+  "meta": {
+    "name": "织识 Design DNA",
+    "description": "从 AIPRD（https://aiprd.zuoxue.com/zh/home）提取的设计 DNA，供「织识」个人知识管理工具使用。所有色彩与尺寸均为 CSS bundle 源码级原值，非视觉估算。气质内核：安静的纸感容器 + 极高的信息密度 + 只在 AI 工作那一刻放出一道光。",
+    "source_references": [
+      "https://aiprd.zuoxue.com/zh/home",
+      "https://aiprd.zuoxue.com/_next/static/css/985879ca19e863f2.css",
+      "https://aiprd.zuoxue.com/_next/static/css/1391608af7920a06.css"
+    ],
+    "extraction_method": "curl 直连取得完整 HTML 与两份 CSS bundle，从 CSS 自定义属性与 Tailwind 工具类使用频次中提取原值。Firecrawl / Tavily / WebFetch 均失败（额度、反爬、域名安全策略），curl 是唯一成功路径。",
+    "created_at": "2026-09-26"
+  },
+
+  "design_system": {
+    "color": {
+      "palette_type": "monochromatic",
+      "primary": {
+        "hex": "#111111",
+        "role": "主操作色与最高层级文字色。关键：主色是近黑而非蓝色。所有主按钮、导航当前项、标题都用它。"
+      },
+      "secondary": {
+        "hex": "#1111110a",
+        "role": "次级表面与悬停底色。4% 黑叠 alpha —— 不是实色灰。用于 muted / secondary / accent 三种语义。"
+      },
+      "accent": {
+        "hex": "#2563eb",
+        "role": "默认状态强调色。交互焦点与选中外框使用中性色；蓝色外框仅用于等待回答。"
+      },
+      "neutral": {
+        "scale": ["#ffffff", "#fcfbf9", "#f2f1ef", "#e8e7e5", "#d6d5d4", "#656464", "#111111"],
+        "usage": "从最亮到最暗。第 1 位 #ffffff 是卡片表面；第 2 位 #fcfbf9 是页面底色（暖米白，不是纯白）；第 3-5 位是 4% / 8% / 15% 黑叠 alpha 在暖底上的合成近似，分别用于 muted 底色、发丝边框、输入框描边；第 6 位 #656464 是 60% 黑的合成近似，用于次要文字 muted-foreground；第 7 位 #111111 是正文与主色。【实现必须用 alpha 原值而非这些合成近似】—— 即 --muted:#1111110a、--border:#11111114、--input:#11111126、--muted-foreground:#1119。用实色灰（#f5f5f5 / #e5e5e5 之类）会导致图层叠加不一致、暖度丢失。"
+      },
+      "semantic": {
+        "success": "#22c55e",
+        "warning": "#f59e0b",
+        "error": "#ef4444",
+        "info": "#3b82f6"
+      },
+      "surface": {
+        "background": "#fcfbf9",
+        "card": "#ffffff",
+        "elevated": "#ffffff"
+      },
+      "contrast_strategy": "dark-on-light dominant。近黑文字压在暖米白底上，对比度极高；但饱和色对比度刻意压到最低——全站默认只有一个饱和色。分层不靠阴影而靠 1px 发丝边框与 4% 的黑叠底色。",
+      "dark_mode": {
+        "generic": {
+          "background": "#111111",
+          "foreground": "#fcfbf9",
+          "card": "#18181b",
+          "popover": "#18181b",
+          "border": "#fcfbf926",
+          "input": "#fcfbf933",
+          "ring": "#3b82f6"
+        },
+        "focus_mode": {
+          "note": "原站另有一套 settings 作用域的深靛蓝版本，更接近「专注模式」，适合长文阅读与图谱界面。",
+          "background": "#0a0a12",
+          "foreground": "#ffffff",
+          "card": "#13131f",
+          "popover": "#1a1a2a",
+          "sidebar": "#13131f",
+          "sidebar_foreground": "#ffffffb3",
+          "border": "#ffffff14"
+        }
+      }
+    },
+
+    "typography": {
+      "type_scale": {
+        "display":     { "size": "3.4rem",  "weight": 600, "line_height": 1.08, "tracking": "-0.03em" },
+        "heading_1":   { "size": "2.9rem",  "weight": 600, "line_height": 1.08, "tracking": "-0.03em" },
+        "heading_2":   { "size": "2.1rem",  "weight": 600, "line_height": 1.1,  "tracking": "-0.03em" },
+        "heading_3":   { "size": "1.75rem", "weight": 600, "line_height": 1.2,  "tracking": "-0.02em" },
+        "body":        { "size": "15px",    "weight": 400, "line_height": 1.6,  "tracking": "0" },
+        "body_small":  { "size": "14px",    "weight": 400, "line_height": 1.55, "tracking": "0" },
+        "caption":     { "size": "13px",    "weight": 500, "line_height": 1.5,  "tracking": "0" },
+        "overline":    { "size": "12px",    "weight": 600, "line_height": 1.4,  "tracking": "0.18em" }
+      },
+      "font_families": {
+        "heading": "var(--font-sans), -apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+        "body":    "var(--font-sans), -apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+        "mono":    "\"Berkeley Mono\", \"JetBrains Mono\", \"Fira Code\", ui-monospace, SFMono-Regular, Menlo, monospace"
+      },
+      "font_style_notes": "零 webfont —— 全站只用系统字体，唯一 @font-face 是图标字体。原站声明了 Inter 变量但实际值就是 -apple-system，并未加载 Inter。这是刻意的性能选择：零字体加载延迟、零 FOIT/FOUT。中文靠 macOS 的 PingFang SC 兜底，本机单用户场景直接受益。字重只用 4 档（400/500/600/700），实测量 font-semibold 用了 37 次、font-medium 14 次，没有 light 也没有 black。字号刻意绕开标准 scale，密集使用半像素级任意值（13px 用了 24 次、15px 18 次、12px 16 次、甚至 11.5px 4 次）——目的是把信息密度做高，这是本 DNA 最容易被忽略但最不能丢的特征。反差手法：正文紧字距，而 eyebrow/品牌字用 +0.18em 的正向宽字距。"
+    },
+
+    "spacing": {
+      "base_unit": "4px",
+      "scale": ["4px", "8px", "12px", "16px", "20px", "24px", "32px", "40px", "48px", "64px", "96px"],
+      "content_density": "compact —— 组件内部紧凑（p-5 = 20px 内边距、gap-6 = 24px 间距），章节之间才放开（py-16 → md:py-24 = 64px → 96px）。这个「内紧外松」的对比是密度的来源。",
+      "section_rhythm": "段落纵向节奏 py-16（64px），在 md 断点升到 py-24（96px）。首屏顶部更紧：pt-14 pb-10（56px / 40px）→ md:pt-20 md:pb-16（80px / 64px）。"
+    },
+
+    "layout": {
+      "grid_system": "12 列居中栅格",
+      "max_content_width": "1152px (max-w-6xl / 72rem)",
+      "columns": 12,
+      "gutter": "24px (px-6)，移动端 16px (px-4)",
+      "breakpoints": { "sm": "640px", "md": "768px", "lg": "1024px", "xl": "1280px" },
+      "alignment_tendency": "strict grid，但内容左对齐而非居中。窄容器分工明确：hero 文本 max-w-3xl、副文案 max-w-xl、CTA 带宽 max-w-4xl。"
+    },
+
+    "shape": {
+      "border_radius": {
+        "small": "6px",
+        "medium": "16px",
+        "large": "22px",
+        "pill": "9999px"
+      },
+      "border_usage": "subtle 1px —— 结构感的主力。全站 border 用了 16 次，远超阴影。边框色是 8% 黑叠 alpha（--border:#11111114），不是实色灰。三档圆角严格分工：pill 只给按钮与徽章、16px 给内嵌面板、22px 给卡片与大容器、3px 给微标签。",
+      "divider_style": "1px 发丝线，颜色同 --border（8% 黑），不用虚线也不加渐变。"
+    },
+
+    "elevation": {
+      "shadow_style": "soft diffused，但极其克制 —— 全站只有三档阴影，且都在 #0000000a 量级。真正的分层靠 1px 边框和 4% 黑叠底色完成。",
+      "levels": {
+        "low":    "0 4px 18px #0000000a, 0 1px 3px #00000005  (shadow-ambient)",
+        "medium": "0 24px 48px #0000000d, 0 8px 16px #00000005 (shadow-dialog)",
+        "high":   "inset 0 1px 0 0 #ffffff26, inset 0 0 0 1px #0003, 0 1px 2px #0000000d (shadow-inset —— 这是主按钮的压印质感，是「高」档的实际用法)"
+      },
+      "depth_cues": "borders + 4% 黑叠底色，而非阴影。阴影只用于浮层（dialog / popover）与主按钮的内压印。"
+    },
+
+    "iconography": {
+      "style": "outlined，单一线宽，无填充变体混用",
+      "stroke_weight": "1.5px（与 1.5px 的边框扫光同宽，视觉统一）",
+      "size_scale": ["14px", "16px", "18px", "20px", "24px"],
+      "preferred_set": "原站用 Material Symbols Outlined（全 CSS 唯一的 @font-face）。本项目改用 lucide-react —— 同为 outlined 风格、stroke 可控、按需 tree-shaking，避免引入图标字体。"
+    },
+
+    "motion": {
+      "easing": "默认 cubic-bezier(.4,0,.2,1)；签名弹性缓动 cubic-bezier(.32,.72,0,1) 用于面板与卡片的入场",
+      "duration_scale": {
+        "micro": "150ms",
+        "normal": "300ms",
+        "macro": "600ms"
+      },
+      "entrance_pattern": "多段递进 stagger，位移距离递减制造节奏感：首屏四段延迟 0.1 / 0.25 / 0.4 / 0.55s，位移 translateY 20 / 20 / 16 / 12px，时长 .6s ease-out。刻意不用统一的淡入。",
+      "exit_pattern": "快速淡出，150ms 以内，不做位移（退出要利落，入场才值得仪式感）",
+      "philosophy": "minimal functional —— 全站动效总时长阶梯只有 150/200/300/400/500ms，绝不为了动而动。唯一的例外是「AI 正在工作」的边框扫光：那是刻意的仪式感，是产品唯一允许自己显眼的地方。"
+    },
+
+    "components": {
+      "button_style": "主按钮 = pill 形 + 近黑底 + 内压印阴影 + active 缩放：h-11 px-8 rounded-full text-[14px] font-medium bg-primary text-primary-foreground shadow-inset hover:bg-primary/90 active:scale-[0.98] transition-all duration-150。padding 故意不对称地大（px-8 配 h-11），让按钮看起来从容。",
+      "input_style": "rounded-md + 1px 描边（--input:#11111126，15% 黑，比普通边框深一档）+ 聚焦时 #2563eb 焦点环。无内阴影。",
+      "card_style": "rounded-2xl + border-border + bg-card + p-5（md:p-7）。内嵌的次级面板降一级为 rounded-xl + bg-background（用页面底色而非卡片色，制造「凹陷」而非「凸起」）。",
+      "navigation_pattern": "顶部 h-14（56px）sticky 导航，滚动时从 bg-transparent + border-transparent 过渡为描边填充（duration-300）。导航项悬停是下划线宽度动画：从 w-0 到 w-full 的 h-0.5 底线，transition-[width] duration-200 —— 不是透明度变化，这是本站的签名交互。",
+      "modal_style": "rounded-2xl/3xl + shadow-dialog + 半透明遮罩。留白大，标题与正文之间用 1px 分隔线而非空白。",
+      "list_style": "行高紧凑（13-15px 字号配 1.5 行高），行间用 1px 发丝分隔线而非斑马纹。悬停整行提亮到 4% 黑叠。",
+      "component_notes": "状态横幅不用实色填充，而用 90deg 渐隐色带：linear-gradient(90deg, #2563eb33, #2563eb14 30%, #0000 70%)。徽章一律 pill 形 + 10% 透明底 + 语义色文字（不要用饱和色块填满）。"
+    }
+  },
+
+  "design_style": {
+    "aesthetic": {
+      "mood": ["安静", "克制", "纸感", "精密", "可信"],
+      "visual_metaphor": "一张摊开的暖色纸张，安静、有分量、边界清晰；只在 AI 开始工作的那一刻，纸的边缘亮起一道转动的光。",
+      "era_influence": "2020 年代中期的 Swiss 复兴 —— 系统字体、严格栅格、发丝边框、拒绝装饰；叠加一点编辑设计（editorial）的排版意识：紧字距大标题配宽字距 overline。",
+      "genre": "editorial SaaS / 工具型产品官网",
+      "personality_traits": ["克制的", "精确的", "有分寸的", "可靠的", "不喧哗的"],
+      "adjectives": ["纸感", "发丝边框", "近黑主色", "高信息密度", "单点高饱和"]
+    },
+    "visual_language": {
+      "complexity": "minimal",
+      "ornamentation": "subtle accents —— 唯一的装饰是两个 blur(100px)、opacity .06 的极淡光斑，以及 AI 工作时的边框扫光。",
+      "whitespace_usage": "generous at section scale, tight within components。章节之间 64-96px 的呼吸，组件内部却压到 13px 字号与 20px 内边距。这个反差是「专业感」的真正来源。",
+      "visual_weight_distribution": "极轻的全站视觉重量。没有任何元素是重的——分层的职责全部交给 1px 边框与 4% 黑叠。",
+      "focal_strategy": "single hero element + progressive reveal。首屏只有一个焦点，其余靠 4 段 stagger 逐步揭示。",
+      "contrast_level": "文字对比度极高（近黑 on 暖米白），色相对比度极低（全站一个饱和色）。这两件事同时成立，是这套 DNA 最精妙的地方。",
+      "texture_usage": "无纹理。空气感靠暖底色（#fcfbf9 而非 #fff）与极淡光斑制造，不靠 noise 或 pattern。"
+    },
+    "composition": {
+      "hierarchy_method": "typographic hierarchy + scale contrast。层级全靠字号与字重，不靠颜色。",
+      "balance_type": "asymmetric —— 内容左对齐，右侧留白。",
+      "flow_direction": "top-to-bottom, left-to-right",
+      "grouping_strategy": "1px 边框与留白分组，不用背景色块。这是它看起来「安静」的关键。",
+      "negative_space_role": "主动的呼吸空间 —— 留白本身承担分组职责，所以不需要色块和阴影来划分区域。"
+    },
+    "imagery": {
+      "photo_treatment": "none —— 全站无照片。",
+      "illustration_style": "none —— 用界面本身作为视觉。产品截图即是插图，且嵌在卡片里降一级呈现。",
+      "graphic_elements": "极淡模糊光斑、1px 发丝分隔线、pill 徽章、conic-gradient 扫光。",
+      "pattern_usage": "none",
+      "image_shape": "rounded-xl / rounded-2xl，与卡片圆角体系一致。"
+    },
+    "interaction_feel": {
+      "feedback_style": "即时且轻量 —— 150ms 过渡，主按钮带 active:scale-[0.98] 的物理反馈。点击必须「有手感」，但不能弹跳。",
+      "hover_behavior": "颜色加深或下划线宽度生长，绝不位移、绝不放大。悬停不能让布局抖动。",
+      "transition_personality": "snappy，但面板入场用签名弹性缓动 cubic-bezier(.32,.72,0,1) 给一点分量感。",
+      "loading_style": "边框扫光 + shimmer 扫光，而非传统 spinner。等待也要好看——这是本 DNA 对「织识」最有价值的贡献。",
+      "microinteraction_density": "medium —— 关键操作都有反馈，但不给每个元素都加动效。"
+    },
+    "brand_voice_in_ui": {
+      "tone": "平实、具体、不用夸张词。信任靠证据链建立，而不是靠形容词。",
+      "formality": "半正式 —— 用「你」不用「您」，但不用网络俚语。",
+      "cta_style": "direct imperative，直接祈使。参考原站的两段式转化句结构：「从 X，到 Y」。",
+      "empty_state_approach": "给出下一步动作，而不是道歉。空知识库应该引导去导入第一份资料，而不是说「暂无数据」。",
+      "error_tone": "说明发生了什么 + 怎么修，不指责用户。例如「这份 PDF 是扫描件，已自动切换 OCR 模式」而不是「解析失败」。"
+    },
+    "adaptation_to_weave": {
+      "文档视图": "长文阅读要低刺激底色 —— 这正是 #fcfbf9（暖米白）而非 #fff 的价值。正文 15px / 行高 1.6，中文用 PingFang SC。左目录树与右元信息面板用 1px 发丝线分隔，不用色块。词条类型徽章（实体/概念/来源/问答/综述）用 pill + 10% 透明底 + 语义色文字区分，不要用五个饱和色块。",
+      "关系网络视图": "高对比发丝线是图谱的天然语言 —— 边用 --border 级别的极淡线条，节点用近黑实心圆 + 类型色细环。选中时的扩散波用 accent 蓝 #2563eb，与「AI 工作」共用同一个色彩语义：蓝色 = 注意力该到这里。图谱画布底色用页面底色，不用白色，让画布与页面融为一体。",
+      "对话": "等待态的边框扫光直接复用。引用角标用 accent 蓝、上标形式、pill 圆角。流式输出逐字入场用 aiMsgInUp 的 6px 上浮。回答中的引用块用 90deg 渐隐色带而非实色填充。"
+    }
+  },
+
+  "visual_effects": {
+    "overview": {
+      "effect_intensity": "subtle-accent",
+      "performance_tier": "lightweight (CSS) 为主，图谱一处用 medium (Canvas 2D)",
+      "fallback_strategy": "显式实现 prefers-reduced-motion 降级：所有 transition-duration 与 animation-duration 压到 .01ms，animation-iteration-count 设为 1，循环动画（光斑漂浮、边框扫光）直接 animation:none。图谱的扩散波动效在降级模式下改为静态高亮，不做动画。",
+      "primary_technology": "CSS（@property + conic-gradient + filter:blur + keyframes）为绝对主力；知识图谱用 Canvas 2D（react-force-graph-2d 的 nodeCanvasObject / linkCanvasObject 手绘钩子）"
+    },
+
+    "background_effects": {
+      "type": "gradient-animation",
+      "description": "两个极淡的模糊光斑在页面背景上以 20s 周期缓慢漂浮。它们是「空气感」的唯一来源——不制造图形，只制造温差。两个光斑的 animation-delay 刻意错开 -10s，避免同步呼吸。",
+      "technology": "CSS filter: blur(100px) + @keyframes transform",
+      "params": {
+        "color_palette": ["#2563eb", "#fcfbf9"],
+        "speed": "20s ease-in-out infinite",
+        "density": "2 blobs",
+        "opacity": 0.06,
+        "blend_mode": "normal（靠极低 opacity 而非混合模式）",
+        "css": ".blob{position:absolute;border-radius:9999px;filter:blur(100px);opacity:.06;pointer-events:none;animation:float 20s ease-in-out infinite} .blob:nth-child(2){animation-delay:-10s} @keyframes float{0%,to{transform:translate(0) scale(1)} 33%{transform:translate(30px,-30px) scale(1.05)} 66%{transform:translate(-20px,20px) scale(.95)}}"
+      }
+    },
+
+    "particle_systems": {
+      "enabled": false,
+      "type": "none",
+      "description": "原站无粒子系统。本项目亦不引入——图谱的扩散波用 Canvas 手绘实现，不需要通用粒子引擎。",
+      "technology": "n/a",
+      "params": {
+        "count": "0", "shape": "n/a", "size_range": "n/a",
+        "movement_pattern": "n/a", "color_behavior": "n/a",
+        "interaction": "none", "spawn_area": "n/a"
+      }
+    },
+
+    "3d_elements": {
+      "enabled": false,
+      "type": "none",
+      "description": "原站无 3D。知识图谱是 2D 力导向图，用 Canvas 2D 而非 WebGL——2D 的平面感与整套纸感 DNA 更协调，且数千节点内性能足够。",
+      "technology": "n/a",
+      "params": {
+        "renderer": "n/a", "lighting": "n/a", "camera": "n/a",
+        "materials": "n/a", "geometry": "n/a", "post_processing": "n/a", "interaction_model": "n/a"
+      }
+    },
+
+    "shader_effects": {
+      "enabled": false,
+      "type": "none",
+      "description": "无 WebGL / GLSL。但有一个机制上等价于「角度驱动的扫光 shader」的纯 CSS 实现——见 composite_notes 中的「边框扫光」，那是本 DNA 最有辨识度的效果。",
+      "technology": "n/a（等价效果用 CSS @property + conic-gradient 实现）",
+      "params": {
+        "uniforms": "n/a", "vertex_manipulation": "n/a", "fragment_output": "n/a",
+        "noise_type": "none", "distortion": "none"
+      }
+    },
+
+    "scroll_effects": {
+      "parallax": {
+        "enabled": false,
+        "layers": "0",
+        "depth_range": "n/a",
+        "speed_curve": "n/a"
+      },
+      "scroll_triggered_animations": {
+        "enabled": true,
+        "trigger_points": "章节进入视口时触发（IntersectionObserver，threshold 0.1）。在本项目里，这个机制主要用于：长文档的段落渐入、导入审阅时新增词条卡片的 stagger 入场、图谱侧栏联动内容的切换。",
+        "animation_type": "fade-up —— translateY(20px) + opacity 0→1，时长 .6s ease-out",
+        "scrub_behavior": "none（不跟随滚动进度，只做一次性触发）"
+      },
+      "scroll_morphing": {
+        "enabled": false,
+        "description": "无变形滚动效果。"
+      }
+    },
+
+    "text_effects": {
+      "type": "typewriter",
+      "description": "流式输出的逐字入场。严格说不是 typewriter（不做光标闪烁、不做固定速率），而是「增量追加 + 每段入场动画」：LLM 的 token 流到达时文本自然增长，同时每个新出现的消息块做一次 6px 上浮淡入，让增长过程有质感而非生硬插入。",
+      "technology": "CSS animation + 增量渲染（AI SDK 的 useChat 流式状态）",
+      "params": {
+        "split_strategy": "by-chunk（按流式到达的增量块，非按字符切分——按字符切分会破坏中文排版与标点避头尾）",
+        "animation_per_unit": "translateY(6px) → 0 且 opacity 0 → 1，.2s ease-out",
+        "stagger": "块级，无逐字 stagger",
+        "effect_style": "aiMsgInUp —— @keyframes aiMsgInUp{0%{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}} animation: aiMsgInUp .2s ease-out",
+        "reasoning_exposure": "推理过程中的工具调用行用 shimmer 扫光而非逐字：@keyframes aiToolScan{0%{background-position:-160% 0}to{background-position:260% 0}} 1.2s linear infinite"
+      }
+    },
+
+    "cursor_effects": {
+      "enabled": false,
+      "type": "none",
+      "description": "无自定义光标。图谱中的指针交互用系统光标 + 节点高亮表达，不自绘光标。",
+      "technology": "n/a",
+      "params": {
+        "shape": "n/a", "size": "n/a", "blend_mode": "n/a",
+        "trail": "n/a", "interaction_zone": "n/a"
+      }
+    },
+
+    "image_effects": {
+      "type": "none",
+      "description": "无图片效果。产品界面截图以静态形式嵌在卡片内。",
+      "technology": "n/a",
+      "params": {
+        "filter_pipeline": "n/a", "hover_transform": "n/a",
+        "reveal_animation": "n/a", "distortion_type": "none"
+      }
+    },
+
+    "glassmorphism_neumorphism": {
+      "enabled": false,
+      "style": "none",
+      "description": "原站不用玻璃拟态。唯一近似的是 sticky 导航的「透明 → 描边填充」过渡，但那是实色过渡而非毛玻璃。本项目保持实色，避免在暖米白底色上叠加 backdrop-filter 导致的色偏。",
+      "params": {
+        "blur_radius": "n/a", "transparency": "n/a", "border_treatment": "n/a",
+        "shadow_type": "n/a", "light_source_angle": "n/a"
+      }
+    },
+
+    "canvas_drawings": {
+      "enabled": true,
+      "type": "data-visualization",
+      "description": "知识图谱。用 react-force-graph-2d 的 nodeCanvasObject / linkCanvasObject 手绘钩子逐帧控制渲染，这是实现「牵一发动全身」的唯一路径——库自带的样式系统反而挡在中间。",
+      "technology": "Canvas 2D（react-force-graph-2d + d3-force）",
+      "params": {
+        "draw_method": "逐帧手绘。nodeCanvasObject(ctx, node, globalScale) 中：① 画节点圆（近黑实心 #111，被选中/邻近时描 accent 蓝环）② 按 weight 决定连线粗细与透明度 ③ 衰减状态下用 ctx.globalAlpha 压低未受影响子图。linkCanvasObject 中按 rel_type 决定线条样式。",
+        "animation_loop": "由 d3-force 的 tick 驱动。选中节点时叠加一层独立的 requestAnimationFrame 循环绘制扩散波（不干扰力学模拟）。",
+        "color_scheme": "节点：近黑 #111111 实心 + 类型色细环（用语义色 #2563eb / #22c55e / #f59e0b / #ef4444 / #8b5cf6 各代表一类词条，环宽 1.5px）。边：rgba(17,17,17,.08) 常态，高亮时升到 rgba(37,99,235,.6)。画布底色透明，透出页面底色 #fcfbf9。",
+        "responsiveness": "容器尺寸变化时调用 graphRef.current.width()/height()；节点数超 3000 时切换到 sigma.js（WebGL）作为降级路径。",
+        "interaction": "hover 高亮节点与一跳邻居、其余衰减到 15% 透明度；click 聚焦并展开侧栏；drag 时力导向实时重排；滚轮缩放、拖拽平移。空背景下双击回到全局视图。"
+      }
+    },
+
+    "svg_animations": {
+      "enabled": true,
+      "type": "decorative-loop",
+      "description": "用于两个轻量场景：① 导入解析的环形进度指示器（stroke-dasharray 绘制）② 引用角标被点击时的涟漪反馈。图谱的连线不走 SVG——节点数上来后 SVG 的 DOM 开销不可接受。",
+      "params": {
+        "animation_method": "CSS animation 驱动 stroke-dashoffset 与 transform",
+        "path_morphing": "none",
+        "stroke_animation": "环形进度用 stroke-dasharray + stroke-dashoffset；引用涟漪用 scale + opacity 的圆环扩散",
+        "filter_effects": "none（不用 SVG filter，避免在暖底色上产生色偏）"
+      }
+    },
+
+    "composite_notes": "【本 DNA 的六种签名效果，按重要性排序，均可直接实现】\n\n① **AI 边框扫光（最有辨识度，务必实现）**——一道绕 1.5px 边框旋转的蓝色扫光，比任何 spinner 都高级。蓝色外框仅用于对话等待；导入解析、体检等其他工作状态使用中性边框扫光。\n```css\n@property --ai-border-angle { syntax: \"<angle>\"; inherits: false; initial-value: 0deg }\n.ai-working {\n  background-image:\n    linear-gradient(var(--card), var(--card)),\n    conic-gradient(from var(--ai-border-angle), transparent 0deg, var(--ring) 60deg, transparent 140deg);\n  background-origin: border-box;\n  background-clip: padding-box, border-box;\n  border: 1.5px solid transparent;\n  animation: ai-border-spin 1.4s linear infinite;\n}\n@keyframes ai-border-spin { to { --ai-border-angle: 360deg } }\n```\n机制说明：双层背景——内层用卡片色填满 padding-box 遮住中间，外层 conic-gradient 只在 border-box 的边框区域可见，于是形成「一道光绕着边框转」。`@property` 注册角度变量是关键，没有它 CSS 无法对角度做插值。\n\n② **导航下划线生长**——0 → 100% 的**宽度**动画（不是透明度）。\n```html\n<a class=\"group relative\">标签<span class=\"absolute -bottom-1 left-0 h-0.5 w-0 bg-foreground transition-[width] duration-200 group-hover:w-full\"></span></a>\n```\n\n③ **首屏四段递进 stagger**——延迟 0.1/0.25/0.4/0.55s，位移递减 20/20/16/12px。递减的位移是关键，统一位移会显得机械。\n```css\n.fade-1{animation:homeFadeInUp .6s ease-out .1s forwards;transform:translateY(20px)}\n.fade-2{animation:homeFadeInUp .6s ease-out .25s forwards;transform:translateY(20px)}\n.fade-3{animation:homeFadeInUp .6s ease-out .4s forwards;transform:translateY(16px)}\n.fade-4{animation:homeFadeInUp .6s ease-out .55s forwards;transform:translateY(12px)}\n@keyframes homeFadeInUp{to{opacity:1;transform:translateY(0)}}\n```\n\n④ **背景光斑漂浮**——见 background_effects.params.css。两个光斑 delay 错开 -10s。\n\n⑤ **shimmer 扫光**——用于工具调用行、骨架屏、进度条填充。\n```css\n@keyframes aiToolScan{0%{background-position:-160% 0}to{background-position:260% 0}}\n.shimmer{background:linear-gradient(90deg,transparent,#1111110a 40%,#11111114 50%,#1111110a 60%,transparent);background-size:60% 100%;background-repeat:no-repeat;animation:aiToolScan 1.2s linear infinite}\n```\n\n⑥ **消息块入场**——见 text_effects.params.effect_style。\n\n---\n\n【本项目新增的第七种：图谱「牵一发动全身」扩散波】\n这是 AIPRD 原站没有、为「织识」专门设计的效果，必须与上面六种保持同一套色彩与节奏语言。\n\n实现分三层：\n- **第一层·涟漪**：选中节点后，从该节点画一组同心圆环向外扩散，半径按 k-hop 距离分档（每跳 +40px），每环用 `ctx.strokeStyle = 'rgba(37,99,235,' + alpha + ')'`、`ctx.lineWidth = 1.5`，alpha 随半径与时间衰减（`alpha = 0.6 * (1 - progress) * (1 - hop/maxHop)`），环宽 1.5px 与边框扫光同宽。扩散周期 600ms，与 macro 时长阶梯一致。\n- **第二层·邻居点亮**：受影响的节点按跳数分批点亮，每批延迟 80ms（呼应 stagger 思路），从 15% 透明度升到 100%，同时把类型环从类型色过渡到 accent 蓝。\n- **第三层·边传播**：边沿传播路径逐段点亮，用 `ctx.setLineDash` 配合 `lineDashOffset` 做「电流沿边流动」的效果，flow 速度约 200px/s，高亮后回落但保持比常态略高的透明度（表示「这条边仍与当前焦点相关」）。\n\n**性能权衡**：涟漪用独立的 requestAnimationFrame 循环而非 d3-force 的 tick，避免干扰力学模拟；涟漪绘制在单独的离屏 canvas 上再一次性合成，避免每帧重绘全图。节点数超 3000 时关闭涟漪，只保留邻居点亮（此时已切换到 sigma.js）。\n\n**降级**：prefers-reduced-motion 下取消涟漪与流动，只做一次性的静态高亮切换。\n\n**色彩纪律**：整个效果只用 accent 蓝 #2563eb 一个颜色，透明度做全部层次——这与「全站一个饱和色」的 DNA 一致。扩散波出现时，用户看到蓝色就知道「这是系统在回应我的操作」，与「AI 正在工作」的扫光共用同一个语义。\n\n---\n\n【文案语气 DNA（可直接用于「织识」的界面文案）】\n原站的三段式结构：两段式转化句（从 X，到 Y）+ 用户视角痛点（直接引用抱怨原话）+ 可溯源信任（靠证据链而非夸张词）。\n例：「从一句话需求，到一份能评审的 PRD」/「写文档半小时，画流程图两小时」/「每条需求追溯到支撑它的证据、来源定位与来源材料版本」。\n\n映射到「织识」：\n- 主页一句话：「从一堆散落的资料，到一座会自己生长的知识库」\n- 痛点直引：「存了 200 篇 PDF，真要找的时候一条都想不起来」/「问 AI 一个问题，它编得比真的还像」\n- 信任靠证据链：「每条结论都能点回原文的具体页码」\n\n【空状态与错误态的语气】不要「暂无数据」，要给下一步动作。例如空知识库显示「还没有词条。导入第一份资料，让模型把它编译成互相链接的知识。」错误态说明发生了什么 + 怎么修：「这份 PDF 是扫描件，已自动切换 OCR 模式，解析会慢一些。」\n\n---\n\n【最容易被做廉价的地方（复刻陷阱）】\n1. **把主色改成蓝色**。这套 DNA 的主色是近黑 #111，焦点环用中性色，蓝色外框只用于对话等待。改成蓝色立刻变成平庸的 SaaS。\n2. **用实色灰代替黑叠 alpha**。#f5f5f5 这类灰会让暖度丢失、图层叠加不一致。必须写 `--muted:#1111110a`。\n3. **把底色改成纯白**。#fcfbf9 的暖度是「纸感」的全部来源，换成 #fff 就从纸变成屏幕。\n4. **用标准 Tailwind 字号 scale**。这套 DNA 的密度来自 13px / 11.5px 这类任意值，用 text-sm（14px）/ text-base（16px）会把信息密度拉低一档。\n5. **给元素加阴影做卡片**。分层靠 1px 边框 + 4% 黑叠，加阴影立刻变廉价。\n6. **统一入场动画**。四段 stagger 的位移是递减的（20/20/16/12），统一位移会机械。\n7. **漏掉 prefers-reduced-motion 降级**。这是原站明确做了的事，不做是无障碍缺陷。"
+  }
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `chat_messages` ADD `interrupted` integer DEFAULT 0 NOT NULL;

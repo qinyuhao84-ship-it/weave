@@ -1,0 +1,31 @@
+name: 问题报告
+description: 报告安装、配置或使用中的可复现问题
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: 请先检查 README。不要附带密钥、真实资料、数据库或个人路径；安全问题请按 SECURITY.md 私密报告。
+  - type: input
+    id: environment
+    attributes:
+      label: 版本与环境
+      description: 项目版本或提交、macOS 版本、Node 与 pnpm 版本
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 重现步骤
+      description: 使用合成资料说明如何复现。
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 预期与实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏日志或截图
