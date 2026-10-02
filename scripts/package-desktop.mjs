@@ -30,7 +30,7 @@ const contents = path.join(app, 'Contents'); const resources = path.join(content
 fs.mkdirSync(path.join(contents, 'MacOS'), { recursive: true }); fs.mkdirSync(resources, { recursive: true });
 fs.cpSync('.next/standalone', path.join(resources, 'server'), { recursive: true, verbatimSymlinks: true });
 fs.cpSync('.next/static', path.join(resources, 'server/.next/static'), { recursive: true });
-fs.cpSync('public', path.join(resources, 'server/public'), { recursive: true });
+if (fs.existsSync('public')) fs.cpSync('public', path.join(resources, 'server/public'), { recursive: true });
 fs.cpSync('drizzle', path.join(resources, 'server/drizzle'), { recursive: true });
 // Next 的启动配置可能记录构建目录；运行时只需包内路径。
 const serverEntry = path.join(resources, 'server/server.js');
