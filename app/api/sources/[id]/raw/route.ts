@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { Readable } from "node:stream";
 import { fail } from "@/lib/api";
 import { getSource, resolveSourceFile } from "@/lib/ingest/source-files";
-import { previewHtml } from "@/lib/documents/html";
+import { previewHtml, HTML_PREVIEW_CSP } from "@/lib/documents/html";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export async function GET(
   if (isHtml && new URL(request.url).searchParams.get("view") === "1") {
     return new Response(previewHtml(fs.readFileSync(filePath, "utf8")), { headers: {
       "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
-      "Content-Security-Policy": "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'",
+      "Content-Security-Policy": HTML_PREVIEW_CSP,
     } });
   }
   const contentType = isPdf

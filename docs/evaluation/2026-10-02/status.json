@@ -1,0 +1,56 @@
+{
+  "status": "passed",
+  "at": "2026-10-01T23:43:29.461060+00:00",
+  "datasetHash": "c6d0a2c7f300a5147340dd68073794d6252bef292cac799f7dd820bcc3fa238c",
+  "retrievalGates": {
+    "recall": true,
+    "ranking": true,
+    "baselineGain": true,
+    "confidence": true,
+    "recallNonRegression": true,
+    "latency": true,
+    "services": true
+  },
+  "qaGates": {
+    "accuracy": true,
+    "citationSupport": true,
+    "refusal": true
+  },
+  "metrics": {
+    "recall10": 0.98675,
+    "ndcg10": 0.8535786979116428,
+    "ndcgGain": 0.04194961315938342,
+    "ndcgGain95CI": [
+      0.018506493712314335,
+      0.06629414127667312
+    ],
+    "qaAccuracy": 0.975,
+    "citationSupport": 1,
+    "controlledRefusal": 1,
+    "localP95Ratio": 1.0996557406910172
+  },
+  "checks": {
+    "lint": "passed",
+    "build": "passed; 官方 Webpack 默认构建器",
+    "typecheck": "passed",
+    "test": "49 files / 777 passed",
+    "relevantE2E": "2 passed"
+  },
+  "reproduction": "三轮资料、问题与答案文件均重新准备并核对SHA-256完全一致；仅准备不重复测试已关闭留出集。",
+  "budget": {
+    "usdAtPeakPrices": 0.20978100000000005,
+    "attempts": 200,
+    "maxUsd": 4.8,
+    "maxAttempts": 400,
+    "noPaidFallback": true,
+    "noCrossWindowContinuation": true
+  },
+  "stoppedOptimizing": true,
+  "industryAverageClaim": false,
+  "limitations": [
+    "受限MIRACL语料，与全量排行榜不同",
+    "单轮短答案、受控缺证据和agent-assisted复核；没有独立人工盲审",
+    "旧文章真实性/时效性、长文、图谱、多跳与OCR未被本实验覆盖",
+    "问答两道关系错误按保守直接答复评分未通过，详见label-audit"
+  ]
+}

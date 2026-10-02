@@ -49,6 +49,32 @@ try {
     measure("excerpt", () => excerptForQuery(body.repeat(8), "信息过滤与用户偏好需要结合数据质量和评估方法")),
     measure("document-context", () => knowledgeContextForDocument(catalog, document), 5),
   ];
+  // 可重复的本地向量扫描成本测量；模拟向量不代表真实语义质量。
+  if (process.env.WEAVE_PERF_HYBRID === "1") {
+    const { saveSettings, RetrievalModelSchema } = await import("../lib/settings");
+    const { indexEmbeddings } = await import("../lib/index/embeddings");
+    const { retrieveHybrid } = await import("../lib/chat/retrieve");
+    const originalFetch = globalThis.fetch;
+    const config = RetrievalModelSchema.parse({ enabled: true, baseUrl: "http://127.0.0.1:1", apiKey: "", rerankModel: "" });
+    const embedding = Array.from({ length: 1024 }, (_, index) => index % 2 ? .01 : .02);
+    // 每一请求按 input 的实际数量回应，索引构建与查询使用同一个维度。
+    globalThis.fetch = async (_url, init) => {
+      const input = JSON.parse(String(init?.body)).input as string[];
+      return new Response(JSON.stringify({ data: input.map((_, index) => ({ index, embedding })) }));
+    };
+    saveSettings({ retrievalModel: config });
+    try {
+      await indexEmbeddings(config);
+      const query = "推荐算法0的协同过滤和冷启动有什么区别？";
+      await retrieveHybrid(query, { config });
+      const samples: number[] = [];
+      for (let iteration = 0; iteration < 12; iteration++) {
+        const start = performance.now(); await retrieveHybrid(query, { config }); samples.push(performance.now() - start);
+      }
+      samples.sort((a, b) => a - b);
+      results.push({ name: "hybrid-local-1024d-no-network-no-rerank", samples: samples.length, medianMs: +((samples[5] + samples[6]) / 2).toFixed(2), p95Ms: +samples[11].toFixed(2) });
+    } finally { saveSettings({ retrievalModel: { ...config, enabled: false } }); globalThis.fetch = originalFetch; }
+  }
   const report = { at: new Date().toISOString(), node: process.version, platform: process.platform, arch: process.arch, pageCount, bodyCharacters: body.length, documentCharacters: document.length, seedMs: +seedMs.toFixed(2), extractedTerms: extractTerms(document).length, results };
   const output = process.argv[2];
   if (output) fs.writeFileSync(output, JSON.stringify(report, null, 2) + "\n");

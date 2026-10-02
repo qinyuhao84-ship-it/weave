@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
 import * as React from "react";
 import { AppNav } from "./sidebar";
@@ -16,6 +17,7 @@ import { useTheme } from "@/hooks/use-theme";
  * 那些由侧栏自己按需取，页面只管自己的内容。
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
   // 常驻订阅主题。prefers-color-scheme 的监听挂在 useTheme 的 subscribe 里，
   // 而 subscribe 只有在有组件真正调用 useTheme 时才会被 React 调用 ——
   // 原来只有设置页与图谱页在调，于是停在知识库/对话页时，系统切深浅色不会生效，
@@ -26,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // 移动端必须是纵向堆叠：AppNav 在窄屏下渲染的是一条顶部导航条，
     // 如果父容器是 flex-row，那条导航会变成主区左边的一列，把主区挤成窄条。
     <div className="flex min-h-dvh flex-col md:flex-row">
-      <a href="#main-content" className="skip-navigation">跳到主要内容</a>
+      <a href="#main-content" className="skip-navigation">{t("layout_app_shell.m001")}</a>
       {/* 背景光斑：blur(100px) + opacity .06，两个错开 -10s 避免同步呼吸。
           用 --primary（近黑）而不是 --ring（蓝）：蓝色是「注意力该到这里」的信号色，
           拿它铺背景会让整页泛蓝，也削弱了它在 AI 工作态里的作用。 */}

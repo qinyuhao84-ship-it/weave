@@ -361,6 +361,13 @@ export function flattenRedirects(): number {
  * 仅恢复 SQLite 中的派生索引；会话、草稿和裁决等应用数据不可重建。
  */
 export function reindexAll(): ReindexReport {
+  const report = getDb().transaction(() => reindexWithinTransaction());
+  // 动态加载避免领域写入模块的循环依赖，任务在事务退出后运行。
+  void import("./embeddings").then(module => module.scheduleEmbeddingIndex());
+  return report;
+}
+
+function reindexWithinTransaction(): ReindexReport {
   const startedAt = Date.now();
   const db = getDb();
   const now = localISOString();

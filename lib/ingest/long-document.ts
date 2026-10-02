@@ -1,4 +1,5 @@
 import type { Analysis, Draft } from "@/lib/llm/prompts";
+import { estimateContextTokens, contextTokenWeight } from "@/lib/chat/tokens";
 
 const PAGE_MARKER = /^<!--\s*page:\d+\s*-->\s*$/;
 
@@ -37,10 +38,11 @@ export function splitMarkdown(markdown: string, maxTokens = 5_000): string[] {
       continue;
     }
 
-    const parts = splitOversizedBlock(block, maxTokens);
+    const parts = splitOversizedBlock(block, Math.max(1, maxTokens - estimatePartTokens(pageMarker) - 2));
     for (const part of parts) {
       const partTokens = estimatePartTokens(part);
-      if (current.length > 0 && tokenCount + partTokens > maxTokens) flush();
+      if (current.length > 0 && tokenCount + partTokens + 0.5 > maxTokens) flush();
+      if (current.length) tokenCount += 0.5;
       current.push(part);
       tokenCount += partTokens;
       if (partTokens >= maxTokens) flush();
@@ -81,7 +83,7 @@ function splitOversizedBlock(block: string, maxTokens: number): string[] {
       continue;
     }
     for (const character of sentence) {
-      const weight = /[\u3400-\u9fff]/u.test(character) ? 2 / 3 : 1 / 4;
+      const weight = contextTokenWeight(character);
       if (current && count + weight > maxTokens) {
         out.push(current);
         current = "";
@@ -96,11 +98,7 @@ function splitOversizedBlock(block: string, maxTokens: number): string[] {
 }
 
 function estimatePartTokens(text: string): number {
-  let estimate = 0;
-  for (const character of text) {
-    estimate += /[\u3400-\u9fff]/u.test(character) ? 2 / 3 : 1 / 4;
-  }
-  return estimate;
+  return estimateContextTokens(text);
 }
 
 export function combineAnalyses(items: Analysis[]): Analysis {

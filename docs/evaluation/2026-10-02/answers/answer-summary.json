@@ -1,0 +1,17 @@
+{
+  "datasetHash": "b537fddb5c7c849d94a159c82fbaa1f820ac04e45a86f6a6b856e5a53f2dcf04",
+  "answerable": 80,
+  "controlledUnanswerable": 20,
+  "accuracy": 1,
+  "citationSupport": 1,
+  "refusal": 1,
+  "reviewMethods": [
+    "agent-assisted"
+  ],
+  "gates": {
+    "accuracy": true,
+    "citationSupport": true,
+    "refusal": true
+  },
+  "notes": "复核判定涵盖正确性、额外结论是否有证据以及拒答；自动字符串匹配未代替独立复核。样本较少，仅代表本评测集。"
+}

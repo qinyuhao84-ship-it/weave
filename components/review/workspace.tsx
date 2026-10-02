@@ -1,21 +1,31 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
-import * as React from "react";
-import Link from "next/link";
-import {
-  ShieldCheck, Play, AlertTriangle, Link2, Copy, FileQuestion,
-  Clock, Search, CircleStop,
-} from "lucide-react";
-import { PageHeader } from "@/components/layout/page-header";
 import { useAppData } from "@/components/app-provider";
 import { useJobs } from "@/components/jobs/jobs-provider";
+import { PageHeader } from "@/components/layout/page-header";
 import {
-  Button, Badge, Card, Spinner, EmptyState, AiWorkingFrame, Textarea, ProgressBar,
+  AiWorkingFrame,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ProgressBar,
+  Spinner
 } from "@/components/ui";
 import { apiFetch } from "@/hooks/use-api";
-import { QuestionPicker, type AnswerDraft } from "./question-picker";
-import { FixPlanPanel, type ChangePlanView, type FixPlanView } from "./plan-confirm-panel";
 import { cn } from "@/lib/utils";
+import {
+  CircleStop,
+  Play,
+  ShieldCheck
+} from "lucide-react";
+import * as React from "react";
+import { FixPlanPanel } from "./plan-confirm-panel";
+import { type AnswerDraft } from "./question-picker";
+
+import { ReviewCard } from "./review-card";
+import type { ReviewBatchJob, ReviewItem, ReviewStatus } from "./types";
 
 /**
  * 体检与审阅队列。
@@ -29,21 +39,10 @@ import { cn } from "@/lib/utils";
  * 发现共享同一条队列；无法落盘的事项保留回答，方便用户重试。
  */
 
-const KIND_META: Record<string, { label: string; icon: React.ElementType; tone: "danger" | "warning" | "accent" | "neutral" }> = {
-  contradiction: { label: "矛盾", icon: AlertTriangle, tone: "danger" },
-  stale_claim: { label: "过时论断", icon: Clock, tone: "warning" },
-  duplicate: { label: "疑似重复", icon: Copy, tone: "warning" },
-  missing_page: { label: "缺页", icon: FileQuestion, tone: "accent" },
-  broken_link: { label: "断链", icon: Link2, tone: "warning" },
-  orphan: { label: "孤儿页", icon: FileQuestion, tone: "neutral" },
-  research: { label: "待研究", icon: Search, tone: "neutral" },
-};
-
-type ReviewStatus = "pending" | "answered";
 
 const STATUS_LABEL: Record<ReviewStatus, string> = {
-  pending: "待处理",
-  answered: "已提交",
+  pending: "reviewStatus.pending",
+  answered: "reviewStatus.answered",
 };
 
 /**
@@ -53,60 +52,9 @@ const STATUS_LABEL: Record<ReviewStatus, string> = {
  * 常态就是如此（某个名字被引用了 3 次，但还没有它的词条）。
  * 这类标签只显示、不链接：链接过去也只会看到「没有匹配的词条」。
  */
-type RelatedPage = { id: string | null; title: string };
-
-/** 与 lib/review/remediate.ts 的 RemediationRecord 对应 */
-type RemediationRecord = {
-  summary: string;
-  edits: Array<{ pageId: string; title: string; reason: string; added: number; removed: number }>;
-  created: Array<{ id: string; title: string }>;
-  rejected: string[];
-  noChangeReason: string | null;
-  /** 这次修订留下几条版本记录 —— 服务层一次写一条，所以通常不止一条 */
-  commits: number;
-};
-
-type ReviewItem = {
-  id: string;
-  kind: string;
-  title: string;
-  detail: string | null;
-  severity: string;
-  relatedPages: RelatedPage[];
-  suggestedAction: string | null;
-  status: string;
-  decisionNote: string | null;
-  createdAt: string;
-  resolvedAt: string | null;
-  /** 「让模型按批注去修」的执行记录。null = 不是那么处理的 */
-  remediation: RemediationRecord | null;
-  /** 那次修订的 git 提交 */
-  appliedSha: string | null;
-  /** 系统提的问题与候选答案。两者同时为空 = 没有值得拍板的问题，退回旧交互 */
-  question: string | null;
-  options: Array<{ id: string; label: string; impact: string }>;
-  /** 用户的回答。它是「我的口径」不是「我认不认」，还要等模型处理 */
-  answer: string | null;
-  answerChoiceId: string | null;
-  answerSource: "option" | "freeform" | null;
-  answeredAt: string | null;
-  /** 正在处理这批回答的任务 id。非空 = 界面上显示「处理中」 */
-  batchId: string | null;
-};
-
-type ReviewBatchJob = {
-  id: string;
-  createdAt?: string;
-  status: string;
-  progress: number;
-  stageLabel: string | null;
-  error: string | null;
-  payload: { mode?: string; itemIds?: string[] } | null;
-  draft: ChangePlanView | FixPlanView | null;
-};
-
 /** 正在跑的修订任务在界面上的样子 */
 export function ReviewWorkspace() {
+  const { t } = useI18n();
   const [items, setItems] = React.useState<ReviewItem[]>([]);
   const [stats, setStats] = React.useState<{ pages: number; edges: number; orphans: number; dangling: number } | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -255,13 +203,13 @@ export function ReviewWorkspace() {
         setStopping(false);
 
         if (status === "cancelled") {
-          setScanLog((prev) => [...prev, "▸ 已停止。这次体检没有写入任何东西。"]);
+          setScanLog((prev) => [...prev, t("review_workspace.m001")]);
         } else if (status === "failed") {
-          setError(jobError ?? "这次体检没有完成。");
-          setScanLog((prev) => [...prev, "▸ 中断了"]);
+          setError(jobError ?? t("review_workspace.m002"));
+          setScanLog((prev) => [...prev, t("review_workspace.m003")]);
         } else {
           setScanProgress(100);
-          setScanLog((prev) => [...prev, "▸ 完成"]);
+          setScanLog((prev) => [...prev, t("review_workspace.m004")]);
         }
 
         // 不论怎么结束，都要重新拉一遍队列与机械发现：成功时它写入了新条目，
@@ -308,7 +256,7 @@ export function ReviewWorkspace() {
             }
             break;
           case "error":
-            setError(payload.message ?? "体检出错了。");
+            setError(payload.message ?? t("review_workspace.m005"));
             break;
           case "done":
             if (!finished) void settle("done", null);
@@ -345,15 +293,15 @@ export function ReviewWorkspace() {
         })();
       };
     },
-    [load, loadQueue, bumpData],
+    [load, loadQueue, bumpData, t],
   );
 
   /** 起一次体检。任务在服务端跑，这个页面只是它的一个视图 */
   const handleScan = React.useCallback(async () => {
     setError(null);
-    setScanLog(["▸ 开始体检"]);
+    setScanLog([t("review_workspace.m006")]);
     setScanProgress(0);
-    setScanStage("正在准备");
+    setScanStage(t("review_workspace.m007"));
     setScanning(true);
     try {
       const { jobId } = await apiFetch<{ jobId: string }>("/api/lint", {
@@ -366,7 +314,7 @@ export function ReviewWorkspace() {
       setError(err instanceof Error ? err.message : String(err));
       setScanning(false);
     }
-  }, [llmConfigured, watchScan, refreshJobs]);
+  }, [t, llmConfigured, watchScan, refreshJobs]);
 
   /**
    * 停止体检。
@@ -377,14 +325,14 @@ export function ReviewWorkspace() {
   const stopScan = React.useCallback(async () => {
     if (!scanJobId) return;
     setStopping(true);
-    setScanLog((prev) => [...prev, "· 正在停止…"]);
+    setScanLog((prev) => [...prev, t("review_workspace.m008")]);
     try {
       await apiFetch(`/api/jobs/${scanJobId}`, { method: "DELETE" });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setStopping(false);
     }
-  }, [scanJobId]);
+  }, [scanJobId, t]);
 
   /**
    * 进页面时认领一个还在跑的体检。
@@ -407,7 +355,7 @@ export function ReviewWorkspace() {
         );
         const job = data.jobs[0];
         if (cancelled || !job) return;
-        setScanLog(["▸ 这次体检还在后台跑着，接着看它的进度"]);
+        setScanLog([t("review_workspace.m009")]);
         watchScanRef.current(job.id);
       } catch {
         // 认领失败不影响任何事：用户重新点一次体检即可
@@ -416,7 +364,7 @@ export function ReviewWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   // 离开页面时断开订阅。任务在服务端继续跑 —— 断的只是这条视图连接
   React.useEffect(() => () => { scanSourceRef.current?.close(); scanSourceRef.current = null; }, []);
@@ -440,7 +388,7 @@ export function ReviewWorkspace() {
           createdAt: new Date().toISOString(),
           status: "queued",
           progress: 0,
-          stageLabel: "排队中",
+          stageLabel: t("review_workspace.m010"),
           error: null,
           payload: { mode: "answers", itemIds: [id] },
           draft: null,
@@ -457,7 +405,7 @@ export function ReviewWorkspace() {
         setFilter("answered");
       }
     },
-    [filter, loadQueue, refreshJobs, refreshBatchJobs, bumpData],
+    [t, loadQueue, filter, refreshJobs, refreshBatchJobs, bumpData],
   );
 
   /** 确认某一个任务提出的执行计划 */
@@ -534,19 +482,17 @@ export function ReviewWorkspace() {
   return (
     <>
       <PageHeader
-        title="体检"
-        description="全库检查缺页与断链，分批检查语义矛盾和过时内容。逐条选择处理方向或写下批注，提交后会自动修订并记录改动。"
+        title={t("review_workspace.m011")}
+        description={t("review_workspace.m012")}
         meta={
           stats && (
             <>
-              <Badge tone="neutral">{stats.pages} 个词条</Badge>
+              <Badge tone="neutral">{stats.pages} {t("review_workspace.m013")}</Badge>
               <Badge tone={stats.orphans > 0 ? "warning" : "neutral"}>
-                {stats.orphans} 个孤立
-              </Badge>
+                {stats.orphans} {t("review_workspace.m014")}</Badge>
               <Badge tone={stats.dangling > 0 ? "warning" : "neutral"}>
-                {stats.dangling} 条断链
-              </Badge>
-              {!llmConfigured && <Badge tone="neutral">模型服务暂不可用</Badge>}
+                {stats.dangling} {t("review_workspace.m015")}</Badge>
+              {!llmConfigured && <Badge tone="neutral">{t("review_workspace.m016")}</Badge>}
             </>
           )
         }
@@ -563,10 +509,9 @@ export function ReviewWorkspace() {
                 onClick={() => void stopScan()}
                 icon={<CircleStop size={12} strokeWidth={1.8} />}
                 className="text-[var(--destructive)] hover:bg-[color-mix(in_srgb,var(--destructive)_8%,transparent)] hover:text-[var(--destructive)]"
-                title="停止这次体检。它还没写入任何东西，停止后队列保持原样。"
+                title={t("review_workspace.m017")}
               >
-                停止体检
-              </Button>
+                {t("review_workspace.m018")}</Button>
             </div>
           ) : (
             <Button
@@ -575,20 +520,19 @@ export function ReviewWorkspace() {
               icon={<Play size={12} strokeWidth={2} />}
               onClick={handleScan}
             >
-              开始体检
-            </Button>
+              {t("review_workspace.m019")}</Button>
           )
         }
       />
 
       <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
-        <p className="mb-5 text-[12px] leading-relaxed text-muted-foreground">程序检查覆盖全部词条；语义检查每次最多 12 个词条片段，连续体检会轮换。{coverage ? ` 当前正文累计已检查 ${coverage.checkedSegments}/${coverage.totalSegments} 段，还有 ${coverage.remainingSegments} 段未检查。内容变化后重新计入待检查范围。` : ""}</p>
+        <p className="mb-5 text-[12px] leading-relaxed text-muted-foreground">{t("review_workspace.m020")}{coverage ? t("review_workspace.m021", {v0: coverage.checkedSegments, v1: coverage.totalSegments, v2: coverage.remainingSegments}) : ""}</p>
         {/* 扫描进行中 */}
         {scanning && (
           <AiWorkingFrame working className="mb-5 border border-transparent bg-card p-4">
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-[13.5px] font-medium text-foreground">
-                {scanStage || "正在准备"}
+                {scanStage || t("review_workspace.m007")}
               </p>
               <span className="shrink-0 text-[12.5px] tabular-nums text-muted-foreground" data-numeric>
                 {Math.round(scanProgress)}%
@@ -619,8 +563,7 @@ export function ReviewWorkspace() {
             <div className="flex items-center gap-2">
               <ShieldCheck size={13} className="text-muted-foreground" />
               <h2 className="text-[12px] font-semibold tracking-[0.08em] text-foreground">
-                待你判断
-              </h2>
+                {t("review_workspace.m022")}</h2>
             </div>
             <div className="flex items-center gap-1">
               {(["pending", "answered"] as const).map((status) => (
@@ -635,7 +578,7 @@ export function ReviewWorkspace() {
                       : "border-[var(--border)] text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {STATUS_LABEL[status]}
+                  {t(STATUS_LABEL[status])}
                 </button>
               ))}
             </div>
@@ -643,14 +586,12 @@ export function ReviewWorkspace() {
 
           {filter === "pending" && items.length > 0 && (
             <p className="mb-3 text-[11.5px] leading-relaxed text-muted-foreground">
-              选择一个处理方向，或写下具体批注，再点「提交处理」。每条问题会单独修订；无需处理的结果也会自动归档。
-            </p>
+              {t("review_workspace.m023")}</p>
           )}
 
           {filter === "answered" && items.length > 0 && (
             <p className="mb-3 text-[11.5px] leading-relaxed text-muted-foreground">
-              上次提交未能完成的事项保留在这里，可以修改答案后重新提交。
-            </p>
+              {t("review_workspace.m024")}</p>
           )}
 
           {/* 每个已完成的模型任务各自等待确认；队列中其他任务可以继续运行。 */}
@@ -666,7 +607,7 @@ export function ReviewWorkspace() {
                     onCancel={() => void handleCancelPlan(job.id)}
                   />
                 ) : (
-                  <p role="status" className="rounded-xl border border-border px-4 py-3 text-[12px] text-muted-foreground">正在按你的回答执行 {job.draft.pending.length} 项合并或删除…</p>
+                  <p role="status" className="rounded-xl border border-border px-4 py-3 text-[12px] text-muted-foreground">{t("review_workspace.m025")}{job.draft.pending.length} {t("review_workspace.m026")}</p>
                 )}
               </div>
             );
@@ -677,8 +618,8 @@ export function ReviewWorkspace() {
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[11.5px] text-muted-foreground">
                   {job.status === "queued"
-                    ? `已排队${index > 0 ? ` · 前面还有 ${index} 个任务` : " · 等待处理"}`
-                    : job.stageLabel ? `正在处理：${job.stageLabel}` : "正在处理这条反馈…"}
+                    ? t("review_workspace.m029", {v0: index > 0 ? t("review_workspace.m027", {v0: index}) : t("review_workspace.m028")})
+                    : job.stageLabel ? t("review_workspace.m030", {v0: job.stageLabel}) : t("review_workspace.m031")}
                 </span>
                 <span className="shrink-0 text-[11.5px] tabular-nums text-muted-foreground">
                   {job.status === "queued" ? `${index + 1}/${activeJobs.length}` : `${job.progress}%`}
@@ -702,18 +643,18 @@ export function ReviewWorkspace() {
                 icon={<ShieldCheck size={28} strokeWidth={1.3} />}
                 title={
                   filter === "pending"
-                    ? "队列是空的。"
-                    : "没有可重新提交的事项。"
+                    ? t("review_workspace.m032")
+                    : t("review_workspace.m033")
                 }
                 description={
                   filter === "pending"
-                    ? "程序检测到的问题和体检发现会统一列在这里。"
+                    ? t("review_workspace.m034")
                     : undefined
                 }
                 action={
                   filter === "pending" && (
                     <Button variant="secondary" size="md" onClick={handleScan} loading={scanning}>
-                      {scanning ? "体检进行中…" : "开始体检"}
+                      {scanning ? t("review_workspace.m035") : t("review_workspace.m019")}
                     </Button>
                   )
                 }
@@ -736,176 +677,5 @@ export function ReviewWorkspace() {
         </section>
       </div>
     </>
-  );
-}
-
-function ReviewCard({
-  item,
-  filter,
-  llmConfigured,
-  queueStatus,
-  onSubmit,
-}: {
-  item: ReviewItem;
-  filter: ReviewStatus;
-  llmConfigured: boolean;
-  queueStatus: "queued" | "running" | "awaiting_review" | null;
-  onSubmit: (next: AnswerDraft) => Promise<void>;
-}) {
-  const [answer, setAnswer] = React.useState<AnswerDraft>({
-    answer: item.answer ?? "",
-    choiceId: item.answerChoiceId,
-  });
-  const [busy, setBusy] = React.useState(false);
-  const meta = KIND_META[item.kind] ?? KIND_META.research;
-  const editable = filter === "pending" || filter === "answered";
-  const submit = async () => {
-    if (!answer.answer.trim() || busy) return;
-    setBusy(true);
-    try {
-      await onSubmit(answer);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Card className="p-4">
-      <div className="flex items-start gap-3">
-        <meta.icon
-          size={15}
-          className={cn(
-            "mt-0.5 shrink-0",
-            item.severity === "critical"
-              ? "text-[var(--destructive)]"
-              : item.severity === "warning"
-                ? "text-[var(--warning)]"
-                : item.kind === "missing_page"
-                  ? "text-[var(--ring)]"
-                  : "text-muted-foreground",
-          )}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={meta.tone}>{meta.label}</Badge>
-            <span className="text-[13.5px] font-medium text-foreground">{item.title}</span>
-          </div>
-          {item.detail && (
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">{item.detail}</p>
-          )}
-          {item.suggestedAction && (
-            <p className="mt-1.5 text-[11.5px] text-[var(--ring)]">建议：{item.suggestedAction}</p>
-          )}
-          {item.relatedPages.length > 0 && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              {item.relatedPages.map((page) =>
-                page.id ? (
-                  <Link key={`${page.id}:${page.title}`} href={`/wiki/${page.id}`}>
-                    <Badge tone="neutral">{page.title}</Badge>
-                  </Link>
-                ) : (
-                  <Badge key={page.title} tone="neutral">{page.title}</Badge>
-                ),
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {item.remediation && (
-        <div className="mt-3 rounded-[10px] border border-[color-mix(in_srgb,var(--success)_28%,transparent)] bg-[color-mix(in_srgb,var(--success)_5%,transparent)] px-3 py-2.5">
-          <p className="text-[12px] font-medium text-foreground">
-            {item.remediation.noChangeReason && item.remediation.edits.length === 0 && item.remediation.created.length === 0
-              ? "已检查，无需改动"
-              : "已按提交内容处理"}
-          </p>
-          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-            {item.remediation.noChangeReason ?? item.remediation.summary}
-          </p>
-          {item.remediation.edits.length > 0 && (
-            <ul className="mt-1.5 space-y-0.5">
-              {item.remediation.edits.map((edit) => (
-                <li key={edit.pageId} className="text-[11.5px] leading-relaxed text-muted-foreground">
-                  《{edit.title}》 改了 {edit.added} 行、删了 {edit.removed} 行 —— {edit.reason}
-                </li>
-              ))}
-            </ul>
-          )}
-          {item.remediation.created.length > 0 && (
-            <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              补建：{item.remediation.created.map((page) => `《${page.title}》`).join("、")}
-              （标为低置信度，建议复核）
-            </p>
-          )}
-          {item.remediation.rejected.length > 0 && (
-            <p className="mt-1.5 text-[11.5px] leading-relaxed text-[var(--warning)]">
-              这些改动没有采纳：{item.remediation.rejected.join("；")}
-            </p>
-          )}
-          {item.appliedSha && (
-            <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-              修订已保存 · <Link href="/wiki" className="text-foreground underline">查看知识库</Link>
-            </p>
-          )}
-        </div>
-      )}
-
-      {editable && (
-        <div className="mt-3 rounded-[14px] bg-background p-3">
-          {item.question && item.options.length >= 2 ? (
-            <QuestionPicker
-              question={item.question}
-              options={item.options}
-              value={answer}
-              disabled={Boolean(item.batchId) || Boolean(queueStatus) || busy}
-              onChange={setAnswer}
-            />
-          ) : (
-            <>
-              {item.question && (
-                <p className="text-[12.5px] font-medium leading-relaxed text-foreground">{item.question}</p>
-              )}
-              <Textarea
-                className={item.question ? "mt-2" : ""}
-                rows={3}
-                value={answer.answer}
-                disabled={Boolean(item.batchId) || Boolean(queueStatus) || busy}
-                placeholder="写下你希望如何处理这条问题…"
-                onChange={(event) => setAnswer({ answer: event.target.value, choiceId: null })}
-              />
-            </>
-          )}
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[11.5px] text-muted-foreground">
-              {queueStatus === "queued"
-                ? "已提交，等待前序反馈处理完成"
-                : queueStatus === "running"
-                  ? "大模型正在处理这条反馈"
-                  : queueStatus === "awaiting_review"
-                    ? "处理方案已生成，等待上方确认"
-                    : filter === "answered"
-                      ? "上次未完成，可修改后重试"
-                      : "提交后会自动处理并记录改动"}
-            </span>
-            <Button
-              size="sm"
-              variant="primary"
-              loading={busy}
-              disabled={!answer.answer.trim() || Boolean(item.batchId) || Boolean(queueStatus) || busy || !llmConfigured}
-              title={llmConfigured ? undefined : "模型服务暂不可用，请稍后再试。"}
-              onClick={() => void submit()}
-            >
-              {queueStatus === "queued"
-                ? "已排队"
-                : queueStatus
-                  ? "处理中"
-                  : filter === "answered"
-                    ? "重新提交"
-                    : "提交处理"}
-            </Button>
-          </div>
-        </div>
-      )}
-    </Card>
   );
 }

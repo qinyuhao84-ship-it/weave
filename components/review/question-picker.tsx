@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
 import { Textarea } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export function QuestionPicker({
   onChange: (next: AnswerDraft) => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   const selected = options.find((option) => option.id === value.choiceId) ?? null;
 
   return (
@@ -87,8 +89,8 @@ export function QuestionPicker({
         disabled={disabled}
         // 选中选项时输入框显示为空 —— 那两个值不该同时出现在眼前
         value={value.choiceId ? "" : value.answer}
-        placeholder="或写下你希望如何处理…"
-        aria-label={`${question}：自由回答`}
+        placeholder={t("review_question_picker.m001")}
+        aria-label={t("review_question_picker.m002", {v0: question})}
         maxLength={500}
         onChange={(event) => onChange({ answer: event.target.value, choiceId: null })}
       />

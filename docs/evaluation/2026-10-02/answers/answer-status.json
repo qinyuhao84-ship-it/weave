@@ -1,0 +1,54 @@
+{
+  "status": "awaiting-review",
+  "startedAt": 1790894075617,
+  "windowEnd": 1790912059589,
+  "limitUsd": 4.8,
+  "chargedUsd": 0.10449780000000002,
+  "attempts": 100,
+  "stopped": false,
+  "reason": null,
+  "model": "deepseek-v4-flash",
+  "expected": 100,
+  "completed": 100,
+  "datasetHash": "b537fddb5c7c849d94a159c82fbaa1f820ac04e45a86f6a6b856e5a53f2dcf04",
+  "latency": {
+    "firstText": {
+      "samples": 100,
+      "medianMs": 1325,
+      "p95Ms": 2611
+    },
+    "completion": {
+      "samples": 100,
+      "medianMs": 1393,
+      "p95Ms": 2747
+    },
+    "modelFirstText": {
+      "samples": 100,
+      "medianMs": 1199,
+      "p95Ms": 1812
+    },
+    "modelCompletion": {
+      "samples": 100,
+      "medianMs": 1268,
+      "p95Ms": 1868
+    },
+    "localPreparation": {
+      "samples": 100,
+      "medianMs": 97,
+      "p95Ms": 122.87683400002425
+    },
+    "embedding": {
+      "samples": 20,
+      "medianMs": 202.70968749999884,
+      "p95Ms": 625.3082499999728
+    },
+    "rerank": {
+      "samples": 20,
+      "medianMs": 478.43316650000634,
+      "p95Ms": 639.5754170000146
+    }
+  },
+  "failureRate": 0,
+  "degradationRate": 0,
+  "notes": "账本为按高峰价格计算的用量，缺 usage 时使用保守预留；没有自动跨窗口或直连回退。首字/完成分别报告端到端及模型请求之后的时间；缓存不代表网络延迟。"
+}

@@ -5,7 +5,6 @@ import { registerStream } from "@/lib/chat/streams";
 import { runChatRun } from "@/lib/chat/run";
 import { isLlmConfigured } from "@/lib/settings";
 import { ensureVaultLayout } from "@/lib/vault/paths";
-import { ensureGitRepo } from "@/lib/git/auto-commit";
 import { z } from "zod";
 import { ChatConfigSchema } from "@/lib/chat/config";
 import { resolveChatConfig } from "@/lib/chat/config-server";
@@ -34,8 +33,7 @@ export async function POST(request: NextRequest) {
     const session = body.sessionId ? getSession(body.sessionId) : null;
     const config = resolveChatConfig(body.config ?? session?.config ?? undefined);
     ensureVaultLayout();
-    ensureGitRepo();
-    const sessionId = body.sessionId && getSession(body.sessionId)
+      const sessionId = body.sessionId && getSession(body.sessionId)
       ? body.sessionId
       : createSession();
     const run = beginChatRun(sessionId, question, config);

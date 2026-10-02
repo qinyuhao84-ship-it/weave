@@ -9,7 +9,7 @@
  */
 let suppressUntil = 0;
 
-/** 在接下来的 ms 毫秒内忽略文件系统事件 */
+/** 在接下来的 ms 毫秒内延后处理事件；watcher 保留并核对待处理路径 */
 export function suppressWatcher(ms = 1500): void {
   suppressUntil = Date.now() + ms;
 }

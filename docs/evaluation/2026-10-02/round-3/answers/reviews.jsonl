@@ -1,0 +1,100 @@
+{"id": "DEV_117_QUERY_0", "correct": true, "citationsSupported": true, "notes": "别名以及1953年协天宫合称天后圣母庙均由实际送入原文支持，已核查原文结尾，不只看引用摘要。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_463_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“牛皮癣”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1081_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“鸣官鸟”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_623_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“三国 / 三国时”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1796_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“《音乐全书》”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1579_QUERY_1", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“至少摄氏零下18度（华氏0度）的低温”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1026_QUERY_0", "correct": false, "citationsSupported": true, "notes": "保守直接作答评分未通过：问句称博士，原文只有印第安纳大学语言学学士。模型正确指出前提错误并给出大学，事实和引用均正确；此项是原标注瑕疵，不能奖励模型把学士说成博士。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_48_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“综合娱乐”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_356_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“1985 年 /  1985 年”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1059_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“广州大学政法系”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_584_QUERY_0", "correct": true, "citationsSupported": true, "notes": "单人街机光线枪类别及补充的TAITO、1987年均见原文首句。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_124_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“最初的劳亚大陆”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_504_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“香港一条来往港岛中西区内金钟（添马街）和半山区的循环巴士路线 / 是香港一条来往港岛中西区内金钟（添马街）和半山区的循环巴士路线，途经坚道、柏道及罗便臣道，折返点设于柏道。”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_81_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“某个个人能够恰如其分地完成某项工作的能力 / 指某个个人能够恰如其分地完成某项工作的能力。”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_300_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“匍匐攀爬”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1587_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“短印鱼、短印仔鱼”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_245_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“彭绍贤”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_9_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“西城男孩”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_193_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“花斑龙、地图龙、烈仔”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_468_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“香港电视广播有限公司”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1125_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“440多光年”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1038_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“美国东部”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_161_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“史蒂芬·金”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_435_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“《喻世明言》”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_629_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“生产线”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_28_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“泽鹿”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1669_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“索齿目、链齿兽目或束柱目”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_601_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“社会动力学”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_280_QUERY_0", "correct": true, "citationsSupported": true, "notes": "海豚湾恋人及童年达达角色均见原文首句。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_541_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“晋朝敦煌人”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_604_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“杂纹鹦哥鱼”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_439_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“推动力 / 一种推动力”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_223_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“犯了庙讳”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_326_QUERY_0", "correct": true, "citationsSupported": true, "notes": "富勒姆、布莱顿为原文俱乐部全名的正确简称；没有混淆球员生涯与执教经历。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_555_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“鹦哥”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_159_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“华北克拉通”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_466_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“马达加斯加”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1090_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“叔梁”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_475_QUERY_0", "correct": true, "citationsSupported": true, "notes": "正确给出原文所称职位并说明资料未标注时间，未将旧文章的现任强说成2026年的现任。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1771_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“蛇雕、蛇鹰、冠蛇雕”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_94_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“吉林长春”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_512_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“北京地铁10号线和6号线”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_292_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“日本岩手县花卷市矢泽第10地割”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_232_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“姚铉”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1044_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“墨西哥南部及尤卡坦半岛至厄瓜多尔西部及委内瑞拉北部达海拔1850米的地方”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_423_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“康熙七年农历六月十七戌时（1668年7月25日20时左右） / 中国清康熙七年农历六月十七戌时（1668年7月25日20时左右）”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1130_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“俄罗斯”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1144_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“《离岛大夫日志》、《五岛医生诊疗所》”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1884_QUERY_1", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“亚洲中国南部至澳洲北部一带海域的岛屿 / 浅滩区域甚至近海陆地之上”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_89_QUERY_0", "correct": true, "citationsSupported": true, "notes": "已核查完整上下文：BCPL类别、源于CPL、1966年、Martin Richards及C语言参考关系均有原文支持。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_49_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“广东开平”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_560_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“西蒙·纽康”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1114_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“博茨瓦纳民主党”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_566_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“小行星和矮行星”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_408_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“中国最大的肉制品生产企业之一”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_296_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“阿兹特克神话”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1066_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“雅典”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_580_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“东汉末及三国时”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_366_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“太保”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_90_QUERY_0", "correct": true, "citationsSupported": true, "notes": "南朝传入及西元五至六世纪的补充说明均见完整上下文。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_420_QUERY_1", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“卢骚 / 卢骚(Rousseau)”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_189_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“大和言叶”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_25_QUERY_0", "correct": true, "citationsSupported": true, "notes": "扶余国国王及曾封扶余王均有原文支持，封王信息在实际上下文后段，已逐段核查。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_248_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“艾萨克·阿西莫夫”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_625_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“英国国会”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1006_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“澳大利亚南澳首府阿德雷得”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_628_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“13 队”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_510_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“北京地铁10号线”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_182_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“断发令”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_42_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“星空传媒”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1915_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“地中海地区、密克罗尼西亚和亚洲西南部”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_333_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“AcaciaSoft / 日本AcaciaSoft”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_615_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“香港摇滚乐队Beyond”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_404_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“16岁”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1179_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“西班牙语美洲”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_531_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“为澳门第二高的热带气旋警告 / 为澳门第二高的热带气旋警告。”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_338_QUERY_0", "correct": false, "citationsSupported": true, "notes": "保守直接作答评分未通过：原文只说日本Actas制作动画，未指明发行方；模型恰当保留未把制作方冒充发行方。事实和引用正确，但未给出题目要求的发行方，是原标注关系不匹配。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_456_QUERY_0", "correct": true, "citationsSupported": true, "notes": "第12届有明确原文支持；问句徐凤月与原文许月凤有姓名错误，模型使用原文人物名。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_295_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“内特大帝”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1042_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已逐题核对回复与实际引用原文，标准答案“行政院新闻局”得到支持；额外说明未超出原文，未以字符串匹配代替本次复核。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_618_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_310_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1027_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_530_QUERY_0", "correct": true, "citationsSupported": true, "notes": "正确区分九号、八号、十号资料与所问一号；没有用相邻级别推断一号。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_224_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1040_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_17_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_256_QUERY_0", "correct": true, "citationsSupported": true, "notes": "明确拒答羗山道；附加羗山山峰的位置与ID:1实际原文一致，未把山峰直接当成道路证据。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_227_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_1028_QUERY_0", "correct": true, "citationsSupported": true, "notes": "明确说明缺少许申，未混淆姓名；条件式补充石申的魏国及公元前4世纪均由ID:4实际原文支持。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_370_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_586_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_241_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_252_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_69_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_178_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_29_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_113_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_349_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}
+{"id": "DEV_270_QUERY_0", "correct": true, "citationsSupported": true, "notes": "Codex已核对受控场景、别名审计及实际返回片段：模型明确资料不足，未编造所问事实；相关补充只描述实际返回资料。", "reviewer": "Codex", "method": "agent-assisted"}

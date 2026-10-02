@@ -1,5 +1,7 @@
 import { createDocument } from "@mixmark-io/domino";
 
+export const HTML_PREVIEW_CSP = "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'";
+
 export function previewHtml(html: string): string {
   const document = createDocument(html);
   document.querySelectorAll("meta[http-equiv],base,iframe,object,embed,link,script[src]").forEach(element => element.remove());
@@ -8,7 +10,7 @@ export function previewHtml(html: string): string {
   policy.setAttribute("http-equiv", "Content-Security-Policy");
   policy.setAttribute("content", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'");
   document.head.insertBefore(policy, document.head.firstChild);
-  // srcdoc 的相对 URL 继承父页面；内部锚点必须直接滚动，避免离开文档。
+  // 内部锚点直接滚动，避免 iframe 发生额外导航。
   // Escape 在 iframe 内也能退出应用全屏；父页面验证发送者后只处理退出事件。
   const bridge = document.createElement("script");
   bridge.textContent = `document.addEventListener('click',function(e){

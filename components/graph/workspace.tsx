@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
 import * as React from "react";
 import dynamic from "next/dynamic";
@@ -56,8 +57,8 @@ type GraphData = {
 
 /** 主题变量缺失时的兜底（只在服务端渲染那一帧会用到） */
 const TYPE_FALLBACK: Record<string, string> = {
-  entity: "#2563eb", concept: "#22c55e", source: "#f59e0b",
-  query: "#8b5cf6", overview: "#ec4899",
+  entity: "pageTypes.entity", concept: "pageTypes.concept", source: "pageTypes.source",
+  query: "pageTypes.query", overview: "pageTypes.overview",
 };
 
 /**
@@ -119,7 +120,7 @@ function useCanvasColors(resolved: "light" | "dark", focusMode: boolean) {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  entity: "实体", concept: "概念", source: "来源", query: "问答", overview: "综述",
+  entity: "pageTypes.entity", concept: "pageTypes.concept", source: "pageTypes.source", query: "pageTypes.query", overview: "pageTypes.overview",
 };
 
 /**
@@ -129,6 +130,7 @@ const TYPE_LABEL: Record<string, string> = {
  * 直接关联和两跳邻域，避免装饰动画与常驻标签干扰阅读。
  */
 export function GraphWorkspace() {
+  const { t } = useI18n();
   const { resolved, focusMode } = useTheme();
   const reducedMotion = useReducedMotion();
   const colors = useCanvasColors(resolved, focusMode);
@@ -263,15 +265,15 @@ export function GraphWorkspace() {
     <div className="flex h-[calc(100dvh-3rem)] min-h-0 flex-col overflow-hidden md:h-dvh">
       <div className="shrink-0">
       <PageHeader
-        title="关系网络"
+        title={t("graph_workspace.m001")}
         compact
         meta={
           data && (
             <>
-              <Badge tone="neutral">{data.stats.pages} 个节点</Badge>
-              <Badge tone="neutral">{data.stats.edges} 条边</Badge>
-              {data.stats.orphans > 0 && <Badge tone="warning">{data.stats.orphans} 个孤立词条</Badge>}
-              {data.truncated && <Badge tone="warning">已截断显示</Badge>}
+              <Badge tone="neutral">{data.stats.pages} {t("graph_workspace.m002")}</Badge>
+              <Badge tone="neutral">{data.stats.edges} {t("graph_workspace.m003")}</Badge>
+              {data.stats.orphans > 0 && <Badge tone="warning">{data.stats.orphans} {t("graph_workspace.m004")}</Badge>}
+              {data.truncated && <Badge tone="warning">{t("graph_workspace.m005")}</Badge>}
             </>
           )
         }
@@ -306,7 +308,7 @@ export function GraphWorkspace() {
                       className="h-1.5 w-1.5 rounded-full"
                       style={{ background: hidden ? "var(--muted-foreground)" : colors.type[type] }}
                     />
-                    {label}
+                    {t(label)}
                     <span className="tabular-nums text-muted-foreground">{count}</span>
                   </button>
                 );
@@ -321,8 +323,7 @@ export function GraphWorkspace() {
                 graphRef.current?.zoomToFit(reducedMotion ? 0 : 600, 72);
               }}
             >
-              复位视图
-            </Button>
+              {t("graph_workspace.m006")}</Button>
           </>
         }
       />
@@ -345,12 +346,11 @@ export function GraphWorkspace() {
           <Card className="flex flex-1 items-center justify-center">
             <EmptyState
               icon={<Network size={30} strokeWidth={1.3} />}
-              title="还没有可以连接的节点。"
-              description="导入资料后，模型会把内容编译成互相链接的词条，这张网就会长出来。"
+              title={t("graph_workspace.m007")}
+              description={t("graph_workspace.m008")}
               action={
                 <Link href="/wiki" className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-4 text-[14px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:h-9 sm:text-[13px]">
-                  去导入资料
-                </Link>
+                  {t("graph_workspace.m009")}</Link>
               }
             />
           </Card>
@@ -499,9 +499,9 @@ export function GraphWorkspace() {
 
               {/* 图例 */}
               <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-3 rounded-full border border-border bg-[color-mix(in_srgb,var(--card)_92%,transparent)] px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur-sm">
-                <span className="hidden sm:inline">拖动节点实时重排</span>
+                <span className="hidden sm:inline">{t("graph_workspace.m010")}</span>
                 <span className="hidden h-3 w-px bg-[var(--border)] sm:block" />
-                <span>点击节点查看影响范围</span>
+                <span>{t("graph_workspace.m011")}</span>
               </div>
 
               {data.note && (
@@ -515,9 +515,9 @@ export function GraphWorkspace() {
             {/* 侧栏：选中节点的联动面板 */}
             <div className="min-h-0 space-y-2 overflow-y-auto lg:space-y-3">
               <div className="px-1">
-                <label htmlFor="graph-node" className="mb-1.5 block text-[12px] font-medium text-muted-foreground">选择词条查看关联</label>
+                <label htmlFor="graph-node" className="mb-1.5 block text-[12px] font-medium text-muted-foreground">{t("graph_workspace.m012")}</label>
                 <Select id="graph-node" value={selectedId ?? ""} onChange={event => selectNode(event.target.value || null)}>
-                  <option value="">选择一个词条……</option>
+                  <option value="">{t("graph_workspace.m013")}</option>
                   {visible.nodes.map(node => <option key={node.id} value={node.id}>{node.title}</option>)}
                 </Select>
               </div>
@@ -532,7 +532,7 @@ export function GraphWorkspace() {
                       type="button"
                       onClick={() => setSelectedId(null)}
                       className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-[var(--muted)] hover:text-foreground"
-                      aria-label="取消选中"
+                      aria-label={t("graph_workspace.m014")}
                     >
                       <X size={12} />
                     </button>
@@ -541,19 +541,18 @@ export function GraphWorkspace() {
                   <Hairline className="mb-3" />
 
                   <div className="space-y-1.5 text-[12px]">
-                    <Row label="关联数" value={String(selectedNode.degree)} />
+                    <Row label={t("graph_workspace.m015")} value={String(selectedNode.degree)} />
                     <Row
-                      label="影响范围"
-                      value={`${Math.max(0, neighborhood.nodes.size - 1)} 个词条`}
+                      label={t("graph_workspace.m016")}
+                      value={t("graph_workspace.m017", {v0: Math.max(0, neighborhood.nodes.size - 1)})}
                     />
-                    <Row label="出链" value={String(selectedLinks.length)} />
+                    <Row label={t("graph_workspace.m018")} value={String(selectedLinks.length)} />
                   </div>
 
                   {selectedLinks.length > 0 && (
                     <div className="mt-3 border-t border-border pt-3">
                       <p className="mb-1.5 text-[11.5px] font-semibold tracking-[0.08em] text-muted-foreground">
-                        直接关联
-                      </p>
+                        {t("graph_workspace.m019")}</p>
                       <div className="space-y-1">
                         {selectedLinks.map((link) => {
                           const source = typeof link.source === "string" ? link.source : link.source.id;
@@ -582,39 +581,35 @@ export function GraphWorkspace() {
                   )}
 
                   <Link href={`/wiki/${selectedNode.id}`} className="mt-4 flex h-11 w-full items-center justify-center rounded-full border border-border bg-card px-3 text-[14px] font-medium text-foreground transition-colors hover:bg-muted sm:h-7 sm:text-[12px]">
-                    打开词条
-                  </Link>
+                    {t("graph_workspace.m020")}</Link>
                 </Card>
               ) : (
                 <Card className="p-4 max-lg:bg-[color-mix(in_srgb,var(--card)_94%,transparent)]">
                   <p className="text-[12.5px] leading-relaxed text-muted-foreground">
-                    选择一个节点，查看它的直接关联与影响范围。
-                  </p>
+                    {t("graph_workspace.m021")}</p>
                 </Card>
               )}
 
               <Card className="p-4 max-lg:bg-[color-mix(in_srgb,var(--card)_94%,transparent)]">
                 <p className="mb-2 text-[11.5px] font-semibold tracking-[0.08em] text-muted-foreground">
-                  图谱健康度
-                </p>
+                  {t("graph_workspace.m022")}</p>
                 <div className="space-y-1.5 text-[12px]">
-                  <Row label="词条" value={String(data.stats.pages)} />
-                  <Row label="关联" value={String(data.stats.edges)} />
+                  <Row label={t("graph_workspace.m023")} value={String(data.stats.pages)} />
+                  <Row label={t("graph_workspace.m024")} value={String(data.stats.edges)} />
                   <Row
-                    label="孤立词条"
+                    label={t("graph_workspace.m025")}
                     value={String(data.stats.orphans)}
                     warn={data.stats.orphans > 0}
                   />
                   <Row
-                    label="待补链接"
+                    label={t("graph_workspace.m026")}
                     value={String(data.stats.dangling)}
                     warn={data.stats.dangling > 0}
                   />
                 </div>
                 {(data.stats.orphans > 0 || data.stats.dangling > 0) && (
                   <Link href="/review" className="mt-3 flex h-11 w-full items-center justify-center rounded-full px-3 text-[14px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-7 sm:text-[12px]">
-                    去体检队列看看
-                  </Link>
+                    {t("graph_workspace.m027")}</Link>
                 )}
               </Card>
             </div>

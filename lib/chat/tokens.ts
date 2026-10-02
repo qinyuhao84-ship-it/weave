@@ -1,21 +1,15 @@
 /**
  * 上下文预算用的 token 估算。
  *
- * 为什么不引 tokenizer：本仓对依赖一贯克制（见 CLAUDE.md 不变式 7 关于不引向量库的
- * 同一取舍），而这里的用途只需要「量级正确」—— 这是 128K 级的预算判断，差几千
- * token 不影响结论。真值优先：provider 返回的 usage.promptTokens 一旦拿到就会覆盖
+ * 使用共享的粗略口径控制导入、分段和上下文预算，不为不同业务维护不同估算器。
+ * 真值优先：provider 返回的 usage.promptTokens 一旦拿到就会覆盖
  * 估算（见 lib/chat/context.ts 里 ContextUsage.measured 的说明）。
  *
  * 口径刻意**偏高**（中文 1 字算 1 token）：
  * 真实 tokenizer 对中文的切分在 0.6~1.0 token/字之间浮动（DeepSeek 系约 0.6，
  * GPT-4o 的 o200k 约 1.0），厂商之间的差异可达 1.6 倍。预算控制这个用途上，
  * 高估的代价只是提前压缩一次（可接受），低估的代价是请求超窗直接失败（不可接受）。
- * 对以中文散文为主的问答 prompt，这个函数实际是 token 数的**上界**。
- *
- * ⚠️ 本仓另有一个 lib/ingest/parse/router.ts#estimateTokens，口径是
- *    「1 token ≈ 1.5 个汉字」（偏低），给导入成本预估用 —— 那个用途宁可想得便宜
- *    一点，偏置方向与本文件相反。两者**刻意不共用、也不合并**：硬合并会逼其中一方
- *    接受错误的偏置。名字里的 Context 就是用来区分这两个口径的。
+ * 导入成本、长文分段与问答共用此口径；它是估算，不是所有 tokenizer 的严格上界。
  */
 
 /**
@@ -30,6 +24,11 @@
  * 日常语料里可以忽略 —— 为它单独列区间不值得。
  */
 const WIDE_CHAR = /[　-〿一-鿿＀-￯]/g;
+
+/** 用于逐字符分段，与整段估算保持一致。 */
+export function contextTokenWeight(character: string): number {
+  return /[　-〿一-鿿＀-￯]/u.test(character) ? 1 : character.length / 4;
+}
 
 /** 每条消息的固定开销：role 标记与分隔符。ChatML 的口径约 3~4。 */
 export const MESSAGE_OVERHEAD_TOKENS = 4;

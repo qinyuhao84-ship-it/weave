@@ -5,7 +5,6 @@ import { getDb } from "@/lib/db/client";
 import { reviewItems } from "@/lib/db/schema";
 import { MAX_ANNOTATION_LENGTH, startRemediation } from "@/lib/review/remediate";
 import { isLlmConfigured } from "@/lib/settings";
-import { ensureGitRepo } from "@/lib/git/auto-commit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -21,7 +20,6 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  ensureGitRepo();
   const { id } = await params;
 
   let body: { annotation?: unknown };

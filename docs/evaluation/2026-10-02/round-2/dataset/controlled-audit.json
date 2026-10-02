@@ -1,0 +1,182 @@
+[
+  {
+    "id": "DEV_596_QUERY_0",
+    "excludedArticle": "泰国皇家军队",
+    "aliasPattern": "泰軍|泰军|泰国皇|泰國皇",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_1639_QUERY_0",
+    "excludedArticle": "川纹笛鲷",
+    "aliasPattern": "川纹|川紋",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_374_QUERY_0",
+    "excludedArticle": "九龙酒店",
+    "aliasPattern": "九龙酒店|九龍酒店",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_162_QUERY_0",
+    "excludedArticle": "潘淑",
+    "aliasPattern": "潘淑|潘皇后|潘后",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_1543_QUERY_0",
+    "excludedArticle": "大鳞大眼鲷",
+    "aliasPattern": "大鳞大眼|大鱗大眼",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_633_QUERY_0",
+    "excludedArticle": "金盏花",
+    "aliasPattern": "金盏|金盞|calendula|marigold",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_50_QUERY_0",
+    "excludedArticle": "文周王",
+    "aliasPattern": "文周",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_257_QUERY_0",
+    "excludedArticle": "邵伯温",
+    "aliasPattern": "邵伯温|邵伯溫|邵雍",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_34_QUERY_0",
+    "excludedArticle": "赫姓",
+    "aliasPattern": "赫姓",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_1113_QUERY_0",
+    "excludedArticle": "魔力充电娘",
+    "aliasPattern": "魔力充电|魔力充電",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_329_QUERY_0",
+    "excludedArticle": "瘰鳞蛇",
+    "aliasPattern": "瘰鳞|瘰鱗",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_1575_QUERY_0",
+    "excludedArticle": "横道河子站",
+    "aliasPattern": "横道河|橫道河",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_348_QUERY_0",
+    "excludedArticle": "上知令",
+    "aliasPattern": "上知令",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_461_QUERY_0",
+    "excludedArticle": "突破机构",
+    "aliasPattern": "突破机|突破機|蔡元云|蔡元雲|苏恩佩|蘇恩佩",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_437_QUERY_0",
+    "excludedArticle": "钟惺",
+    "aliasPattern": "钟惺|鍾惺|钟伯敬|鍾伯敬",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_535_QUERY_0",
+    "excludedArticle": "工作假期签证",
+    "aliasPattern": "工作假期|working holiday",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_1115_QUERY_0",
+    "excludedArticle": "植村秀",
+    "aliasPattern": "植村|shu uemura",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_1616_QUERY_0",
+    "excludedArticle": "丝尾红钻鱼",
+    "aliasPattern": "丝尾红|絲尾紅|闪灼红钻|閃灼紅鑽",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_160_QUERY_0",
+    "excludedArticle": "白尾雀鲷",
+    "aliasPattern": "白尾雀|瑰斑雀|金尾雀",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  },
+  {
+    "id": "DEV_569_QUERY_0",
+    "excludedArticle": "利东邨道",
+    "aliasPattern": "利东邨|利東邨",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "已移除对应文章并核验标准答案、主题及已知异体/别名；受控缺证据，不代表自然无答案分布。"
+  }
+]

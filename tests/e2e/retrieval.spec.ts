@@ -1,0 +1,34 @@
+import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { waitForVisualSettling } from "./visual-settling";
+
+test("独立检索配置、凭据脱敏、中英文表单与向量索引", async ({ page, request }) => {
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "配置检索模型", exact: true }).click();
+  await page.getByLabel("检索 API 地址", { exact: true }).fill("http://127.0.0.1:3301");
+  await page.getByLabel("嵌入模型", { exact: true }).fill("audit-embedding");
+  await page.getByLabel("重排模型", { exact: true }).fill("audit-reranker");
+  await page.getByLabel("检索 API Key", { exact: true }).fill("retrieval-e2e-fixture");
+  await page.getByRole("switch", { name: "启用混合检索", exact: true }).click();
+  await page.getByLabel("语言", { exact: true }).selectOption("en");
+  await expect(page.getByLabel("Embedding model", { exact: true })).toHaveValue("audit-embedding");
+  await expect(page.getByLabel("Retrieval API key", { exact: true })).toHaveValue("retrieval-e2e-fixture");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await waitForVisualSettling(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations.map(item => item.id)).toEqual([]);
+  await page.screenshot({ path: "test-results/retrieval-form-mobile.png", fullPage: true });
+  await page.getByRole("button", { name: "Save retrieval configuration", exact: true }).click();
+  await expect(page.getByText("Hybrid retrieval enabled", { exact: true })).toBeVisible();
+  const configured = (await (await request.get("/api/settings")).json()).data.settings.retrievalModel;
+  expect(configured.hasApiKey).toBe(true); expect(JSON.stringify(configured)).not.toContain("retrieval-e2e-fixture");
+  await page.getByRole("button", { name: "Test retrieval connection", exact: true }).click();
+  await expect(page.getByText("Embedding and configured reranking services connected successfully.", { exact: true })).toBeVisible();
+  await expect.poll(async () => (await (await request.get("/api/settings/retrieval")).json()).data.pending).toBe(0);
+  await page.getByRole("button", { name: "Configure retrieval models", exact: true }).click();
+  await expect(page.getByLabel("Retrieval API key", { exact: true })).toHaveValue("");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByLabel("Language", { exact: true }).selectOption("zh-CN");
+  const { hasApiKey: _key, ...input } = configured;
+  await request.patch("/api/settings", { data: { retrievalModel: { ...input, enabled: false, clearApiKey: true } } });
+});

@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -46,11 +47,12 @@ type FullTextResult = { pageId: string; title: string; type: string; score: numb
 
 const TYPE_ORDER = ["entity", "concept", "source", "query", "overview"] as const;
 const TYPE_LABEL: Record<string, string> = {
-  entity: "实体", concept: "概念", source: "来源", query: "问答", overview: "综述",
+  entity: "pageTypes.entity", concept: "pageTypes.concept", source: "pageTypes.source", query: "pageTypes.query", overview: "pageTypes.overview",
 };
 const PAGE_SIZE = 50;
 
 export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) {
+  const { t } = useI18n();
   const router = useRouter();
   // dataVersion 在导入提交后递增，「添加资料」完成时本页数据会自动重取，
   // 不再需要把 refresh 回调从外壳一路透传下来。
@@ -94,7 +96,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
     const timer = window.setTimeout(() => {
       void apiFetch<{ results: FullTextResult[] }>(`/api/search?q=${encodeURIComponent(search)}&limit=30`, { signal: controller.signal })
         .then((result) => { if (!cancelled) setFullTextResults(result.results); })
-        .catch((error) => { if (!cancelled) setFullTextError(error instanceof Error ? error.message : "搜索暂不可用"); })
+        .catch((error) => { if (!cancelled) setFullTextError(error instanceof Error ? error.message : t("wiki_workspace.m001")); })
         .finally(() => { if (!cancelled) setFullTextLoading(false); });
     }, 250);
     return () => {
@@ -102,7 +104,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [query, dataVersion, searchAttempt]);
+  }, [query, dataVersion, searchAttempt, t]);
 
   const visibleFullTextResults = fullTextResults.filter(hit => !activeType || hit.type === activeType);
 
@@ -125,19 +127,19 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
   return (
     <>
       <PageHeader
-        title="知识库"
-        description="所有词条由模型从你的资料里编译而来，词条之间用双链互相连接。改动会即时同步到目录、图谱与检索。"
+        title={t("wiki_workspace.m002")}
+        description={t("wiki_workspace.m003")}
         meta={
           data && (
             <>
-              <Badge tone="neutral">{data.stats.pages} 个词条</Badge>
-              <Badge tone="neutral">{data.stats.edges} 条关联</Badge>
+              <Badge tone="neutral">{data.stats.pages} {t("wiki_workspace.m004")}</Badge>
+              <Badge tone="neutral">{data.stats.edges} {t("wiki_workspace.m005")}</Badge>
               {data.stats.dangling > 0 && (
-                <Badge tone="warning">{data.stats.dangling} 条待补链接</Badge>
+                <Badge tone="warning">{data.stats.dangling} {t("wiki_workspace.m006")}</Badge>
               )}
               {data.pendingReview > 0 && (
                 <Link href="/review">
-                  <Badge tone="warning">{data.pendingReview} 条待你判断</Badge>
+                  <Badge tone="warning">{data.pendingReview} {t("wiki_workspace.m007")}</Badge>
                 </Link>
               )}
             </>
@@ -150,7 +152,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
               size="sm"
               icon={<RefreshCw size={13} strokeWidth={1.8} />}
               onClick={() => { void refresh(); void refreshSources(); }}
-              aria-label="刷新"
+              aria-label={t("wiki_workspace.m008")}
             />
             <Button
               variant="secondary"
@@ -158,14 +160,14 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
               icon={view === "list" ? <ListTree size={13} /> : <BookOpen size={13} />}
               onClick={() => setView((v) => (v === "list" ? "outline" : "list"))}
             >
-              {view === "list" ? "大纲视图" : "列表视图"}
+              {view === "list" ? t("wiki_workspace.m009") : t("wiki_workspace.m010")}
             </Button>
             <Link
               href="/sources"
               className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[14px] font-medium text-foreground transition-colors hover:bg-muted sm:h-7 sm:text-[12px]"
             >
               <FileText size={13} />
-              原始资料{typeof sourceData?.total === "number" ? ` ${sourceData.total}` : ""}
+              {t("wiki_workspace.m011")}{typeof sourceData?.total === "number" ? ` ${sourceData.total}` : ""}
             </Link>
             <Button
               variant="primary"
@@ -173,8 +175,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
               icon={<Plus size={13} strokeWidth={2} />}
               onClick={openIngest}
             >
-              导入资料
-            </Button>
+              {t("wiki_workspace.m012")}</Button>
           </>
         }
       />
@@ -193,8 +194,8 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
                 setQuery(e.target.value);
                 setPageIndex(0);
               }}
-              placeholder="搜索标题、别名、标签与正文……"
-              aria-label="搜索知识库"
+              placeholder={t("wiki_workspace.m013")}
+              aria-label={t("wiki_workspace.m014")}
               className="pl-9"
             />
           </div>
@@ -213,7 +214,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
                   : "border-[var(--border)] text-muted-foreground hover:text-foreground",
               )}
             >
-              全部 {data?.stats.pages ?? 0}
+              {t("wiki_workspace.m015")}{data?.stats.pages ?? 0}
             </button>
             {TYPE_ORDER.filter((t) => (data?.counts[t] ?? 0) > 0).map((type) => (
               <button
@@ -231,7 +232,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
                     : "border-[var(--border)] text-muted-foreground hover:text-foreground",
                 )}
               >
-                {TYPE_LABEL[type]} {data?.counts[type] ?? 0}
+                {t(TYPE_LABEL[type])} {data?.counts[type] ?? 0}
               </button>
             ))}
           </div>
@@ -240,12 +241,12 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
         {query.trim() && (
           <section className="mb-6">
             <div className="mb-2 flex items-baseline justify-between gap-3">
-              <h2 className="text-[12.5px] font-semibold text-foreground">正文匹配</h2>
-              <span role="status" className="text-[11.5px] text-muted-foreground">{fullTextLoading ? "正在搜索…" : fullTextError ? "搜索未完成" : `${visibleFullTextResults.length} 条结果`}</span>
+              <h2 className="text-[12.5px] font-semibold text-foreground">{t("wiki_workspace.m016")}</h2>
+              <span role="status" className="text-[11.5px] text-muted-foreground">{fullTextLoading ? t("wiki_workspace.m017") : fullTextError ? t("wiki_workspace.m018") : t("wiki_workspace.m019", {v0: visibleFullTextResults.length})}</span>
             </div>
             {fullTextError ? <div role="alert" className="rounded-[10px] border border-border px-4 py-3 text-[12px]">
-              <p>正文搜索失败：{fullTextError}</p>
-              <Button size="sm" variant="ghost" className="mt-2" onClick={() => setSearchAttempt(value => value + 1)}>重试搜索</Button>
+              <p>{t("wiki_workspace.m020")}{fullTextError}</p>
+              <Button size="sm" variant="ghost" className="mt-2" onClick={() => setSearchAttempt(value => value + 1)}>{t("wiki_workspace.m021")}</Button>
             </div> : visibleFullTextResults.length > 0 ? (
               <Card className="divide-y divide-[var(--border)]">
                 {visibleFullTextResults.map((hit) => (
@@ -259,7 +260,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
                 ))}
               </Card>
             ) : !fullTextLoading ? (
-              <p className="rounded-[10px] border border-border px-4 py-3 text-[12px] text-muted-foreground">正文里没有匹配内容；上方词条列表仍会显示标题、别名或标签匹配。</p>
+              <p className="rounded-[10px] border border-border px-4 py-3 text-[12px] text-muted-foreground">{t("wiki_workspace.m022")}</p>
             ) : null}
           </section>
         )}
@@ -280,8 +281,8 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
           <Card>
             <EmptyState
               icon={<FileText size={30} strokeWidth={1.3} />}
-              title="还没有词条。导入第一份资料，让模型把它编译成互相链接的知识。"
-              description={`支持 ${ingestFormatLabel(readiness?.docling.available ?? false)} 文件。${readiness?.docling.available ? "" : "PowerPoint 需要 Docling，当前不可用。"}旧版 .doc 请先另存为 .docx；原件会随知识库保存，随时可以重新处理。`}
+              title={t("wiki_workspace.m023")}
+              description={t("wiki_workspace.m025", {v0: ingestFormatLabel(readiness?.docling.available ?? false), v1: readiness?.docling.available ? "" : t("wiki_workspace.m024")})}
               action={
                 <Button
                   variant="primary"
@@ -289,8 +290,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
                   icon={<Plus size={14} strokeWidth={2} />}
                   onClick={openIngest}
                 >
-                  导入第一份资料
-                </Button>
+                  {t("wiki_workspace.m026")}</Button>
               }
             />
           </Card>
@@ -299,7 +299,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
         {!loading && !error && data && data.stats.pages > 0 && data.total === 0 && (
           <Card className="px-4 py-8 text-center">
             <p className="text-[13px] text-muted-foreground">
-              {query.trim() ? `没有匹配「${query}」的词条。` : `当前分类没有词条。`}
+              {query.trim() ? t("wiki_workspace.m027", {v0: query}) : t("wiki_workspace.m028")}
             </p>
             {(query.trim() || activeType) && (
               <Button variant="ghost" size="sm" className="mt-2" onClick={() => {
@@ -308,8 +308,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
                 setActiveType(null);
                 setPageIndex(0);
               }}>
-                清除搜索和筛选
-              </Button>
+                {t("wiki_workspace.m029")}</Button>
             )}
           </Card>
         )}
@@ -328,11 +327,10 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
 
         {!loading && !error && data && data.total > PAGE_SIZE && (
           <div className="mt-5 flex items-center justify-between gap-3">
-            <Button variant="ghost" size="sm" disabled={pageIndex === 0} onClick={() => setPageIndex((page) => Math.max(0, page - 1))}>上一页</Button>
+            <Button variant="ghost" size="sm" disabled={pageIndex === 0} onClick={() => setPageIndex((page) => Math.max(0, page - 1))}>{t("wiki_workspace.m030")}</Button>
             <span className="text-[11.5px] tabular-nums text-muted-foreground">
-              第 {pageIndex + 1} / {totalPages} 页 · 共 {data.total} 个词条
-            </span>
-            <Button variant="ghost" size="sm" disabled={pageIndex + 1 >= totalPages} onClick={() => setPageIndex((page) => Math.min(totalPages - 1, page + 1))}>下一页</Button>
+              {t("wiki_workspace.m031")}{pageIndex + 1} / {totalPages} {t("wiki_workspace.m032")}{data.total} {t("wiki_workspace.m004")}</span>
+            <Button variant="ghost" size="sm" disabled={pageIndex + 1 >= totalPages} onClick={() => setPageIndex((page) => Math.min(totalPages - 1, page + 1))}>{t("wiki_workspace.m033")}</Button>
           </div>
         )}
 
@@ -348,6 +346,7 @@ function PageCard({
   page: PageSummary;
   onNavigate: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
@@ -370,8 +369,7 @@ function PageCard({
           {page.inboundLinks > 0 && (
             <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
               <Network size={10} strokeWidth={1.8} />
-              {page.inboundLinks} 处引用
-            </span>
+              {page.inboundLinks} {t("wiki_workspace.m034")}</span>
           )}
           {page.aliases.slice(0, 2).map((alias) => (
             <span key={alias} title={alias} className="max-w-full truncate text-[11px] text-muted-foreground">

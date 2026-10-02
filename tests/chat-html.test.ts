@@ -5,10 +5,11 @@ import { HtmlAnswerStream, HTML_START, HTML_END, getArtifact, previewHtml, forma
 import { answer } from "@/lib/chat/answer";
 import { FakeProvider } from "@/lib/llm/fake";
 import { dropAllIndexTables } from "@/lib/db/client";
-import { appendMessage, createSession, beginChatRun, getMessages, getChatRun, getSession, saveSessionConfig, trashSession, restoreSession, permanentlyDeleteSession, buildHistory } from "@/lib/chat/sessions";
+import { appendMessage, createSession, beginChatRun, getMessages, getChatRun, getSession, saveSessionConfig, trashSession, restoreSession, permanentlyDeleteSession, buildHistory, saveChatRunProgress, markInterruptedChatRunsFailed } from "@/lib/chat/sessions";
 import { resolveChatConfig, chatProvider } from "@/lib/chat/config-server";
 import { reasoningCapability } from "@/lib/llm/capabilities";
 import { runChatRun } from "@/lib/chat/run";
+import * as configServer from "@/lib/chat/config-server";
 import { registerStream } from "@/lib/chat/streams";
 import { getSettings, saveSettings } from "@/lib/settings";
 import { GET as download } from "@/app/api/chat/artifacts/[id]/route";
@@ -21,6 +22,44 @@ import type { CitationView } from "@/lib/chat/citations";
 const config: ChatConfig = { providerId: "a", model: "model-a", reasoningEffort: "low", contextWindow: 32768, showMe: true };
 const document = '<!DOCTYPE html><html lang="zh-CN"><head><title>图解</title><style>p { white-space: pre; }</style></head><body><h1>推荐算法</h1><p>预测偏好。[ID:1]</p><button onclick="this.textContent=\'完成\'">展开</button><script>const code = "a  b [ID:999]";</script></body></html>';
 const citation = (index: number): CitationView => ({ index, pageId: `page-${index}`, pageTitle: `来源 ${index}`, pagePath: `source-${index}.md`, pageType: "concept", sourcePage: null, sourceDoc: null, excerpt: "来源片段", sourceRefs: [] });
+
+it("流式模型失败后保留后端校验的正文和引用，不重新落库幻觉标记", async () => {
+  const provider = configServer.chatProvider(config);
+  vi.spyOn(provider, "stream").mockImplementation(async function* () {
+    yield "预测偏好。[ID:1] 虚构引用[ID:999]";
+    throw new Error("模拟流式连接中断");
+  });
+  vi.spyOn(configServer, "chatProvider").mockReturnValue(provider);
+  const sessionId = createSession("失败引用"), run = beginChatRun(sessionId, "推荐算法", { ...config, showMe: false });
+  await runChatRun({ run, question: "推荐算法", controller: registerStream(sessionId, run.id, run.assistantMessageId) });
+  expect(getChatRun(run.id)?.status).toBe("failed");
+  const saved = getMessages(sessionId).find(message => message.id === run.assistantMessageId)!;
+  expect(saved.content).toContain("预测偏好");
+  expect(saved.content).not.toContain("[ID:999]");
+  expect(saved.citations).toMatchObject({ quality: { hallucinationCount: 1 } });
+});
+
+it("HTML JSON 与独立预览均有 CSP，独立页面以响应头强制独立来源", async () => {
+  const sessionId = createSession("沙箱"), run = beginChatRun(sessionId, "问题", config);
+  const artifact = saveArtifact({ messageId: run.assistantMessageId, content: document, status: "ready" });
+  for (const query of ["", "?preview=1"]) {
+    const response = await download(new Request(`http://localhost/api/chat/artifacts/${artifact.id}${query}`), { params: Promise.resolve({ id: artifact.id }) });
+    expect(response.headers.get("Content-Security-Policy")).toContain("sandbox allow-scripts;");
+    expect(response.headers.get("Content-Security-Policy")).not.toContain("allow-same-origin");
+    expect(response.headers.get("Content-Security-Policy")).toContain("connect-src 'none'");
+    if (query) { expect(response.headers.get("Content-Type")).toContain("text/html"); expect(await response.text()).toContain("推荐算法"); }
+    else expect((await response.json()).data.content).toContain("推荐算法");
+  }
+});
+
+it("服务在引用校验前退出，重启恢复不把流式编号当成有效证据", () => {
+  const sessionId = createSession("中断引用"), run = beginChatRun(sessionId, "问题", config);
+  saveChatRunProgress(run.id, "部分正文[ID:1]及虚构编号[ID:999]");
+  expect(markInterruptedChatRunsFailed()).toBe(1);
+  const saved = getMessages(sessionId).find(message => message.id === run.assistantMessageId)!;
+  expect(saved.content).toContain("部分正文"); expect(saved.content).not.toContain("[ID:");
+  expect(getChatRun(run.id)?.status).toBe("failed");
+});
 
 it("HTML 引用具有数字上标、来源锚点，转换可重复且不修改代码或属性", () => {
   const source = '<html><head><style>p:before{content:"[ID:1]"}</style></head><body><p data-value="[ID:1]">事实。[ID:1][ID:9][ID:999]<sup data-citation="9"></sup></p><code>[ID:1]</code><pre>[ID:9]</pre><script>const marker="[ID:1]";</script></body></html>';

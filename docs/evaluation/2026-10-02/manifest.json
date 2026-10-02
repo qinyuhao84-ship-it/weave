@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "seed": 20261002,
+  "sources": [
+    {
+      "name": "MIRACL queries/qrels",
+      "revision": "5be20db9509754dadad47689368639fcec739c00",
+      "url": "https://huggingface.co/datasets/miracl/miracl",
+      "license": "Apache-2.0 (dataset metadata); Wikipedia text retains its upstream license"
+    },
+    {
+      "name": "MIRACL corpus",
+      "revision": "d921ec7e349ce0d28daf30b2da9da5ee698bef0d",
+      "url": "https://huggingface.co/datasets/miracl/miracl-corpus",
+      "license": "Apache-2.0 (dataset metadata); Wikipedia text CC-BY-SA/GFDL"
+    },
+    {
+      "name": "CMRC2018",
+      "revision": "c0eb1b6ba219847457e6af3180da722bbeb656af",
+      "url": "https://github.com/ymcui/cmrc2018",
+      "license": "CC-BY-SA-4.0"
+    },
+    {
+      "name": "MIRACL official Parquet conversion",
+      "revision": "ad2acf33f265b8fba92e5096c9d2cf569a82b067",
+      "url": "https://huggingface.co/datasets/miracl/miracl",
+      "license": "Apache-2.0 (dataset metadata); Wikipedia text retains its upstream license"
+    }
+  ],
+  "files": {
+    "documents.jsonl": "7d1c690832fe1d68158dbaa44267fbcba5e36ca17ab2996fd355e9ccd1d4d798",
+    "queries.jsonl": "b7a1ccdad5d878a01fa3fa0100b71ebc57af4accfa8dc5ebf38dfce30122675f",
+    "answers.jsonl": "9b4b5be83744cf101b99bcdcc658f5bbb90db755298ef47e83366076ff65e542"
+  },
+  "documents": 10080,
+  "dev": 200,
+  "test": 200,
+  "answerable": 80,
+  "unanswerable": 20,
+  "corpusScanned": 17041,
+  "notes": [
+    "MIRACL 官方 train 抽作开发集，官方 dev 抽作本轮留出集，正例文章不跨划分。",
+    "10000 段 MIRACL 资料加 80 篇 CMRC 资料；包含全部选中问题的已标注负例，额外干扰资料按固定种子从 15243 个官方 train/dev 已判定段落中抽取，并非均匀采样全维基。",
+    "这是受限语料检索评测，不可与 MIRACL 全语料排行榜直接比较。",
+    "未标注段落并非已知不相关；Precision/nDCG 按未标注为0计算，另报标注覆盖率。",
+    "无答案为受控移除资料场景，不是原始 CMRC 无答案标注；不含扫描件、导入编译、多轮或多跳验收。"
+  ]
+}

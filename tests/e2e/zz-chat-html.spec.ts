@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { assertHtmlIsolation } from './html-isolation';
 import AxeBuilder from '@axe-core/playwright';
 import { waitForVisualSettling } from './visual-settling';
 
@@ -65,6 +66,7 @@ test('HTML 问答：等待、选择记忆、隔离交互、全屏与下载', asy
   await frame.getByRole('button', { name: '展开图解' }).click();
   await expect(frame.locator('#detail')).toBeVisible();
   await expect(page.locator('iframe').first()).toHaveAttribute('sandbox', 'allow-scripts');
+  await assertHtmlIsolation(page, 'iframe[title="回答图解.html · 预览"]');
   await page.screenshot({ path: 'test-results/chat-html-desktop-ready.png', fullPage: true });
   await page.getByRole('button', { name: '全屏阅读', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '全屏阅读 回答图解.html' })).toBeVisible();

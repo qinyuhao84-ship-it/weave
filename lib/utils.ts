@@ -53,10 +53,10 @@ export function datePrefix(date: Date = new Date()): string {
  * 知识库里的时间精度不需要到分秒 —— 用户读的是「哪天导的、哪天改的」，
  * 秒级时间戳只会让这一行更长、更难扫。
  */
-export function formatDate(iso: string): string {
+export function formatDate(iso: string, locale = "zh-CN"): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+  return date.toLocaleDateString(locale, { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
 /** 截断长文本，用于列表摘要 */

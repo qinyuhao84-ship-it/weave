@@ -2,7 +2,7 @@ import { createProvider, createLightProvider } from "@/lib/llm";
 import { getSettings, getContextWindow } from "@/lib/settings";
 import { buildContextBlock, NO_ANSWER_PHRASE } from "@/lib/llm/prompts";
 import type { ChatMessage, LlmProvider } from "@/lib/llm/types";
-import { retrieve, toContextChunks, type RetrievedPage } from "./retrieve";
+import { retrieveHybrid, toContextChunks, type RetrievedPage } from "./retrieve";
 import {
   validateCitations, buildCitationViews, assessQuality,
   type CitationView, type AnswerQuality,
@@ -115,10 +115,12 @@ export async function answer(options: AnswerOptions): Promise<AnswerResult> {
 
   // ---- ① 检索 ----
   // 检索块的上限由窗口派生，不能让一个与模型无关的常量把小窗口的模型第一轮就撑爆
-  const retrieved = retrieve(options.question, {
+  const retrieved = await retrieveHybrid(options.question, {
     limit: settings.retrievalLimit,
     charBudget: retrievalCharBudget(maxTokens),
     onProgress: progress,
+    signal: options.signal,
+    config: settings.retrievalModel,
   });
   options.onRetrieved?.(retrieved);
   // 编号 = 位置（1-based），检索、组装、引用校验三处共用同一份，不能各算各的

@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import { estimateContextTokens } from "@/lib/chat/tokens";
 import {
   parsePlainText, parseDocx, parseHtml, parsePdfFallback,
 } from "./node-parsers";
@@ -151,11 +152,9 @@ export function stripPageMarkers(markdown: string): string {
   return markdown.replace(/<!--\s*page:\d+\s*-->\n?/g, "");
 }
 
-/** 估算 token 数：官方换算约 1 token ≈ 1.5-2 个汉字，取保守值 */
+/** 导入、分段和问答使用同一保守预算口径。 */
 export function estimateTokens(text: string): number {
-  const cjk = (text.match(/[一-龥]/g) ?? []).length;
-  const other = text.length - cjk;
-  return Math.ceil(cjk / 1.5 + other / 4);
+  return estimateContextTokens(text);
 }
 
 /** 判断文件是否可能是扫描件（文本极少但文件很大） */

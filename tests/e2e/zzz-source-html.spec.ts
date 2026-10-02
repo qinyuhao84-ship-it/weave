@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { waitForVisualSettling } from './visual-settling';
+import { assertHtmlIsolation } from './html-isolation';
 
 test('原始 HTML：渲染交互、切换解析稿、全屏与下载', async ({ page, request }) => {
   const settings = await request.patch('/api/settings', { data: { providers: [{ id: 'source-html', label: 'HTML 测试服务', baseUrl: 'http://127.0.0.1:3301', model: 'audit-model', contextWindow: 32768 }], activeProviderId: 'source-html', preferSavedModels: true } });
@@ -18,6 +19,7 @@ test('原始 HTML：渲染交互、切换解析稿、全屏与下载', async ({ 
   await expect(frame.getByRole('heading', { name: '原件可以直接阅读' })).toBeVisible();
   await frame.getByRole('button', { name: '展开资料' }).click();
   await expect(frame.getByRole('button', { name: '交互已生效' })).toBeVisible();
+  await assertHtmlIsolation(page, `iframe[title="${filename} · 预览"]`);
   await page.getByRole('button', { name: '全屏阅读', exact: true }).click();
   await expect(page.getByRole('dialog', { name: `全屏阅读 ${filename}` })).toBeVisible();
   await page.getByRole('button', { name: '退出全屏阅读', exact: true }).click();

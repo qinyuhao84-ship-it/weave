@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { clientLocale, localizeApiError } from "@/lib/i18n/errors";
 
 /**
  * 极简的数据获取 hook。
@@ -29,6 +30,10 @@ export type ApiState<T> = {
   refresh: () => Promise<void>;
 };
 
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number, readonly code: string) { super(message); this.name = "ApiError"; }
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -41,11 +46,13 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   const payload = (await response.json().catch(() => null)) as
     | { ok: true; data: T }
-    | { ok: false; error: string }
+    | { ok: false; error: string; code?: string }
     | null;
 
-  if (!payload) throw new Error(`请求失败（${response.status}）`);
-  if (!payload.ok) throw new Error(payload.error);
+  if (!payload) throw new ApiError(localizeApiError(clientLocale(), "REQUEST_FAILED", `请求失败（${response.status}）`), response.status, "REQUEST_FAILED");
+  if (!payload.ok) throw new ApiError(localizeApiError(clientLocale(), payload.code ?? "REQUEST_FAILED", payload.error), response.status, payload.code ?? "REQUEST_FAILED");
+  const warning = (payload.data as { backupWarning?: unknown } | null)?.backupWarning;
+  if (typeof warning === "string" && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("weave-backup-warning", { detail: warning }));
   return payload.data;
 }
 

@@ -1,0 +1,822 @@
+[
+  {
+    "id": "test:5373229#0",
+    "current": {
+      "recall5": 0,
+      "recall10": 0,
+      "hit5": 0,
+      "hit10": 0,
+      "mrr10": 0,
+      "ndcg10": 0,
+      "precision5": 0,
+      "precision10": 0,
+      "judgedPrecision10": 0,
+      "judgmentCoverage10": 0.7,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0,
+      "recall10": 1,
+      "hit5": 0,
+      "hit10": 1,
+      "mrr10": 0.1111111111111111,
+      "ndcg10": 0.3010299956639812,
+      "precision5": 0,
+      "precision10": 0.1,
+      "judgedPrecision10": 0.14285714285714285,
+      "judgmentCoverage10": 0.7,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "263#102",
+      "709164#10",
+      "5918384#25",
+      "266181#12",
+      "266181#0",
+      "557321#29",
+      "544438#1",
+      "2165#18",
+      "5918384#0",
+      "544438#0"
+    ]
+  },
+  {
+    "id": "test:7300525#0",
+    "current": {
+      "recall5": 0.25,
+      "recall10": 0.5,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.2,
+      "ndcg10": 0.29007579773858083,
+      "precision5": 0.2,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.4,
+      "judgmentCoverage10": 0.5,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0,
+      "recall10": 0.5,
+      "hit5": 0,
+      "hit10": 1,
+      "mrr10": 0.14285714285714285,
+      "ndcg10": 0.2429718246796358,
+      "precision5": 0,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.4,
+      "judgmentCoverage10": 0.5,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "2772630#0",
+      "4674134#4",
+      "654050#44",
+      "1005451#1",
+      "563741#18",
+      "3739068#8",
+      "764856#20",
+      "46911#43",
+      "157455#2",
+      "654050#45"
+    ]
+  },
+  {
+    "id": "test:928098#0",
+    "current": {
+      "recall5": 0,
+      "recall10": 1,
+      "hit5": 0,
+      "hit10": 1,
+      "mrr10": 0.14285714285714285,
+      "ndcg10": 0.3333333333333333,
+      "precision5": 0,
+      "precision10": 0.1,
+      "judgedPrecision10": 0.14285714285714285,
+      "judgmentCoverage10": 0.7,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 1,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.2,
+      "ndcg10": 0.38685280723454163,
+      "precision5": 0.2,
+      "precision10": 0.1,
+      "judgedPrecision10": 0.14285714285714285,
+      "judgmentCoverage10": 0.7,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "1741#0",
+      "1472#45",
+      "754590#0",
+      "637956#6",
+      "3292438#4",
+      "637956#1",
+      "44456#0",
+      "3996#0",
+      "641497#0",
+      "453300#9"
+    ]
+  },
+  {
+    "id": "test:6414757#0",
+    "current": {
+      "recall5": 0.3333333333333333,
+      "recall10": 0.6666666666666666,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.25,
+      "ndcg10": 0.3501483019834802,
+      "precision5": 0.2,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.2222222222222222,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.3333333333333333,
+      "recall10": 0.6666666666666666,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.2,
+      "ndcg10": 0.3228087653971817,
+      "precision5": 0.2,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.2222222222222222,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "266682#9",
+      "2934784#7",
+      "2934784#0",
+      "534091#3",
+      "2934784#2",
+      "2934780#1",
+      "2934784#3",
+      "542344#10",
+      "483455#8",
+      "953690#35"
+    ]
+  },
+  {
+    "id": "test:6544475#0",
+    "current": {
+      "recall5": 0.25,
+      "recall10": 0.25,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.3903800499921017,
+      "precision5": 0.2,
+      "precision10": 0.1,
+      "judgedPrecision10": 0.16666666666666666,
+      "judgmentCoverage10": 0.6,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.25,
+      "recall10": 0.25,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.3903800499921017,
+      "precision5": 0.2,
+      "precision10": 0.1,
+      "judgedPrecision10": 0.16666666666666666,
+      "judgmentCoverage10": 0.6,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "7793328#6",
+      "5470927#2",
+      "543#69",
+      "4371346#1",
+      "55574#26",
+      "7292237#2",
+      "4372946#0",
+      "1595229#6",
+      "72041#9",
+      "5702238#0"
+    ]
+  },
+  {
+    "id": "test:2876856#0",
+    "current": {
+      "recall5": 0.3333333333333333,
+      "recall10": 0.5,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.4500112274528523,
+      "precision5": 0.4,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.6,
+      "judgmentCoverage10": 0.5,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.3333333333333333,
+      "recall10": 0.5,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.4430895440946125,
+      "precision5": 0.4,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.6,
+      "judgmentCoverage10": 0.5,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "141594#3",
+      "5065575#10",
+      "1930#82",
+      "971845#6",
+      "1200285#0",
+      "1621034#1",
+      "568956#13",
+      "3914328#23",
+      "23500#66",
+      "2247#59"
+    ]
+  },
+  {
+    "id": "test:142510#0",
+    "current": {
+      "recall5": 0.5,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.3333333333333333,
+      "ndcg10": 0.5249810332008933,
+      "precision5": 0.2,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.2222222222222222,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 1,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.3333333333333333,
+      "ndcg10": 0.5437713091520254,
+      "precision5": 0.4,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.2222222222222222,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "543889#3",
+      "543889#1",
+      "543889#2",
+      "543889#4",
+      "132654#10",
+      "543889#0",
+      "5669613#7",
+      "963457#0",
+      "543970#0",
+      "1048496#11"
+    ]
+  },
+  {
+    "id": "test:1510334#0",
+    "current": {
+      "recall5": 0.5,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.5640920940185894,
+      "precision5": 0.2,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.2222222222222222,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.5,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.7903864795495061,
+      "precision5": 0.2,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.2222222222222222,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "157790#41",
+      "327285#1",
+      "327370#2",
+      "737885#27",
+      "800138#2",
+      "3927551#3",
+      "1043052#35",
+      "25012#17",
+      "33890#14",
+      "91285#2"
+    ]
+  },
+  {
+    "id": "test:387983#0",
+    "current": {
+      "recall5": 0.3333333333333333,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.5988943393645153,
+      "precision5": 0.2,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.3333333333333333,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.6666666666666666,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.6338412308988606,
+      "precision5": 0.4,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.375,
+      "judgmentCoverage10": 0.8,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "991#5",
+      "630092#0",
+      "630092#8",
+      "630092#9",
+      "630092#10",
+      "630092#6",
+      "630092#4",
+      "630092#7",
+      "534939#7",
+      "387983#89"
+    ]
+  },
+  {
+    "id": "test:1178850#0",
+    "current": {
+      "recall5": 0.3333333333333333,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.5988943393645153,
+      "precision5": 0.2,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.3,
+      "judgmentCoverage10": 1,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.3333333333333333,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.6045093387918965,
+      "precision5": 0.2,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.3,
+      "judgmentCoverage10": 1,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "5374373#0",
+      "6418002#6",
+      "5374373#1",
+      "85403#0",
+      "20248#1",
+      "247149#0",
+      "486#42",
+      "120826#33",
+      "73568#0",
+      "375327#0"
+    ]
+  },
+  {
+    "id": "test:112539#0",
+    "current": {
+      "recall5": 0.6666666666666666,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.3333333333333333,
+      "ndcg10": 0.6039071644781281,
+      "precision5": 0.4,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.375,
+      "judgmentCoverage10": 0.8,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 1,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.3333333333333333,
+      "ndcg10": 0.6182885020492784,
+      "precision5": 0.6,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.3333333333333333,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "56412#10",
+      "25723#3",
+      "7372360#10",
+      "48341#54",
+      "48341#2",
+      "95041#0",
+      "58156#4",
+      "1012912#0",
+      "435#41",
+      "56405#5"
+    ]
+  },
+  {
+    "id": "test:1478686#0",
+    "current": {
+      "recall5": 0.3333333333333333,
+      "recall10": 0.6666666666666666,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.6257049680303419,
+      "precision5": 0.2,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.3333333333333333,
+      "judgmentCoverage10": 0.6,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.3333333333333333,
+      "recall10": 0.6666666666666666,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.6364391809889587,
+      "precision5": 0.2,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.3333333333333333,
+      "judgmentCoverage10": 0.6,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "443096#0",
+      "443096#1",
+      "443096#2",
+      "6375021#0",
+      "7510#21",
+      "123166#1",
+      "188940#4",
+      "153926#0",
+      "334774#8",
+      "73661#12"
+    ]
+  },
+  {
+    "id": "test:5524344#0",
+    "current": {
+      "recall5": 1,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.6309297535714575,
+      "precision5": 0.2,
+      "precision10": 0.1,
+      "judgedPrecision10": 0.1111111111111111,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 1,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 1,
+      "precision5": 0.2,
+      "precision10": 0.1,
+      "judgedPrecision10": 0.1111111111111111,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "1140950#2",
+      "5249241#2",
+      "233006#43",
+      "233006#0",
+      "582801#2",
+      "4579#14",
+      "6396063#6",
+      "233006#42",
+      "6739992#0",
+      "54615#2"
+    ]
+  },
+  {
+    "id": "test:6417091#0",
+    "current": {
+      "recall5": 1,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.6309297535714575,
+      "precision5": 0.2,
+      "precision10": 0.1,
+      "judgedPrecision10": 0.14285714285714285,
+      "judgmentCoverage10": 0.7,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 1,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 1,
+      "precision5": 0.2,
+      "precision10": 0.1,
+      "judgedPrecision10": 0.16666666666666666,
+      "judgmentCoverage10": 0.6,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "39129#2",
+      "1045208#2",
+      "16037#140",
+      "5572#8",
+      "43841#22",
+      "899978#0",
+      "3221718#0",
+      "461504#0",
+      "67516#0",
+      "16037#1"
+    ]
+  },
+  {
+    "id": "test:3932257#0",
+    "current": {
+      "recall5": 1,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.6509209298071326,
+      "precision5": 0.4,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.2,
+      "judgmentCoverage10": 1,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 1,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.6934264036172708,
+      "precision5": 0.4,
+      "precision10": 0.2,
+      "judgedPrecision10": 0.2,
+      "judgmentCoverage10": 1,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "26216#0",
+      "26216#1",
+      "26216#5",
+      "26216#2",
+      "334876#0",
+      "26223#3",
+      "7603832#10",
+      "5626369#0",
+      "7603832#9",
+      "415638#6"
+    ]
+  },
+  {
+    "id": "test:276681#0",
+    "current": {
+      "recall5": 0.6666666666666666,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.6546154994739983,
+      "precision5": 0.4,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.3333333333333333,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.6666666666666666,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 0.5,
+      "ndcg10": 0.6787622294601761,
+      "precision5": 0.4,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.3,
+      "judgmentCoverage10": 1,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "370931#0",
+      "370931#1",
+      "5561577#40",
+      "1623934#0",
+      "3472843#0",
+      "121023#71",
+      "1623934#1",
+      "935114#0",
+      "702043#0",
+      "3394704#0"
+    ]
+  },
+  {
+    "id": "test:6879435#0",
+    "current": {
+      "recall5": 0.5,
+      "recall10": 0.75,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.6713527276121545,
+      "precision5": 0.4,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.42857142857142855,
+      "judgmentCoverage10": 0.7,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.5,
+      "recall10": 0.75,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.6713527276121545,
+      "precision5": 0.4,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.42857142857142855,
+      "judgmentCoverage10": 0.7,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "448048#0",
+      "5703326#0",
+      "448048#3",
+      "3825941#5",
+      "3825941#0",
+      "3825941#1",
+      "321679#4",
+      "3825941#13",
+      "3825941#2",
+      "3825941#7"
+    ]
+  },
+  {
+    "id": "test:3678420#0",
+    "current": {
+      "recall5": 0.4,
+      "recall10": 0.8,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.7088769888646929,
+      "precision5": 0.4,
+      "precision10": 0.4,
+      "judgedPrecision10": 0.6666666666666666,
+      "judgmentCoverage10": 0.6,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.4,
+      "recall10": 0.6,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.6217937096682962,
+      "precision5": 0.4,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.6,
+      "judgmentCoverage10": 0.5,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "236525#0",
+      "58745#10",
+      "236527#0",
+      "161653#5",
+      "1492496#1",
+      "5808#0",
+      "236525#1",
+      "58745#3",
+      "161649#3",
+      "161649#0"
+    ]
+  },
+  {
+    "id": "test:5727017#0",
+    "current": {
+      "recall5": 0.75,
+      "recall10": 0.75,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.7095272044910244,
+      "precision5": 0.6,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.42857142857142855,
+      "judgmentCoverage10": 0.7,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.5,
+      "recall10": 1,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.810582531061383,
+      "precision5": 0.4,
+      "precision10": 0.4,
+      "judgedPrecision10": 0.5714285714285714,
+      "judgmentCoverage10": 0.7,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "986#68",
+      "986#130",
+      "986#69",
+      "986#113",
+      "168972#4",
+      "58858#2",
+      "986#70",
+      "801052#2",
+      "986#129",
+      "96382#0"
+    ]
+  },
+  {
+    "id": "test:7023860#0",
+    "current": {
+      "recall5": 0.6,
+      "recall10": 0.8,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.7144729184600214,
+      "precision5": 0.6,
+      "precision10": 0.4,
+      "judgedPrecision10": 0.4444444444444444,
+      "judgmentCoverage10": 0.9,
+      "evidenceRecall10": null
+    },
+    "baseline": {
+      "recall5": 0.4,
+      "recall10": 0.6,
+      "hit5": 1,
+      "hit10": 1,
+      "mrr10": 1,
+      "ndcg10": 0.591176585485452,
+      "precision5": 0.4,
+      "precision10": 0.3,
+      "judgedPrecision10": 0.375,
+      "judgmentCoverage10": 0.8,
+      "evidenceRecall10": null
+    },
+    "returned": [
+      "29891#0",
+      "46911#35",
+      "226862#0",
+      "764856#21",
+      "28013#39",
+      "764856#20",
+      "46911#41",
+      "846415#11",
+      "289993#1",
+      "5249241#1"
+    ]
+  }
+]

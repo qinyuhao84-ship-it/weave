@@ -1,0 +1,479 @@
+import { inArray, or } from "drizzle-orm";
+import { getDb, getSqlite } from "@/lib/db/client";
+import { pages, links, sources as sourcesTable } from "@/lib/db/schema";
+import { absolutePath } from "@/lib/vault/paths";
+import { readFileIfExists } from "@/lib/vault/atomic";
+import type { ChatProgress } from "./progress";
+import { normalizeLinkTarget } from "@/lib/vault/wikilinks";
+import type { ContextChunk } from "@/lib/llm/prompts";
+import { searchVectors, hashContent, pageBody, scheduleEmbeddingIndex, type VectorHit } from "@/lib/index/embeddings";
+import { rerankTexts } from "@/lib/llm/retrieval";
+import { getSettings, type RetrievalModelSettings } from "@/lib/settings";
+
+/**
+ * 索引检索：标题／别名索引、中文词语与字串召回、FTS5 BM25、一跳图谱扩展。
+ * 查询与候选量都有预算。这里的排序依据仍是文字匹配和链接，不能把它视为
+ * 向量召回或语义重排；需要用真实模型与标注问题分别评估回答质量。
+ */
+
+/** 单个词条能塞进上下文的字符上限，避免一个长词条吃掉全部预算 */
+const MAX_CHUNK_CHARS = 3000;
+/** 检索结果数量上限 */
+const DEFAULT_LIMIT = 12;
+/** 每类关键词有固定上限，避免长问题生成巨大的 MATCH 表达式。 */
+const MAX_TERMS_PER_KIND = 64;
+const segmenter = new Intl.Segmenter("zh", { granularity: "word" });
+
+export type RetrieveOptions = {
+  limit?: number;
+  /** 上下文总字符预算，超出后停止添加 */
+  charBudget?: number;
+  onProgress?: (progress: Omit<ChatProgress, "elapsedMs">) => void;
+  /** 仅混合入口提供，普通全文查询保持现有排序。 */
+  vectorHits?: VectorHit[];
+  /** 内部评测追踪；不写入会话或 HTTP 响应。 */
+  onTrace?: (trace: RetrievalTrace) => void;
+};
+
+export type RetrievalTrace = {
+  stage: "titles" | "fulltext" | "vectors" | "graph" | "reading" | "reranking" | "result";
+  durationMs: number;
+  hits: Array<{ pageId: string; score: number; content?: string }>;
+  fallback?: boolean;
+};
+
+export type RetrievedPage = {
+  pageId: string;
+  title: string;
+  type: string;
+  filePath: string;
+  content: string;
+  /** 命中来源，用于调试与展示 */
+  matchedBy: "title" | "alias" | "fulltext" | "vector" | "graph";
+  score: number;
+  /** 原文页码（若能确定） */
+  sourcePage: number | null;
+  sourceDoc: string | null;
+  sourceRefs: NonNullable<ContextChunk["sourceRefs"]>;
+};
+
+/**
+ * 全文检索。
+ *
+ * 这里有个关键细节：FTS5 的 trigram 分词器要求查询词至少 3 个字符。
+ * 中文里「算法」这样的两字词很常见，trigram 匹配不到，所以短查询要回落到 LIKE。
+ * 不做这个兜底，用户搜「RAG」「算法」会得到空结果，体验上等同于功能坏了。
+ */
+export function searchFullText(query: string, limit = 20): Array<{ pageId: string; score: number }> {
+  const sqlite = getSqlite();
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  // 从查询里抽词：先做中文词语切分，再补字串与英文词
+  const terms = extractTerms(trimmed);
+  if (terms.length === 0) return [];
+
+  const scores = new Map<string, number>();
+
+  // 长词走 FTS5（trigram 需要 >= 3 字符）
+  const longTerms = terms.filter((t) => [...t].length >= 3);
+  let ftsFailed = false;
+  if (longTerms.length > 0) {
+    const ftsQuery = longTerms.slice(0, MAX_TERMS_PER_KIND).map((t) => `"${t.replace(/"/g, '""')}"`).join(" OR ");
+    try {
+      const rows = sqlite
+        .prepare(
+          `SELECT page_id, bm25(pages_fts, 0.0, 10.0, 1.0, 2.0) AS rank
+           FROM pages_fts WHERE pages_fts MATCH ?
+             AND page_id IN (SELECT id FROM pages WHERE status = 'active')
+           ORDER BY rank LIMIT ?`,
+        )
+        .all(ftsQuery, limit) as Array<{ page_id: string; rank: number }>;
+      for (const row of rows) {
+        // bm25 返回的是负数，越小越相关；转成正向分数
+        // 保持 BM25 顺序，并让直接命中始终高于图谱扩展（< 1）。
+        const relevance = Math.abs(row.rank);
+        scores.set(row.page_id, 1 + relevance / (1 + relevance));
+      }
+    } catch {
+      ftsFailed = true;
+      // FTS 查询语法出错时静默降级到 LIKE，不要让检索整体失败
+    }
+  }
+
+  // 短词与 FTS 未命中的部分走 LIKE
+  const shortTerms = terms.filter((t) => [...t].length < 3);
+  const wholeTerms = new Set((trimmed.match(/[A-Za-z0-9][A-Za-z0-9+#.\-]*|[一-龥]+/g) ?? []).map(term => term.toLowerCase()));
+  // FTS 已有结果时，只补独立的短词（如 SQL 算法中的「算法」）。
+  // 长句切出的每个二字窗口不再重复扫库，也不把局部同字误当成完整主题。
+  const likeTerms = ftsFailed ? [...shortTerms, ...longTerms] : scores.size > 0 ? shortTerms.filter(term => wholeTerms.has(term)) : shortTerms;
+  if (likeTerms.length > 0) {
+    // 一条查询完成短词兜底，避免按词反复扫描整个正文表。
+    const patterns = likeTerms.slice(0, 6).map(term => `%${term.replace(/[%_]/g, "")}%`);
+    const conditions = patterns.map(() => "(title LIKE ? OR body LIKE ? OR tags LIKE ?)");
+    // 纯短词查询需要按覆盖率排序。已有 FTS 排序时，只补充短词命中，
+    // 避免为辅助匹配再次计算全库每个词的覆盖率。
+    const rankByCoverage = longTerms.length === 0 || ftsFailed;
+    const hitExpression = rankByCoverage ? conditions.map(condition => `CASE WHEN ${condition} THEN 1 ELSE 0 END`).join(" + ") : "1";
+    const parameters = patterns.flatMap(pattern => [pattern, pattern, pattern]);
+    const rows = sqlite.prepare(
+      `SELECT page_id, ${hitExpression} AS hits
+       FROM pages_fts WHERE (${conditions.join(" OR ")})
+       AND page_id IN (SELECT id FROM pages WHERE status = 'active') ${rankByCoverage ? "ORDER BY hits DESC, page_id" : ""} LIMIT ?`,
+    ).all(...(rankByCoverage ? parameters : []), ...parameters, limit) as Array<{ page_id: string; hits: number }>;
+    for (const row of rows) {
+      // 多词命中优先；兜底分数低于 FTS，仍高于一跳图谱扩展。
+      scores.set(row.page_id, (scores.get(row.page_id) ?? 0) + 0.81 + 0.18 * row.hits / patterns.length);
+    }
+  }
+
+  return [...scores.entries()]
+    .map(([pageId, score]) => ({ pageId, score }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+/** 中文词语切分优先，保留有上限的字串补召回，兼容专名与无空格的输入。 */
+export function extractTerms(query: string): string[] {
+  const terms = new Set<string>();
+
+  // 英文单词与数字
+  // UI 问题上限 2000 字；其他调用也只扫描有界文本，不处理整篇文档的滑窗。
+  const bounded = query.slice(0, 16_000);
+  // 系统 ICU 分词优先保留完整主题词；滑窗继续为未收录专名兜底。
+  let segmented = 0;
+  for (const part of segmenter.segment(bounded)) {
+    if (part.isWordLike && part.segment.length >= 2) terms.add(part.segment.toLowerCase());
+    if (terms.size >= MAX_TERMS_PER_KIND || ++segmented >= 256) break;
+  }
+  let englishCount = 0;
+  for (const word of bounded.match(/[A-Za-z0-9][A-Za-z0-9+#.\-]*/g) ?? []) {
+    if (word.length >= 2 || /^\d$/.test(word)) terms.add(word.toLowerCase());
+    if (++englishCount >= MAX_TERMS_PER_KIND) break;
+  }
+
+  // 中文串：按 2/3/4 字滑窗
+  const runs = bounded.match(/[一-龥]+/g) ?? [];
+  for (const size of [4, 3, 2]) {
+    const bucket = new Set<string>();
+    for (const run of runs) {
+      if (run.length <= size) { bucket.add(run); }
+      else {
+        const chars = [...run];
+        for (let i = 0; i + size <= chars.length; i++) {
+          bucket.add(chars.slice(i, i + size).join(""));
+          if (bucket.size >= MAX_TERMS_PER_KIND) break;
+        }
+      }
+      if (bucket.size >= MAX_TERMS_PER_KIND) break;
+    }
+    for (const term of bucket) terms.add(term);
+  }
+
+  // 去掉太短的英文，并按长度降序（长词更具体，优先）
+  return [...terms]
+    .filter((term) => [...term].length >= 2 || /^\d$/.test(term))
+    .sort((a, b) => b.length - a.length);
+}
+
+/** 长正文按命中位置取连续片段，保留原文顺序与字符预算。 */
+export function excerptForQuery(content: string, query: string, budget = MAX_CHUNK_CHARS, preparedTerms?: string[]): string {
+  const size = Math.max(0, Math.floor(budget));
+  if (!size) return "";
+  if (content.length <= size) return content;
+  if (size < 8) return content.slice(0, size);
+  const terms = (preparedTerms ?? extractTerms(query)).slice(0, 60);
+  const lower = content.toLocaleLowerCase();
+  const width = size - 4; // 两端省略标记也计入预算。
+  let bestStart = 0;
+  let bestScore = -1;
+  const visited = new Set<number>();
+  for (const term of terms) {
+    let offset = 0;
+    for (let count = 0; count < 8; count++) {
+      const hit = lower.indexOf(term, offset);
+      if (hit < 0) break;
+      const start = Math.max(0, Math.min(content.length - width, hit - Math.floor(width / 3)));
+      offset = hit + term.length;
+      if (visited.has(start)) continue;
+      visited.add(start);
+      const window = lower.slice(start, start + width);
+      const score = terms.reduce((sum, word) => sum + (window.includes(word) ? word.length ** 2 : 0), 0);
+      if (score > bestScore) { bestStart = start; bestScore = score; }
+    }
+  }
+  const end = bestStart + width;
+  return `${bestStart > 0 ? "…\n" : ""}${content.slice(bestStart, end)}${end < content.length ? "\n…" : ""}`;
+}
+
+/** 标题与别名的精确/前缀命中 —— 用户直接点名某个词条时走这条 */
+export function matchByTitle(query: string, limit: number): Array<{ pageId: string; score: number }> {
+  const normalized = normalizeLinkTarget(query);
+  if (!normalized) return [];
+  const candidates = new Set([normalized, ...extractTerms(query)]);
+  const segments = [...segmenter.segment(normalized.slice(0, 2000))].filter(part => part.isWordLike).slice(0, 256);
+  for (let start = 0; start < segments.length; start++) {
+    for (let length = 1; length <= 8 && start + length <= segments.length; length++) {
+      const last = segments[start + length - 1];
+      const phrase = normalized.slice(segments[start].index, last.index + last.segment.length);
+      if (phrase.length <= 120) candidates.add(phrase);
+    }
+  }
+  const sqlite = getSqlite();
+  const rows = sqlite.prepare(`
+    SELECT page_id, MAX(CASE WHEN name = ? THEN 10 ELSE 4 END) AS score FROM (
+      SELECT page_id, name FROM page_names WHERE name IN (SELECT value FROM json_each(?))
+      UNION ALL
+      SELECT page_id, name FROM page_names WHERE name >= ? AND name < ?
+    ) GROUP BY page_id ORDER BY score DESC, page_id LIMIT ?
+  `).all(normalized, JSON.stringify([...candidates]), normalized, `${normalized}\uffff`, limit) as Array<{ page_id: string; score: number }>;
+  return rows.map(row => ({ pageId: row.page_id, score: row.score }));
+}
+
+/** 取一个词条的一跳邻居 id（图谱扩展） */
+function neighborsOf(pageIds: string[], limit: number): string[] {
+  if (pageIds.length === 0) return [];
+  const db = getDb();
+  const all = db.select().from(links).where(or(inArray(links.srcPageId, pageIds), inArray(links.dstPageId, pageIds))).all();
+  const set = new Set(pageIds);
+  const found = new Map<string, number>();
+
+  for (const link of all) {
+    if (!link.dstPageId) continue;
+    if (set.has(link.srcPageId) && !set.has(link.dstPageId)) {
+      found.set(link.dstPageId, (found.get(link.dstPageId) ?? 0) + link.occurrences);
+    }
+    if (set.has(link.dstPageId) && !set.has(link.srcPageId)) {
+      found.set(link.srcPageId, (found.get(link.srcPageId) ?? 0) + link.occurrences);
+    }
+  }
+
+  return [...found.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+}
+
+/** 读取词条正文（去掉 frontmatter） */
+function readContent(filePath: string, vectorHit?: VectorHit): { content: string; sourcePage: number | null; vectorValid: boolean } {
+  const raw = readFileIfExists(absolutePath(filePath));
+  if (raw === null) return { content: "", sourcePage: null, vectorValid: false };
+  const match = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(raw);
+  const body = match ? raw.slice(match[0].length) : raw;
+
+  // 解析页码标记，用于「引用跳转到原文页码」
+  const pageMarker = /<!--\s*page:(\d+)\s*-->/.exec(body);
+  return {
+    content: vectorHit && hashContent(raw) === vectorHit.contentHash
+      ? pageBody(raw).slice(vectorHit.chunkStart, vectorHit.chunkStart + MAX_CHUNK_CHARS).replace(/<!--\s*page:\d+\s*-->\n?/g, "").trim()
+      : body.replace(/<!--\s*page:\d+\s*-->\n?/g, "").trim(),
+    sourcePage: pageMarker ? Number(pageMarker[1]) : null,
+    vectorValid: !vectorHit || hashContent(raw) === vectorHit.contentHash,
+  };
+}
+
+/**
+ * 主检索入口：给定问题，返回排序好的上下文片段。
+ */
+export function retrieve(question: string, options: RetrieveOptions = {}): RetrievedPage[] {
+  const limit = options.limit ?? DEFAULT_LIMIT;
+  const charBudget = options.charBudget ?? 24_000;
+
+  const db = getDb();
+  const scoreByPageId = new Map<string, number>();
+  const sourceByPageId = new Map<string, RetrievedPage["matchedBy"]>();
+
+  const bump = (pageId: string, score: number, source: RetrievedPage["matchedBy"]) => {
+    scoreByPageId.set(pageId, (scoreByPageId.get(pageId) ?? 0) + score);
+    const current = sourceByPageId.get(pageId);
+    // 记录最强的那条命中路径，用于解释「为什么检索到它」
+    if (!current || priority(source) > priority(current)) sourceByPageId.set(pageId, source);
+  };
+
+  let stageStarted = performance.now();
+  const titleHits = matchByTitle(question, limit);
+  options.onTrace?.({ stage: "titles", durationMs: performance.now() - stageStarted, hits: titleHits });
+  for (const hit of titleHits) bump(hit.pageId, hit.score, "title");
+  options.onProgress?.({ stage: "titles", label: `标题与别名匹配完成 · ${titleHits.length} 个候选` });
+  stageStarted = performance.now();
+  const textHits = searchFullText(question, limit * 2);
+  options.onTrace?.({ stage: "fulltext", durationMs: performance.now() - stageStarted, hits: textHits });
+  for (const hit of textHits) bump(hit.pageId, hit.score, "fulltext");
+  options.onProgress?.({ stage: "fulltext", label: `全文检索完成 · ${textHits.length} 个候选` });
+
+  if (options.vectorHits?.length) {
+    // Reciprocal Rank Fusion：BM25 与余弦分数不可直接相加。
+    const lexical = [...scoreByPageId].sort((a, b) => b[1] - a[1]);
+    scoreByPageId.clear();
+    lexical.forEach(([id], rank) => scoreByPageId.set(id, 1 / (60 + rank + 1)));
+    options.vectorHits.forEach((hit, rank) => bump(hit.pageId, 1 / (60 + rank + 1), "vector"));
+  }
+
+  // 图谱扩展：命中的词条的一跳邻居也带进来。
+  // 这是 wiki 相对普通检索的价值所在 —— 关联本身就是信息。
+  stageStarted = performance.now();
+  const seedIds = [...scoreByPageId.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([id]) => id);
+  const neighborIds = neighborsOf(seedIds, 6);
+  for (const [index, neighborId] of neighborIds.entries()) {
+    bump(neighborId, (options.vectorHits?.length ? 0.005 : 0.8) / (index + 1), "graph");
+  }
+  options.onProgress?.({ stage: "graph", label: `关系扩展完成 · ${neighborIds.length} 个关联词条` });
+  options.onTrace?.({ stage: "graph", durationMs: performance.now() - stageStarted, hits: neighborIds.map(pageId => ({ pageId, score: scoreByPageId.get(pageId)! })) });
+
+  // 组装结果并按预算截断
+  stageStarted = performance.now();
+  const ordered = [...scoreByPageId.entries()].sort((a, b) => b[1] - a[1]);
+  const rows = ordered.length ? db.select().from(pages).where(inArray(pages.id, ordered.map(([id]) => id))).all() : [];
+  const rowById = new Map(rows.map(row => [row.id, row]));
+  const sourceDocs = new Set<string>();
+  for (const row of rows) {
+    const refs = safeParse(row.frontmatterJson)?.sources;
+    if (Array.isArray(refs)) for (const ref of refs) if (typeof ref?.doc === "string") sourceDocs.add(ref.doc);
+  }
+  const sourceByDoc = new Map(sourceDocs.size ? db.select({ id: sourcesTable.id, docPath: sourcesTable.docPath, originalName: sourcesTable.originalName })
+    .from(sourcesTable).where(inArray(sourcesTable.docPath, [...sourceDocs])).all().map(source => [source.docPath, source]) : []);
+  const queryTerms = extractTerms(question);
+  const results: RetrievedPage[] = [];
+  let used = 0;
+
+  for (const [pageId, score] of ordered) {
+    if (results.length >= limit) break;
+
+    const row = rowById.get(pageId);
+    if (!row || row.status !== "active") continue;
+
+    const vectorHit = options.vectorHits?.find(hit => hit.pageId === pageId);
+    const { content, sourcePage, vectorValid } = readContent(row.filePath, vectorHit);
+    if (vectorHit && !vectorValid && sourceByPageId.get(pageId) === "vector") continue;
+    if (!content) continue;
+
+    const remaining = Math.max(0, charBudget - used);
+    if (!remaining) break;
+
+    const frontmatter = safeParse(row.frontmatterJson);
+    const firstSourceDoc = Array.isArray(frontmatter?.sources) && frontmatter.sources.length > 0
+      ? (frontmatter.sources[0] as { doc?: string }).doc
+      : undefined;
+    const sourceDoc = firstSourceDoc ? sourceByDoc.get(firstSourceDoc)?.originalName ?? null : null;
+    const sourceRefs = (Array.isArray(frontmatter?.sources) ? frontmatter.sources : [])
+      .map((rawRef) => {
+        if (!rawRef || typeof rawRef !== "object") return null;
+        const ref = rawRef as { doc?: string; page?: number; quote?: string };
+        if (!ref.doc) return null;
+        const source = sourceByDoc.get(ref.doc);
+        return {
+          sourceId: source?.id ?? null,
+          originalName: source?.originalName ?? "原始资料",
+          page: typeof ref.page === "number" ? ref.page : null,
+          quote: typeof ref.quote === "string" ? ref.quote : null,
+        };
+      })
+      .filter((ref): ref is NonNullable<typeof ref> => ref !== null);
+
+    const clipped = excerptForQuery(content, question, Math.min(MAX_CHUNK_CHARS, remaining), queryTerms);
+
+    used += clipped.length;
+    results.push({
+      pageId,
+      title: row.title,
+      type: row.type,
+      filePath: row.filePath,
+      content: clipped,
+      matchedBy: sourceByPageId.get(pageId) ?? "fulltext",
+      score,
+      sourcePage,
+      sourceDoc: sourceDoc || null,
+      sourceRefs,
+    });
+    if (results.length % 4 === 0) options.onProgress?.({ stage: "reading", label: `读取相关资料 · 第 ${Math.ceil(results.length / 4)} 批 · 已读取 ${results.length} 个词条`, pages: results.slice(-4).map(page => ({ pageId: page.pageId, title: page.title, matchedBy: page.matchedBy })) });
+  }
+
+  if (results.length % 4 !== 0 || results.length === 0) options.onProgress?.({ stage: "reading", label: results.length ? `资料读取完成 · 共 ${results.length} 个词条` : "没有找到匹配的知识库资料", pages: results.slice(results.length - results.length % 4).map(page => ({ pageId: page.pageId, title: page.title, matchedBy: page.matchedBy })) });
+
+  options.onTrace?.({ stage: "reading", durationMs: performance.now() - stageStarted, hits: results.map(page => ({ pageId: page.pageId, score: page.score, content: page.content })) });
+  return results;
+}
+
+/** 把检索结果转成给模型看的带编号上下文 */
+export function toContextChunks(retrieved: RetrievedPage[]): ContextChunk[] {
+  // 编号 = 位置（1-based），不是数据库 id。
+  // 用不透明 id 的话前端拿标记里的数字去索引会变成死链。
+  return retrieved.map((page, index) => ({
+    index: index + 1,
+    pageTitle: page.title,
+    pagePath: page.filePath,
+    pageType: page.type,
+    sourcePage: page.sourcePage,
+    sourceDoc: page.sourceDoc,
+    sourceRefs: page.sourceRefs,
+    content: page.content,
+  }));
+}
+
+function priority(source: RetrievedPage["matchedBy"]): number {
+  return { title: 4, alias: 3, fulltext: 2, vector: 2, graph: 1 }[source];
+}
+
+/** 混合召回 + 图谱扩展 + 有界重排；网络失败不损失本地文字检索。 */
+export async function retrieveHybrid(question: string, options: RetrieveOptions & { signal?: AbortSignal; config?: RetrievalModelSettings } = {}): Promise<RetrievedPage[]> {
+  const config = options.config ?? getSettings().retrievalModel;
+  if (!config.enabled) return retrieve(question, options);
+  options.signal?.throwIfAborted();
+  scheduleEmbeddingIndex();
+  const limit = options.limit ?? DEFAULT_LIMIT;
+  let vectorHits: VectorHit[] = [];
+  let stageStarted = performance.now();
+  try {
+    vectorHits = await searchVectors(question, config, Math.min(40, limit * 3), options.signal);
+    options.onProgress?.({ stage: "vectors", label: `向量召回完成 · ${vectorHits.length} 个候选` });
+    options.onTrace?.({ stage: "vectors", durationMs: performance.now() - stageStarted, hits: vectorHits });
+  } catch {
+    options.signal?.throwIfAborted();
+    options.onProgress?.({ stage: "vectors", label: "向量服务暂不可用，继续文字检索" });
+    options.onTrace?.({ stage: "vectors", durationMs: performance.now() - stageStarted, hits: [], fallback: true });
+  }
+  const candidates = retrieve(question, { ...options, vectorHits, limit: Math.min(40, limit * 3), charBudget: Math.min(120_000, Math.max(options.charBudget ?? 24_000, limit * 3 * MAX_CHUNK_CHARS)) });
+  let ordered = candidates;
+  if (config.rerankModel && candidates.length) {
+    stageStarted = performance.now();
+    try {
+      const ranked = await rerankTexts(config, question, candidates.map(page => `${page.title}\n${page.content}`.slice(0, config.chunkChars)), options.signal);
+      ordered = ranked.map(hit => ({ ...candidates[hit.index], score: hit.score }));
+      options.onProgress?.({ stage: "reranking", label: `语义重排完成 · ${ordered.length} 个候选` });
+      options.onTrace?.({ stage: "reranking", durationMs: performance.now() - stageStarted, hits: ordered.map(page => ({ pageId: page.pageId, score: page.score })) });
+      // MIRACL 中文开发集校准：BGE 重排与向量信号互补，单用重排会丢失排序信息。
+      // 系数仅适用于这两个已实测模型；其他模型继续使用服务返回的重排顺序。
+      if (config.embeddingModel === "BAAI/bge-m3" && config.rerankModel === "BAAI/bge-reranker-v2-m3" && vectorHits.length) {
+        const vectorScores = new Map(vectorHits.map(hit => [hit.pageId, hit.score]));
+        ordered = ordered.map(page => ({ ...page, score: page.score + 8 * (vectorScores.get(page.pageId) ?? 0) }))
+          .sort((a, b) => b.score - a.score);
+      }
+    } catch {
+      options.signal?.throwIfAborted();
+      options.onProgress?.({ stage: "reranking", label: "重排服务暂不可用，保留混合召回顺序" });
+      options.onTrace?.({ stage: "reranking", durationMs: performance.now() - stageStarted, hits: [], fallback: true });
+    }
+  }
+  let used = 0; const result: RetrievedPage[] = [];
+  for (const page of ordered) {
+    if (result.length >= limit) break;
+    const remaining = (options.charBudget ?? 24_000) - used;
+    if (remaining <= 0) break;
+    const content = page.content.slice(0, remaining);
+    used += content.length; result.push({ ...page, content });
+  }
+  options.onTrace?.({ stage: "result", durationMs: 0, hits: result.map(page => ({ pageId: page.pageId, score: page.score, content: page.content })) });
+  return result;
+}
+
+function safeParse(json: string): Record<string, unknown> | null {
+  try {
+    const value = JSON.parse(json);
+    return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}

@@ -1,16 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
+import { notLike } from "drizzle-orm";
 import { ulid } from "ulid";
 import { getDb } from "@/lib/db/client";
 import { edges, indexMeta, ingestQueue, jobs, links, pages, redirects, reviewItems, sources } from "@/lib/db/schema";
 import { rebuildIndexFile } from "@/lib/index/index-file";
 import { reindexAll } from "@/lib/index/reindex";
-import { commitVault, ensureGitRepo } from "@/lib/git/auto-commit";
+import { backupVault } from "@/lib/git/auto-commit";
 import { suppressWatcher } from "@/lib/index/watch-suppression";
 import { localISOString } from "@/lib/utils";
 import { parsePage } from "./frontmatter";
 import { ensureVaultLayout, INGEST_QUEUE_DIR, PARSED_DIR, RAW_DIR, WIKI_DIR, WORK_DIR, VAULT_ROOT } from "./paths";
 import { appendLog } from "./service";
+import { hasUnfinishedVaultTransaction, recoverVaultTransactions, prepareJournal, markJournalCommitted, finishJournal, journalWriteIntent, journalRelative, directoryDigests, fileDigest, type Journal } from "./transaction-journal";
+import { writeFileAtomic, syncDirectory, copyFileAtomic } from "./atomic";
 
 const BATCHES_DIR = path.join(WORK_DIR, "trash", "batches");
 const ARCHIVED_DIRS = [
@@ -45,6 +48,7 @@ export type ArchiveBatchSummary = {
   sourceCount: number;
   archivedFiles: number;
   restoredAt: string | null;
+  backupWarning?: string | null;
 };
 
 export type DeletedPageSummary = {
@@ -63,6 +67,7 @@ export class ArchiveRestoreError extends Error {
 
 /** Archive the current knowledge snapshot and rebuild an empty active vault index. */
 export function clearKnowledgeBase(): ArchiveBatchSummary {
+  if (hasUnfinishedVaultTransaction()) throw new ArchiveRestoreError("存在未恢复的文件事务，请停止服务并核对完整备份后再清空。");
   ensureVaultLayout();
   fs.mkdirSync(BATCHES_DIR, { recursive: true });
 
@@ -80,7 +85,10 @@ export function clearKnowledgeBase(): ArchiveBatchSummary {
   const createdAt = localISOString();
   const batchDir = path.join(BATCHES_DIR, id);
   const moved: Array<{ from: string; to: string }> = [];
-  const restoreMetadata = snapshotMetadata();
+  const operations = ARCHIVED_DIRS.filter(directory => fs.existsSync(directory.active)).map(directory => ({
+    from: journalRelative(directory.active), to: journalRelative(path.join(batchDir, directory.archive)), hashes: directoryDigests(directory.active),
+  }));
+  const metadata = snapshotMetadata([path.join(batchDir, "manifest.json")], { moves: operations });
   suppressWatcher();
 
   try {
@@ -89,6 +97,7 @@ export function clearKnowledgeBase(): ArchiveBatchSummary {
       if (!fs.existsSync(/* turbopackIgnore: true */ directory.active)) continue;
       const archived = path.join(batchDir, directory.archive);
       fs.renameSync(directory.active, archived);
+      syncDirectory(path.dirname(directory.active)); syncDirectory(path.dirname(archived));
       moved.push({ from: directory.active, to: archived });
     }
     const archivedFiles = moved.reduce((count, entry) => count + countFiles(entry.to), 0);
@@ -105,7 +114,7 @@ export function clearKnowledgeBase(): ArchiveBatchSummary {
       ingestQueue: queueRows,
       redirects: redirectRows,
     };
-    fs.writeFileSync(path.join(batchDir, "manifest.json"), JSON.stringify(manifest, null, 2), "utf8");
+    metadata.write(path.join(batchDir, "manifest.json"), JSON.stringify(manifest, null, 2));
 
     db.transaction((tx) => {
       tx.delete(links).run();
@@ -116,36 +125,18 @@ export function clearKnowledgeBase(): ArchiveBatchSummary {
       tx.delete(sources).run();
       tx.delete(ingestQueue).run();
       tx.delete(jobs).run();
-      tx.delete(indexMeta).run();
+      tx.delete(indexMeta).where(notLike(indexMeta.key, "vault-transaction:%")).run();
       ensureVaultLayout();
       reindexAll();
       rebuildIndexFile();
-      appendLog("DELETE", `清空知识库，${pageCount} 个词条与 ${sourceRows.length} 份原始资料已归档到回收站批次 ${id}`);
-      commitVault("清空知识库并归档旧资料");
+      appendLog("DELETE", `清空知识库，${pageCount} 个词条与 ${sourceRows.length} 份原始资料已归档到回收站批次 ${id}`, undefined, metadata.logIntent);
+      markJournalCommitted(metadata.journal.id);
     });
-    return { id, createdAt, pageCount, sourceCount: sourceRows.length, archivedFiles, restoredAt: null };
+    metadata.finish();
+    const backup = backupVault("清空知识库并归档旧资料");
+    return { id, createdAt, pageCount, sourceCount: sourceRows.length, archivedFiles, restoredAt: null, backupWarning: backup.backupWarning };
   } catch (error) {
-    // SQLite 已回滚；恢复文件目录与 Git 暂存状态，不把失败说成成功清空。
-    let recoveryIncomplete = false;
-    for (const { from, to } of moved.reverse()) {
-      try {
-        if (fs.existsSync(to)) {
-          fs.rmSync(from, { recursive: true, force: true });
-          fs.renameSync(to, from);
-        }
-      } catch {
-        recoveryIncomplete = true; // 保留归档副本，绝不能在恢复失败时删除唯一资料。
-      }
-    }
-    restoreMetadata();
-    try {
-      if (!recoveryIncomplete && fs.existsSync(batchDir)) fs.rmSync(batchDir, { recursive: true, force: true });
-      ensureVaultLayout();
-    } catch {
-      // The original error carries the actionable failure.
-    }
-    if (recoveryIncomplete) throw new ArchiveRestoreError(`清空未完成，部分目录无法自动回迁。归档副本保留在 ${batchDir}，请关闭服务后检查权限并恢复副本。`);
-    throw error;
+    rollbackArchive(error);
   }
 }
 
@@ -181,7 +172,8 @@ export function listDeletedPages(): DeletedPageSummary[] {
 }
 
 /** 只清理回收站副本。先移走、提交，再物理删除；失败时恢复原位置。 */
-export function purgeTrash(input: { kind: "page" | "batch"; id: string } | { kind: "all" }): { deleted: number } {
+export function purgeTrash(input: { kind: "page" | "batch"; id: string } | { kind: "all" }): { deleted: number; backupWarning?: string | null } {
+  if (hasUnfinishedVaultTransaction()) throw new ArchiveRestoreError("存在未恢复的文件事务，暂不能清理回收站。");
   const trashDir = path.join(WORK_DIR, "trash");
   const targets: string[] = [];
   if (input.kind === "all") {
@@ -199,30 +191,31 @@ export function purgeTrash(input: { kind: "page" | "batch"; id: string } | { kin
   }
   if (!targets.length) return { deleted: 0 };
   const staging = path.join(WORK_DIR, `trash-purge-${ulid()}`);
-  const moved: Array<{ from: string; to: string }> = [];
-  const restoreMetadata = snapshotMetadata();
+  const operations = targets.map((from, index) => ({ from: journalRelative(from), to: journalRelative(path.join(staging, String(index))), hashes: directoryDigests(from) }));
+  const metadata = snapshotMetadata([], { moves: operations, removeOnCommit: [journalRelative(staging)] });
   suppressWatcher();
   try {
     fs.mkdirSync(staging);
     for (const [index, from] of targets.entries()) {
       const to = path.join(staging, String(index));
       fs.renameSync(from, to);
-      moved.push({ from, to });
+      syncDirectory(path.dirname(from)); syncDirectory(path.dirname(to));
     }
-    appendLog("DELETE", `从回收站移除 ${targets.length} 个项目`);
-    commitVault("清理回收站");
+    getDb().transaction(() => {
+      appendLog("DELETE", `从回收站移除 ${targets.length} 个项目`, undefined, metadata.logIntent);
+      markJournalCommitted(metadata.journal.id);
+    });
   } catch (error) {
-    for (const { from, to } of moved.reverse()) fs.renameSync(to, from);
-    restoreMetadata();
-    fs.rmSync(staging, { recursive: true, force: true });
-    throw error;
+    rollbackArchive(error);
   }
-  fs.rmSync(staging, { recursive: true, force: true });
-  return { deleted: targets.length };
+  // Physical cleanup may resume at startup after the business commit.
+  try { fs.rmSync(staging, { recursive: true, force: true }); syncDirectory(WORK_DIR); metadata.finish(); } catch (error) { console.error("[vault] 回收站清理将于启动时继续：", error); }
+  return { deleted: targets.length, backupWarning: backupVault("清理回收站").backupWarning };
 }
 
 /** Restore archived files and their source/review records; refuse path or hash collisions. */
 export function restoreArchiveBatch(id: string): ArchiveBatchSummary {
+  if (hasUnfinishedVaultTransaction()) throw new ArchiveRestoreError("存在未恢复的文件事务，暂不能恢复归档。");
   if (!/^[0-9A-HJKMNP-TV-Z]{26}$/.test(id)) throw new ArchiveRestoreError("回收站批次编号无效。");
   const batchDir = path.join(BATCHES_DIR, id);
   const manifest = readManifest(batchDir);
@@ -256,17 +249,15 @@ export function restoreArchiveBatch(id: string): ArchiveBatchSummary {
     throw new ArchiveRestoreError(`恢复前发现 ${conflicts.length} 处重名，当前资料没有改动：${conflicts.slice(0, 5).join("、")}`);
   }
 
-  const copied: string[] = [];
-  const restoreMetadata = snapshotMetadata([path.join(batchDir, "manifest.json")]);
+  const copyOperations = fileGroups.flatMap(group => listFiles(group.source).map(relative => ({ to: journalRelative(path.join(group.target, relative)), hash: fileDigest(path.join(group.source, relative)) })));
+  const metadata = snapshotMetadata([path.join(batchDir, "manifest.json")], { copies: copyOperations });
   suppressWatcher();
   try {
     for (const group of fileGroups) {
       for (const relative of listFiles(group.source)) {
         const from = path.join(group.source, relative);
         const to = path.join(group.target, relative);
-        fs.mkdirSync(path.dirname(to), { recursive: true });
-        fs.copyFileSync(from, to, fs.constants.COPYFILE_EXCL);
-        copied.push(to);
+        copyFileAtomic(from, to);
       }
     }
 
@@ -282,19 +273,15 @@ export function restoreArchiveBatch(id: string): ArchiveBatchSummary {
       for (const redirect of manifest.redirects ?? []) tx.insert(redirects).values(redirect).onConflictDoNothing().run();
       reindexAll();
       rebuildIndexFile();
-      appendLog("RESTORE", `从回收站批次 ${id} 恢复 ${manifest.pageCount} 个词条与 ${manifest.sourceCount} 份原始资料`);
-      fs.writeFileSync(path.join(batchDir, "manifest.json"), JSON.stringify({ ...manifest, restoredAt: localISOString() }, null, 2), "utf8");
-      commitVault("从回收站恢复知识库资料");
+      appendLog("RESTORE", `从回收站批次 ${id} 恢复 ${manifest.pageCount} 个词条与 ${manifest.sourceCount} 份原始资料`, undefined, metadata.logIntent);
+      metadata.write(path.join(batchDir, "manifest.json"), JSON.stringify({ ...manifest, restoredAt: localISOString() }, null, 2));
+      markJournalCommitted(metadata.journal.id);
     });
+    metadata.finish();
     const restoredAt = localISOString();
-    return { ...toSummary(manifest), restoredAt };
+    return { ...toSummary(manifest), restoredAt, backupWarning: backupVault("从回收站恢复知识库资料").backupWarning };
   } catch (error) {
-    for (const file of copied.reverse()) {
-      try { fs.rmSync(file, { force: true }); } catch { /* continue cleanup */ }
-    }
-    for (const group of fileGroups) pruneEmptyDirectories(group.target);
-    restoreMetadata();
-    throw error;
+    rollbackArchive(error);
   }
 }
 
@@ -311,15 +298,16 @@ function readManifest(batchDir: string): ArchiveManifest | null {
   }
 }
 
-function snapshotMetadata(extraFiles: string[] = []): () => void {
-  ensureGitRepo();
-  const files = [path.join(VAULT_ROOT, "index.md"), path.join(VAULT_ROOT, "log.md"), path.join(VAULT_ROOT, ".git", "index"), ...extraFiles];
-  const originals = files.map((file) => ({ file, content: fs.existsSync(file) ? fs.readFileSync(file) : null }));
-  return () => {
-    for (const { file, content } of originals) {
-      if (content === null) fs.rmSync(file, { force: true });
-      else fs.writeFileSync(file, content);
-    }
+function snapshotMetadata(extraFiles: string[] = [], operations: Pick<Journal, "moves" | "copies" | "removeOnCommit"> = {}) {
+  const files = [path.join(VAULT_ROOT, "index.md"), path.join(VAULT_ROOT, "log.md"), ...extraFiles];
+  const originals = files.map(file => ({ file, content: fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null }));
+  const journal = prepareJournal(originals.map(({ file, content }) => ({ relative: journalRelative(file), original: content })), operations);
+  return {
+    journal,
+    logIntent: (next: string) => journalWriteIntent(journal, "log.md", next),
+    write: (file: string, content: string) => { journalWriteIntent(journal, journalRelative(file), content); writeFileAtomic(file, content); },
+    // Cleanup failures must never roll back a committed archive operation.
+    finish: () => { try { finishJournal(journal.id); } catch (error) { console.error("[vault] 恢复日志保留至下次启动：", error); } },
   };
 }
 
@@ -354,12 +342,12 @@ function listFiles(dir: string, prefix = ""): string[] {
   return files;
 }
 
-function pruneEmptyDirectories(root: string): void {
-  if (!fs.existsSync(root)) return;
-  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-    if (entry.isDirectory()) pruneEmptyDirectories(path.join(root, entry.name));
+
+function rollbackArchive(original: unknown): never {
+  try { recoverVaultTransactions(); }
+  catch (recovery) {
+    console.error("[vault] 归档回滚未完成，已保留全部恢复记录：", { original, recovery });
+    throw new ArchiveRestoreError("操作未完成，恢复时检测到外部改动或磁盘错误。已保留归档与恢复日志，请停止服务并核对备份后再写入。");
   }
-  if (fs.readdirSync(root).length === 0 && root !== WIKI_DIR && root !== RAW_DIR && root !== PARSED_DIR && root !== INGEST_QUEUE_DIR) {
-    fs.rmdirSync(root);
-  }
+  throw original;
 }

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { and, asc, eq, inArray } from "drizzle-orm";
@@ -7,10 +7,11 @@ import { getDb } from "@/lib/db/client";
 import { ingestQueue, jobs } from "@/lib/db/schema";
 import { startIngest, resumeIngest } from "@/lib/ingest/pipeline";
 import { canImport } from "@/lib/ingest/parse/router";
-import { UnsupportedFormatError } from "@/lib/ingest/parse/types";
+import { UnsupportedFormatError, ParseQualityError } from "@/lib/ingest/parse/types";
 import { isLlmConfigured } from "@/lib/settings";
 import { INGEST_QUEUE_DIR, ensureVaultLayout } from "@/lib/vault/paths";
 import { localISOString } from "@/lib/utils";
+import { syncDirectory } from "@/lib/vault/atomic";
 
 const ACTIVE_JOB_STATUSES = ["queued", "running", "awaiting_review", "committing", "discarding"];
 
@@ -45,16 +46,19 @@ function safeOriginalName(name: string): string {
 
 /** 文件只在完整落盘后加入 SQLite 队列；未完成的上传不会显示为已排队。 */
 export async function stageIngestFile(name: string, bytes: Buffer): Promise<IngestQueueItem> {
+  if (!bytes.byteLength || bytes.byteLength > 200 * 1024 * 1024) throw new ParseQualityError("请选择非空且不超过 200 MB 的资料文件。");
   ensureVaultLayout();
   const id = ulid();
   const originalName = safeOriginalName(name);
   const filePath = stagedFilePath(id);
-  const temporaryPath = `${filePath}.tmp`;
+  const temporaryPath = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`);
   fs.mkdirSync(INGEST_QUEUE_DIR, { recursive: true });
 
   try {
-    await fs.promises.writeFile(temporaryPath, bytes, { flag: "wx" });
+    const file = await fs.promises.open(temporaryPath, "wx", 0o600);
+    try { await file.writeFile(bytes); await file.sync(); } finally { await file.close(); }
     await fs.promises.rename(temporaryPath, filePath);
+    syncDirectory(path.dirname(filePath));
     const item = {
       id,
       originalName,

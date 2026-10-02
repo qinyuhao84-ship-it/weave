@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
 import * as React from "react";
 import { Trash2, GitMerge } from "lucide-react";
@@ -71,6 +72,7 @@ export function PlanConfirmPanel({
   onCancel: () => void;
   busy?: boolean;
 }) {
+  const { t, locale } = useI18n();
   // 默认全勾：模型提议的每一件事都是某条回答要的结果，用户不勾才是例外
   const [approved, setApproved] = React.useState<Set<string>>(
     () => new Set(plan.pending.map((action) => action.id)),
@@ -91,20 +93,20 @@ export function PlanConfirmPanel({
     <Card className="min-w-0 border-[var(--warning)]/40 p-4 sm:p-5 [overflow-wrap:anywhere]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[12px] font-semibold tracking-[0.08em] text-foreground">等你确认</p>
+          <p className="text-[12px] font-semibold tracking-[0.08em] text-foreground">{t("review_plan_confirm_panel.m001")}</p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
             {plan.summary}
           </p>
         </div>
-        <Badge tone="warning">{plan.pending.length} 项</Badge>
+        <Badge tone="warning">{plan.pending.length} {t("review_plan_confirm_panel.m002")}</Badge>
       </div>
 
       {done > 0 && (
         <p className="mt-3 text-[11.5px] leading-relaxed text-muted-foreground">
-          {plan.applied.edits.length > 0 && `已改写 ${plan.applied.edits.length} 个词条`}
+          {plan.applied.edits.length > 0 && t("review_plan_confirm_panel.m003", {v0: plan.applied.edits.length})}
           {plan.applied.edits.length > 0 && plan.applied.created.length > 0 && "、"}
-          {plan.applied.created.length > 0 && `补建 ${plan.applied.created.length} 个词条`}
-          {" —— 这些已经保存到知识库，可前往词条中查看和编辑。"}
+          {plan.applied.created.length > 0 && t("review_plan_confirm_panel.m004", {v0: plan.applied.created.length})}
+          {t("review_plan_confirm_panel.m005")}
         </p>
       )}
 
@@ -113,8 +115,8 @@ export function PlanConfirmPanel({
           const checked = approved.has(action.id);
           const label =
             action.action === "delete"
-              ? `删除《${action.title}》`
-              : `把《${action.sourceTitle}》合并到《${action.targetTitle}》`;
+              ? t("review_plan_confirm_panel.m006", {v0: action.title})
+              : t("review_plan_confirm_panel.m007", {v0: action.sourceTitle, v1: action.targetTitle});
 
           return (
             <label
@@ -139,29 +141,26 @@ export function PlanConfirmPanel({
                   </p>
 
                   <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                    影响：{action.impact.totalReferences > 0
-                      ? `${action.impact.totalReferences} 处引用来自 ${action.impact.referencingPages.length} 个词条`
-                      : "没有任何词条引用它"}
+                    {t("review_plan_confirm_panel.m008")}{action.impact.totalReferences > 0
+                      ? t("review_plan_confirm_panel.m009", {v0: action.impact.totalReferences, v1: action.impact.referencingPages.length})
+                      : t("review_plan_confirm_panel.m010")}
                     {action.impact.referencingPages.length > 0 && (
                       <>
                         {" —— "}
                         {action.impact.referencingPages.slice(0, 5).map((page) => `《${page.title}》`).join("、")}
-                        {action.impact.referencingPages.length > 5 && " 等"}
+                        {action.impact.referencingPages.length > 5 && t("review_plan_confirm_panel.m011")}
                       </>
                     )}
-                    {action.action === "merge" && "；引用会改写为指向保留的那一个"}
+                    {action.action === "merge" && t("review_plan_confirm_panel.m012")}
                   </p>
 
                   <p className="mt-0.5 text-[11px] text-muted-foreground/70">
-                    这份影响范围是 {relativeTime(action.impact.computedAt)}算的
-                    {action.action === "merge" &&
-                      ` · 合并后正文 ${action.diffStat.added > 0 ? `+${action.diffStat.added}` : ""}${
-                        action.diffStat.removed > 0 ? ` −${action.diffStat.removed}` : ""
-                      } 行`}
+                    {t("review_plan_confirm_panel.m013")}{relativeTime(action.impact.computedAt, locale)}{t("review_plan_confirm_panel.m014")}{action.action === "merge" &&
+                      t("review_plan_confirm_panel.m015", {v0: action.diffStat.added > 0 ? `+${action.diffStat.added}` : "", v1: action.diffStat.removed > 0 ? ` −${action.diffStat.removed}` : ""})}
                   </p>
 
                   <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                    理由：{action.reason}
+                    {t("review_plan_confirm_panel.m016")}{action.reason}
                   </p>
                 </div>
               </div>
@@ -172,12 +171,12 @@ export function PlanConfirmPanel({
 
       {plan.applied.rejected.length > 0 && (
         <p className="mt-3 text-[11.5px] leading-relaxed text-[var(--warning)]">
-          这些提议没有采纳：{plan.applied.rejected.join("；")}
+          {t("review_plan_confirm_panel.m017")}{plan.applied.rejected.join("；")}
         </p>
       )}
       {plan.applied.conflicts.length > 0 && (
         <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--warning)]">
-          这些改动没能落盘：{plan.applied.conflicts.join("；")}
+          {t("review_plan_confirm_panel.m018")}{plan.applied.conflicts.join("；")}
         </p>
       )}
 
@@ -188,26 +187,23 @@ export function PlanConfirmPanel({
           onClick={() => onApply([...approved])}
           disabled={busy || approved.size === 0}
         >
-          执行选中的 {approved.size} 项
-        </Button>
+          {t("review_plan_confirm_panel.m019")}{approved.size} {t("review_plan_confirm_panel.m002")}</Button>
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy}>
-          全部不执行
-        </Button>
+          {t("review_plan_confirm_panel.m020")}</Button>
         <span className="text-[11px] text-muted-foreground">
-          没勾选的会留在「已回答」里，可以重新发起
-        </span>
+          {t("review_plan_confirm_panel.m021")}</span>
       </div>
     </Card>
   );
 }
 
 /** 「3 分钟前」。影响范围可能过期，用户有权知道它是什么时候算的 */
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, locale: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.round(diff / 60_000);
-  if (minutes <= 0) return "刚刚";
-  if (minutes < 60) return `${minutes} 分钟前`;
-  return `${Math.round(minutes / 60)} 小时前`;
+  if (minutes <= 0) return locale === "en" ? "just now" : "刚刚";
+  if (minutes < 60) return new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "short" }).format(-minutes, "minute");
+  return new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "short" }).format(-Math.round(minutes / 60), "hour");
 }
 
 /* ------------------------------------------------------ 机械修复计划 */
@@ -245,6 +241,7 @@ export function FixPlanPanel({
   onCancel: () => void;
   busy?: boolean;
 }) {
+  const { t } = useI18n();
   const [approved, setApproved] = React.useState<Set<string>>(
     () => new Set(plan.items.map((item) => item.id)),
   );
@@ -265,19 +262,16 @@ export function FixPlanPanel({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[12px] font-semibold tracking-[0.08em] text-foreground">
-            修复计划
-          </p>
+            {t("review_plan_confirm_panel.m022")}</p>
           <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
             {plan.summary}
           </p>
         </div>
-        <Badge tone="accent">{plan.items.length} 项</Badge>
+        <Badge tone="accent">{plan.items.length} {t("review_plan_confirm_panel.m002")}</Badge>
       </div>
 
       <p className="mt-3 text-[11.5px] leading-relaxed text-muted-foreground">
-        初稿是模型读着引用它的那几段话写的，没有原文出处 —— 建议点开看一眼再决定。
-        建出来的词条会标成低置信度、打上「体检补建」标签。
-      </p>
+        {t("review_plan_confirm_panel.m023")}</p>
 
       <div className="mt-3 space-y-2">
         {plan.items.map((item) => {
@@ -307,11 +301,11 @@ export function FixPlanPanel({
                   >
                     《{item.title}》
                     <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-                      {open ? "收起" : "看初稿"}
+                      {open ? t("review_plan_confirm_panel.m024") : t("review_plan_confirm_panel.m025")}
                     </span>
                   </button>
                   <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                    理由：{item.reason}
+                    {t("review_plan_confirm_panel.m016")}{item.reason}
                   </p>
                   {open && (
                     <textarea
@@ -333,8 +327,7 @@ export function FixPlanPanel({
 
       {plan.skipped.length > 0 && (
         <p className="mt-3 text-[11.5px] leading-relaxed text-muted-foreground">
-          建议先不建：
-          {plan.skipped.map((entry) => `「${entry.name}」${entry.reason ? `（${entry.reason}）` : ""}`).join("、")}
+          {t("review_plan_confirm_panel.m026")}{plan.skipped.map((entry) => `「${entry.name}」${entry.reason ? `（${entry.reason}）` : ""}`).join("、")}
         </p>
       )}
 
@@ -345,11 +338,9 @@ export function FixPlanPanel({
           disabled={busy || approved.size === 0}
           onClick={() => onApply([...approved], edits)}
         >
-          补建选中的 {approved.size} 个
-        </Button>
+          {t("review_plan_confirm_panel.m027")}{approved.size} {t("review_plan_confirm_panel.m028")}</Button>
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy}>
-          放弃这个计划
-        </Button>
+          {t("review_plan_confirm_panel.m029")}</Button>
       </div>
     </Card>
   );

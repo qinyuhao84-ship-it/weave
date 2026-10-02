@@ -1,8 +1,9 @@
 {
   "name": "weave",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
+    "eval": "tsx scripts/retrieval-eval.mts",
     "dev": "node scripts/with-docling.mjs dev",
     "build": "node scripts/build.mjs",
     "start": "node scripts/with-docling.mjs start",
@@ -13,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "test:e2e": "playwright test",
-    "lint": "eslint app components hooks lib scripts tests types *.ts *.mts *.mjs --no-warn-ignored --max-warnings=0"
+    "lint": "eslint app components hooks lib scripts tests types *.ts *.mts *.mjs --no-warn-ignored --max-warnings=0",
+    "package:mac": "node scripts/package-desktop.mjs"
   },
   "dependencies": {
     "@mixmark-io/domino": "2.2.0",
@@ -44,6 +46,7 @@
     "ulid": "^3.0.2",
     "unist-util-visit": "^5.1.0",
     "unpdf": "^1.8.1",
+    "use-intl": "^4.14.8",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -61,6 +64,7 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.6",
+    "hyparquet": "1.31.2",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",

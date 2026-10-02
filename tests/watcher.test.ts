@@ -129,6 +129,19 @@ describe("文件监听器", () => {
     expect(received).toHaveLength(0);
   }, 15000);
 
+  it("抑制窗口内的真实外部编辑最终仍会索引与通知", async () => {
+    const relative = writePage("window", frontmatterFor("WINDOW", "窗口原标题"), "旧内容");
+    reindexAll(); await waitUntilReady();
+    suppressWatcher(1800);
+    const received: string[] = [];
+    const unsubscribe = onExternalChange(({ changes }) => changes.forEach(change => received.push(change.relativePath)));
+    const file = path.join(vaultRoot(), relative);
+    fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace("窗口原标题", "窗口外部标题"));
+    expect(await waitFor(() => getDb().select().from(pages).all().some(page => page.title === "窗口外部标题"))).toBe(true);
+    expect(received).toContain(relative);
+    unsubscribe();
+  }, 15000);
+
   it("重复 start 是幂等的", async () => {
     await startWatcher();
     await startWatcher();

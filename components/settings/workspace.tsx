@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
 import * as React from "react";
 import Link from "next/link";
@@ -9,6 +10,7 @@ import { useApi, apiFetch } from "@/hooks/use-api";
 import { useTheme } from "@/hooks/use-theme";
 import { useAppData } from "@/components/app-provider";
 import { ModelSection } from "./model-section";
+import { RetrievalSection } from "./retrieval-section";
 import { cn, formatDate } from "@/lib/utils";
 
 /** 个人偏好即时保存；模型连接配置在独立表单中显式保存。 */
@@ -43,6 +45,7 @@ type LintStatus = {
 };
 
 export function SettingsWorkspace() {
+  const { t, locale, setLocale } = useI18n();
   const { theme, setTheme, focusMode, toggleFocusMode } = useTheme();
   const { vault, bumpData, dataVersion } = useAppData();
   const { data, loading, error } = useApi<SettingsData>("/api/settings");
@@ -100,7 +103,7 @@ export function SettingsWorkspace() {
       await request;
       if (agentNameChanged) {
         savedAgentName.current = patch.agentName;
-        bumpData();
+        bumpData("settings");
       }
       setSaved(true);
       if (flash.current) window.clearTimeout(flash.current);
@@ -135,19 +138,19 @@ export function SettingsWorkspace() {
       });
       if (result.cancelled) return;
       if (result.pendingRoot) {
-        setLocationMessage(`已安排迁移到 ${result.pendingRoot}。重启服务后会复制并校验整个知识库，再切换到新位置。`);
+        setLocationMessage(t("settings_workspace.m001", {v0: result.pendingRoot}));
         bumpData();
       } else if (result.unchanged) {
-        setLocationMessage("知识库已经在所选位置。");
+        setLocationMessage(t("settings_workspace.m002"));
       } else if (result.opened) {
-        setLocationMessage("已在访达中打开知识库。");
+        setLocationMessage(t("settings_workspace.m003"));
       }
     } catch (err) {
-      setLocationMessage(err instanceof Error ? err.message : "操作没有完成。");
+      setLocationMessage(err instanceof Error ? err.message : t("settings_workspace.m004"));
     } finally {
       setLocationBusy(false);
     }
-  }, [bumpData]);
+  }, [bumpData, t]);
   const runRebuild = React.useCallback(async () => {
     setRebuilding(true);
     setRebuildNote(null);
@@ -157,13 +160,13 @@ export function SettingsWorkspace() {
       // 侧栏的词条数与各页面的数据都挂在 dataVersion 上，不通知的话
       // 用户点完重建，同一屏里刚看过的数字纹丝不动，没法判断生效了没有。
       bumpData();
-      setRebuildNote("已重建，页面上的数据会立即刷新。");
+      setRebuildNote(t("settings_workspace.m005"));
     } catch (err) {
-      setRebuildNote(err instanceof Error ? err.message : "重建失败。");
+      setRebuildNote(err instanceof Error ? err.message : t("settings_workspace.m006"));
     } finally {
       setRebuilding(false);
     }
-  }, [bumpData]);
+  }, [bumpData, t]);
 
   const update = React.useCallback(
     (key: string, value: string) => {
@@ -192,26 +195,28 @@ export function SettingsWorkspace() {
     return (
       <div className="mx-auto max-w-3xl px-6 py-20">
         <Card className="p-4">
-          <p className="text-[13px] text-[var(--destructive)]">{error ?? "加载设置失败。"}</p>
+          <p className="text-[13px] text-[var(--destructive)]">{error ?? t("settings_workspace.m007")}</p>
         </Card>
       </div>
     );
   }
 
-  const presets = data.personalityPresets;
+  const presets = Object.fromEntries(Object.entries(data.personalityPresets).map(([key, preset]) => [key, {
+    ...preset, label: t("personality." + key),
+    options: preset.options.map(option => ({ ...option, label: t("personality." + option.value), hint: t("personalityHints." + option.value) })),
+  }]));
 
   return (
     <>
       <PageHeader
-        title="设置"
-        description="模型、回答偏好与知识库。"
+        title={t("settings_workspace.m008")}
+        description={t("settings_workspace.m009")}
         maxWidth="3xl"
         actions={
           saved ? (
             <span className="msg-in flex items-center gap-1.5 text-[12px] text-[var(--success)]">
               <Check size={12} strokeWidth={2.5} />
-              已保存
-            </span>
+              {t("settings_workspace.m010")}</span>
           ) : undefined
         }
       />
@@ -223,21 +228,32 @@ export function SettingsWorkspace() {
           </Card>
         )}
 
+        <Section icon={<Palette size={14} />} title={t("language.label")} description={t("language.hint")}>
+          <Card className="p-5">
+            <label htmlFor="weave-language" className="mb-1.5 block text-sm font-medium">{t("language.label")}</label>
+            <select id="weave-language" aria-label={t("language.label")} value={locale} onChange={event => setLocale(event.target.value === "en" ? "en" : "zh-CN")} className="min-h-11 w-full max-w-xs rounded-lg border border-input bg-background px-3 py-2 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]">
+              <option value="zh-CN">简体中文</option>
+              <option value="en">English</option>
+            </select>
+          </Card>
+        </Section>
         <ModelSection />
+        <Hairline />
+        <RetrievalSection />
         {/* ---------------------------------------------- 个性化 */}
         <Section
           icon={<Sparkles size={14} />}
-          title="回答的个性化"
-          description="调整称呼、语气与回答长度，自动保存。"
+          title={t("settings_workspace.m011")}
+          description={t("settings_workspace.m012")}
         >
           <Card className="divide-y divide-[var(--border)]">
             <div className="p-5">
-              <Label hint="回答中使用的助手名称；留空会恢复为织识">Agent 名称</Label>
+              <Label hint={t("settings_workspace.m013")}>{t("settings_workspace.m014")}</Label>
               <Input
                 value={personality.agentName ?? ""}
                 onChange={(e) => update("agentName", e.target.value)}
                 placeholder="织识"
-                aria-label="Agent 名称"
+                aria-label={t("settings_workspace.m014")}
                 maxLength={20}
                 className="max-w-xs"
               />
@@ -269,12 +285,12 @@ export function SettingsWorkspace() {
             ))}
 
             <div className="p-5">
-              <Label hint="留空则不使用称呼语">对你的称谓</Label>
+              <Label hint={t("settings_workspace.m015")}>{t("settings_workspace.m016")}</Label>
               <Input
                 value={personality.address ?? ""}
                 onChange={(e) => update("address", e.target.value)}
-                placeholder="例如：秦小"
-                aria-label="对你的称谓"
+                placeholder={t("settings_workspace.m017")}
+                aria-label={t("settings_workspace.m016")}
                 maxLength={20}
                 className="max-w-xs"
               />
@@ -283,15 +299,15 @@ export function SettingsWorkspace() {
         </Section>
 
         {/* ---------------------------------------------- 外观 */}
-        <Section icon={<Palette size={14} />} title="外观">
+        <Section icon={<Palette size={14} />} title={t("settings_workspace.m018")}>
           <Card className="space-y-4 p-5">
             <div>
-              <Label>主题</Label>
+              <Label>{t("settings_workspace.m019")}</Label>
               <div className="flex gap-1.5">
                 {([
-                  { value: "light" as const, label: "浅色" },
-                  { value: "dark" as const, label: "深色" },
-                  { value: "system" as const, label: "跟随系统" },
+                  { value: "light" as const, label: t("settings_workspace.m020") },
+                  { value: "dark" as const, label: t("settings_workspace.m021") },
+                  { value: "system" as const, label: t("settings_workspace.m022") },
                 ]).map((option) => (
                   <button
                     key={option.value}
@@ -315,12 +331,11 @@ export function SettingsWorkspace() {
 
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[12.5px] font-medium text-foreground">专注配色</p>
+                <p className="text-[12.5px] font-medium text-foreground">{t("settings_workspace.m023")}</p>
                 <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                  深色下换成深靛蓝底，亮色下把纸压深一档，长时间阅读更安静。
-                </p>
+                  {t("settings_workspace.m024")}</p>
               </div>
-              <Switch checked={focusMode} onChange={toggleFocusMode} label="专注配色" />
+              <Switch checked={focusMode} onChange={toggleFocusMode} label={t("settings_workspace.m023")} />
             </div>
           </Card>
         </Section>
@@ -328,32 +343,29 @@ export function SettingsWorkspace() {
         {/* ---------------------------------------------- 知识库维护 */}
         <Section
           icon={<Database size={14} />}
-          title="知识库维护"
-          description="索引只是 Markdown 的一份查询副本，出问题时重算一遍即可。"
+          title={t("settings_workspace.m025")}
+          description={t("settings_workspace.m026")}
         >
           <Card className="space-y-4 p-5">
             <div>
-              <p className="text-[12.5px] font-medium text-foreground">上次知识库体检</p>
+              <p className="text-[12.5px] font-medium text-foreground">{t("settings_workspace.m027")}</p>
               <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                {lintStatus?.lastCompletedAt ? formatDate(lintStatus.lastCompletedAt) : "还没有完成过体检。"}
+                {lintStatus?.lastCompletedAt ? formatDate(lintStatus.lastCompletedAt, locale) : t("settings_workspace.m028")}
               </p>
               {lintStatus?.newSourcesSinceLastLint && (
-                <p className="mt-1 text-[11.5px] text-[var(--warning)]">上次体检后又导入了资料，建议再检查一次。</p>
+                <p className="mt-1 text-[11.5px] text-[var(--warning)]">{t("settings_workspace.m029")}</p>
               )}
               <Link href="/review" className="mt-2 inline-flex text-[11.5px] text-foreground underline underline-offset-4 hover:text-muted-foreground">
-                打开体检与审阅
-              </Link>
+                {t("settings_workspace.m030")}</Link>
             </div>
 
             <Hairline />
 
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[12.5px] font-medium text-foreground">从 Markdown 重建索引</p>
+                <p className="text-[12.5px] font-medium text-foreground">{t("settings_workspace.m031")}</p>
                 <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                  你的知识都在 vault 的 Markdown 文件里，数据库只是照着它们建的一份索引。
-                  重建就是丢掉索引、照着文件重算一遍 —— 不会改动、也不会丢失任何知识。
-                </p>
+                  {t("settings_workspace.m032")}</p>
               </div>
               {!confirming && (
                 <Button
@@ -363,8 +375,7 @@ export function SettingsWorkspace() {
                     setRebuildNote(null);
                   }}
                 >
-                  重建索引
-                </Button>
+                  {t("settings_workspace.m033")}</Button>
               )}
             </div>
 
@@ -372,15 +383,15 @@ export function SettingsWorkspace() {
 
             <dl className="flex flex-wrap gap-x-6 gap-y-1.5 text-[11.5px]">
               <div className="flex items-center gap-1.5">
-                <dt className="text-muted-foreground">词条</dt>
+                <dt className="text-muted-foreground">{t("settings_workspace.m034")}</dt>
                 <dd className="tabular-nums text-foreground">{vault?.stats.pages ?? "—"}</dd>
               </div>
               <div className="flex items-center gap-1.5">
-                <dt className="text-muted-foreground">关联</dt>
+                <dt className="text-muted-foreground">{t("settings_workspace.m035")}</dt>
                 <dd className="tabular-nums text-foreground">{vault?.stats.links ?? "—"}</dd>
               </div>
               <div className="flex items-center gap-1.5">
-                <dt className="text-muted-foreground">索引</dt>
+                <dt className="text-muted-foreground">{t("settings_workspace.m036")}</dt>
                 <dd
                   className={
                     vault && !vault.indexHealthy
@@ -388,15 +399,15 @@ export function SettingsWorkspace() {
                       : "text-foreground"
                   }
                 >
-                  {vault ? (vault.indexHealthy ? "正常" : "异常，建议重建") : "—"}
+                  {vault ? (vault.indexHealthy ? t("settings_workspace.m037") : t("settings_workspace.m038")) : "—"}
                 </dd>
               </div>
             </dl>
 
             <div>
-              <p className="text-[12.5px] font-medium text-foreground">知识库位置</p>
+              <p className="text-[12.5px] font-medium text-foreground">{t("settings_workspace.m039")}</p>
               <code className="mt-1 block break-all rounded-[8px] bg-[var(--muted)] px-2.5 py-2 font-mono text-[11px] text-foreground">
-                {vault?.vaultRoot ?? "正在读取…"}
+                {vault?.vaultRoot ?? t("settings_workspace.m040")}
               </code>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button
@@ -407,8 +418,7 @@ export function SettingsWorkspace() {
                   disabled={!vault?.canOpenLocation}
                   onClick={() => void handleVaultLocation("open")}
                 >
-                  在访达中打开
-                </Button>
+                  {t("settings_workspace.m041")}</Button>
                 <Button
                   size="sm"
                   variant="secondary"
@@ -417,42 +427,35 @@ export function SettingsWorkspace() {
                   disabled={!vault?.canChangeLocation || Boolean(vault?.pendingVaultRoot)}
                   onClick={() => void handleVaultLocation("choose")}
                 >
-                  选择新位置
-                </Button>
+                  {t("settings_workspace.m042")}</Button>
               </div>
               <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-                更换位置会迁移 Markdown、原始资料、索引数据库与本地备份记录。迁移在下次启动时完成，原文件通过校验后再切换。
-              </p>
+                {t("settings_workspace.m043")}</p>
               {!vault?.canChangeLocation && (
-                <p className="mt-2 text-[11.5px] text-muted-foreground">文件夹选择需 macOS 且未设置 WEAVE_VAULT；其他环境请通过启动环境变量指定位置。</p>
+                <p className="mt-2 text-[11.5px] text-muted-foreground">{t("settings_workspace.m044")}</p>
               )}
               {(locationMessage || vault?.pendingVaultRoot) && (
                 <p className="mt-2 text-[11.5px] leading-relaxed text-[var(--ring)]">
-                  {locationMessage ?? `已安排迁移到 ${vault?.pendingVaultRoot}。重启服务后生效。`}
+                  {locationMessage ?? t("settings_workspace.m045", {v0: vault?.pendingVaultRoot ?? ""})}
                 </p>
               )}
             </div>
 
             {confirming && (
               <div className="rounded-[10px] border border-border bg-[var(--muted)] p-3.5">
-                <p className="text-[12px] font-medium text-foreground">什么时候该点它</p>
+                <p className="text-[12px] font-medium text-foreground">{t("settings_workspace.m046")}</p>
                 <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                  上面显示「异常，建议重建」时；或者你在 Obsidian 里直接改过文件、感觉某处数据对不上时。
-                  重建会按当前文件重算全部词条、双链、关系图谱与全文索引，并重写 vault 根目录的
-                  index.md（因此会产生一次 git 提交）。词条多时需要数秒到数十秒，期间请不要关闭页面。
-                </p>
+                  {t("settings_workspace.m047")}</p>
                 <div className="mt-3 flex gap-2">
                   <Button size="sm" variant="primary" loading={rebuilding} onClick={runRebuild}>
-                    确认重建
-                  </Button>
+                    {t("settings_workspace.m048")}</Button>
                   <Button
                     size="sm"
                     variant="ghost"
                     disabled={rebuilding}
                     onClick={() => setConfirming(false)}
                   >
-                    取消
-                  </Button>
+                    {t("settings_workspace.m049")}</Button>
                 </div>
               </div>
             )}
@@ -469,6 +472,7 @@ export function SettingsWorkspace() {
 }
 
 function DatabaseClearSection({ bumpData }: { bumpData: () => void }) {
+  const { t, locale } = useI18n();
   const [confirming, setConfirming] = React.useState(false);
   const [phrase, setPhrase] = React.useState("");
   const [clearing, setClearing] = React.useState(false);
@@ -482,14 +486,14 @@ function DatabaseClearSection({ bumpData }: { bumpData: () => void }) {
     try {
       await apiFetch("/api/vault/clear", {
         method: "POST",
-        body: JSON.stringify({ confirmation: phrase.trim() }),
+        body: JSON.stringify({ confirmation: "清空" }),
       });
       setConfirming(false);
       setPhrase("");
-      setNotice("知识库已清空，之前的词条与原始资料已归档到回收站；对话与个性化设置已保留。");
+      setNotice(t("settings_workspace.m050"));
       bumpData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "清空知识库失败。");
+      setError(err instanceof Error ? err.message : t("settings_workspace.m051"));
     } finally {
       setClearing(false);
     }
@@ -498,39 +502,35 @@ function DatabaseClearSection({ bumpData }: { bumpData: () => void }) {
   return (
     <Section
       icon={<Database size={14} />}
-      title="清空知识库"
-      description="清空当前知识内容时，会先归档为可恢复批次。"
+      title={t("settings_workspace.m052")}
+      description={t("settings_workspace.m053")}
     >
       <Card className="space-y-3 p-5">
         <div>
-          <p className="text-[12.5px] font-medium text-foreground">归档并清空当前知识库</p>
+          <p className="text-[12.5px] font-medium text-foreground">{t("settings_workspace.m054")}</p>
           <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-            当前词条、原始资料、解析稿与待处理导入会一起存入回收站批次，再清空活动知识库。历史对话与引用快照、个性化配置和主题设置都会保留；清空批次可在“回收站”恢复。
-          </p>
+            {t("settings_workspace.m055")}</p>
         </div>
         {!confirming ? (
           <Button size="sm" variant="danger" onClick={() => { setConfirming(true); setError(null); setNotice(null); }}>
-            清空知识库
-          </Button>
+            {t("settings_workspace.m052")}</Button>
         ) : (
           <div className="space-y-3 rounded-[10px] border border-border bg-[var(--muted)] p-3.5">
-            <p className="text-[12px] font-medium text-foreground">当前内容会移入回收站</p>
-            <p className="text-[11.5px] leading-relaxed text-muted-foreground">请输入“清空”以确认。现有回收站批次不会被删除。</p>
+            <p className="text-[12px] font-medium text-foreground">{t("settings_workspace.m056")}</p>
+            <p className="text-[11.5px] leading-relaxed text-muted-foreground">{t("settings_workspace.m057")}</p>
             <Input
               value={phrase}
               onChange={(event) => setPhrase(event.target.value)}
-              placeholder="输入：清空"
-              aria-label="输入清空以确认"
+              placeholder={t("settings_workspace.m058")}
+              aria-label={t("settings_workspace.m059")}
               maxLength={8}
               autoComplete="off"
             />
             <div className="flex gap-2">
-              <Button size="sm" variant="danger" loading={clearing} disabled={phrase.trim() !== "清空"} onClick={clearKnowledgeBase}>
-                确认清空并归档
-              </Button>
+              <Button size="sm" variant="danger" loading={clearing} disabled={phrase.trim() !== (locale === "en" ? "CLEAR" : "清空")} onClick={clearKnowledgeBase}>
+                {t("settings_workspace.m060")}</Button>
               <Button size="sm" variant="ghost" disabled={clearing} onClick={() => { setConfirming(false); setPhrase(""); }}>
-                取消
-              </Button>
+                {t("settings_workspace.m049")}</Button>
             </div>
           </div>
         )}

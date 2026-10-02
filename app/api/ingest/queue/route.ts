@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { fail, handle, ok } from "@/lib/api";
 import { canImport } from "@/lib/ingest/parse/router";
 import { listIngestQueue, stageIngestFile } from "@/lib/ingest/queue";
-import { ensureGitRepo } from "@/lib/git/auto-commit";
 import { ensureVaultLayout } from "@/lib/vault/paths";
 
 const MAX_FILE_BYTES = 200 * 1024 * 1024;
@@ -18,7 +17,6 @@ export async function GET() {
 /** 逐份上传到 vault 内的暂存目录，写入完成后才显示为已排队。 */
 export async function POST(request: NextRequest) {
   ensureVaultLayout();
-  ensureGitRepo();
 
   let form: FormData;
   try {
