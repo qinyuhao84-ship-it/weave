@@ -1,0 +1,31 @@
+{
+  "status": "passed",
+  "at": "2026-10-02T03:32:19.130730+00:00",
+  "version": "0.2.0",
+  "environment": {
+    "os": "macOS 15.7.4",
+    "cpu": "Apple M2",
+    "arch": "arm64"
+  },
+  "dmgSha256": "f1531124e92bdfe83d85ba0a5767a6170c1e4d1e721c7cf3e177b12a397b9576",
+  "scope": "actual installed native app; isolated fixture vault; local mock models",
+  "checks": [
+    "Chinese search and result opening",
+    "native editing and save",
+    "system open panel",
+    "file import and reviewed commit",
+    "system save panel",
+    "raw download byte identity",
+    "mock chat and citation evidence",
+    "interactive HTML and full-screen reading",
+    "HTML download with source references",
+    "Command-Q stopped all three app processes",
+    "restart preserved native edit, import, chat and HTML"
+  ],
+  "screenshot": "screenshots/native-desktop.png",
+  "limits": [
+    "ad-hoc signature; no Developer ID or notarization",
+    "only macOS 15.7.4 on Apple Silicon tested",
+    "no claim of real model quality from this mock fixture"
+  ]
+}

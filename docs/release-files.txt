@@ -135,6 +135,7 @@ docs/benchmarks/hybrid-300.json
 docs/benchmarks/performance-1000.json
 docs/benchmarks/performance-300.json
 docs/chat-experience.md
+docs/desktop-native-acceptance.json
 docs/desktop-validation.md
 docs/desktop.md
 docs/evaluation/2026-10-02/DATA-NOTICE.md
@@ -161,6 +162,7 @@ docs/evaluation/2026-10-02/evidence/summary.json
 docs/evaluation/2026-10-02/experimental-v2-retrieve.ts.txt
 docs/evaluation/2026-10-02/frozen.json
 docs/evaluation/2026-10-02/manifest.json
+docs/evaluation/2026-10-02/metrics.md
 docs/evaluation/2026-10-02/original-retrieve.ts.txt
 docs/evaluation/2026-10-02/queries.jsonl
 docs/evaluation/2026-10-02/rank-confidence.json
@@ -241,6 +243,7 @@ docs/screenshots/README.md
 docs/screenshots/chat.png
 docs/screenshots/graph.png
 docs/screenshots/knowledge.png
+docs/screenshots/native-desktop.png
 docs/screenshots/review.png
 docs/validation.md
 drizzle.config.ts
