@@ -2,6 +2,8 @@
 
 本记录使用真实公开资料和人工标注，真实检索模型为硅基流动的 `BAAI/bge-m3` 与 `BAAI/bge-reranker-v2-m3`。所有运行使用隔离知识库，不修改个人资料或日常模型配置。统计只代表本受限语料评测，不能解释为知识库产品行业平均。
 
+[指标定义、样本量、基线与延迟口径](metrics.md)。Recall、Precision 与问答正确率是不同指标；不完整相关性标注和代理复核的限制在说明中单独披露。
+
 ## 完整附件
 
 [下载完整逐题记录与冻结资料](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.0/Weave-evaluation-2026-10-02.tar.gz)。附件保留三轮 `rows.jsonl`、`trace.jsonl`、逐题问答/复核、资料正文与冻结源码；Git 中保留汇总、问题、标注、哈希、报告与失败样例，避免重复正文让源码仓库膨胀。账号控制台与实时剩余额度证据不公开。
