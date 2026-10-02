@@ -21,3 +21,9 @@ Mac 锁屏阻止了原生窗口的鼠标键盘及截图验收；后台安装与�
 沿用已有公开 Git 历史，不复制本地开发 `.git` 或个人知识库。完整评测附件排除实时账号额度证据，按来源许可提供三轮正文、问题/答案、逐题结果、复核、追踪与冻结源码。GitHub 源码保留小型报告。发布目录与完整可达历史使用 Gitleaks 8.30.1 扫描；另核对本机已知凭据和个人路径，不输出实际值。本地公开目录与既有完整历史扫描零命中；3 份已知凭据对 3,322 个发布与安装文件及公开历史做精确匹配，零命中。发布提交的完整历史继续由 Actions 验证；扫描不保证发现所有未知凭据。
 
 [源码与双平台回归](https://github.com/qinyuhao84-ship-it/weave/actions/workflows/ci.yml) · [Release 附件和校验和](https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.0)
+
+## 最终干净环境构建
+
+[干净 runner 桌面构建](https://github.com/qinyuhao84-ship-it/weave/actions/runs/36947171676)全部通过：固定依赖安装、生产构建、Git/Swift 编译、打包签名、DMG 校验及产物保存。首轮发现空 `public/` 不在 Git 克隆中，已将复制改为目录存在时执行；失败保留于 [首轮构建](https://github.com/qinyuhao84-ship-it/weave/actions/runs/36946512906)。这是分发脚本修复，没有改变冻结检索逻辑或已安装应用的运行代码。
+
+[修复后双平台完整回归与历史扫描](https://github.com/qinyuhao84-ship-it/weave/actions/runs/36947168262)全部通过；macOS/Ubuntu 均完成 lint、build、typecheck、777 项测试及完整浏览器回归，普通 CI 没有真实模型凭据或调用。
