@@ -6,7 +6,7 @@
 
 打开 DMG，将「织识」拖到「Applications」，弹出磁盘映像，从应用程序打开织识。应用内置运行时与本地备份所需 Git，基础功能无需 Node、pnpm、Xcode 或终端。首次打开会建立默认知识库 `~/Documents/织识`；位置配置与日志在 `~/Library/Application Support/Weave`。如果已有同名知识库，会读取现有资料，不创建演示内容。
 
-在「设置 → 模型服务」填写自己的服务与型号；没有模型也可浏览、编辑和搜索。混合检索需单独配置嵌入/重排。数字 PDF、文本和 Office 有基础解析；此桌面版没有捆绑 Docling、OCR 模型或 Python，高质量 OCR/PPTX 需另行配置解析服务。
+在「设置 → 模型服务」填写自己的服务与型号；没有模型也可浏览、编辑和搜索。混合检索需单独配置嵌入/重排。Markdown、纯文本、HTML、DOCX 与数字 PDF 有基础解析；此桌面版没有捆绑 Docling、OCR 模型或 Python，高质量 OCR/PPTX 需另行配置解析服务。
 
 此包为 **ad-hoc 签名的桌面预览版，尚未 Apple Developer ID 签名和公证**。下载后的首次启动可能被 macOS 阻止；请核对 Release 来源与 SHA-256，并依据系统「隐私与安全性」提示决定是否允许打开。不要关闭 Gatekeeper。未将本机无隔离标记的安装测试解释为互联网下载后的公证验证。
 
