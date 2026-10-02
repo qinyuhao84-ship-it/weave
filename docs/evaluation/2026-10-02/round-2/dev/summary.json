@@ -1,0 +1,252 @@
+{
+  "at": "2026-10-01T22:55:01.988Z",
+  "datasetHash": "5cb2a2f1b7039499bd09711228ba24d4776438f3df3484403fa8ca1c5d8c4318",
+  "sourceHash": "6223da1141d820a0738943d9e425ab920cf6201666f2ef17a843acbb106fa939",
+  "implementationHashes": {
+    "lib/chat/retrieve.ts": "6223da1141d820a0738943d9e425ab920cf6201666f2ef17a843acbb106fa939",
+    "lib/chat/answer.ts": "daa817d4df1a497dba29da061470826610abb524e1647a46fcf4b4900137539a",
+    "lib/chat/context.ts": "8690bd623f0721b5d40ee5849dc915449a8a226761c6804c5434a8c2fa1e4979",
+    "lib/index/embeddings.ts": "bec631661dd832f28c7f4938ca8159fc64d87566b43949b84b1d18db24a37dbe",
+    "lib/llm/retrieval.ts": "4cd7b8c184113716fdbdff69b84b6550bd1ee0df9e9d73d02b794d05bb875d4a",
+    "scripts/eval/run.ts": "2772a1c88241620e2fe135c09087e073b05354e49057873afae51745dfc0a825",
+    "scripts/eval/cache.ts": "294c99edc375eb840326d25b591c9c02758b200ad45300f895230724174aef0e",
+    "scripts/eval/metrics.ts": "0bcf6a2a322ab014392455c8c48d4560e6e7356601ea46a1ecce636c51cef4d4",
+    "scripts/eval/prepare.ts": "ba3fd7293671cc0f865a926bf9a7801c05de8190a755a5bc8ee1cb1349a9928b",
+    "pnpm-lock.yaml": "3338508751965c286d2a152e69d98cb4691146c724ec670b666a9c99dab1209e"
+  },
+  "originalHash": "3209daf6d921894e774835a29a2f095d96c35a2a71ac1e4712643b4baaa61355",
+  "split": "dev",
+  "suite": "retrieval",
+  "config": {
+    "topK": 10,
+    "charBudget": 24000,
+    "embedding": "BAAI/bge-m3",
+    "rerank": "BAAI/bge-reranker-v2-m3",
+    "chunkChars": 2000,
+    "baselineCandidates": 50,
+    "rrfConstant": 60
+  },
+  "environment": {
+    "node": "v26.3.1",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M2",
+    "memoryGB": 24
+  },
+  "methods": {
+    "original": {
+      "samples": 200,
+      "metrics": {
+        "recall5": 0.870343253968254,
+        "recall10": 0.9812023809523809,
+        "hit5": 0.965,
+        "hit10": 0.99,
+        "mrr10": 0.8217916666666666,
+        "ndcg10": 0.8416953838496827,
+        "precision5": 0.3800000000000006,
+        "precision10": 0.22700000000000034,
+        "judgedPrecision10": 0.2927142857142858,
+        "judgmentCoverage10": 0.7870000000000005,
+        "evidenceRecall10": null
+      },
+      "local": {
+        "samples": 200,
+        "medianMs": 89.81368699995801,
+        "p95Ms": 96.43370799999684
+      },
+      "wall": {
+        "samples": 200,
+        "medianMs": 577.2687915000133,
+        "p95Ms": 725.6821249999921
+      },
+      "embedding": {
+        "samples": 1,
+        "medianMs": 1452.594000000041,
+        "p95Ms": 1452.594000000041
+      },
+      "rerank": {
+        "samples": 200,
+        "medianMs": 487.85625000001164,
+        "p95Ms": 637.7725409999839
+      },
+      "failureRate": 0,
+      "degradationRate": 0,
+      "networkRequests": 200,
+      "cacheHits": 201
+    },
+    "current": {
+      "samples": 200,
+      "metrics": {
+        "recall5": 0.8687956349206347,
+        "recall10": 0.9843690476190478,
+        "hit5": 0.98,
+        "hit10": 0.995,
+        "mrr10": 0.847375,
+        "ndcg10": 0.8609188615183037,
+        "precision5": 0.37000000000000044,
+        "precision10": 0.22650000000000034,
+        "judgedPrecision10": 0.28882539682539704,
+        "judgmentCoverage10": 0.7965000000000011,
+        "evidenceRecall10": null
+      },
+      "local": {
+        "samples": 200,
+        "medianMs": 87.87979150001775,
+        "p95Ms": 94.47804200003156
+      },
+      "wall": {
+        "samples": 200,
+        "medianMs": 87.87979150001775,
+        "p95Ms": 94.47804200003156
+      },
+      "embedding": {
+        "samples": 0,
+        "medianMs": null,
+        "p95Ms": null
+      },
+      "rerank": {
+        "samples": 0,
+        "medianMs": null,
+        "p95Ms": null
+      },
+      "failureRate": 0,
+      "degradationRate": 0,
+      "networkRequests": 0,
+      "cacheHits": 400
+    },
+    "bm25": {
+      "samples": 200,
+      "metrics": {
+        "recall5": 0.4718313492063492,
+        "recall10": 0.6821765873015875,
+        "hit5": 0.655,
+        "hit10": 0.785,
+        "mrr10": 0.4339325396825398,
+        "ndcg10": 0.4653119142020314,
+        "precision5": 0.2129999999999999,
+        "precision10": 0.15950000000000006,
+        "judgedPrecision10": 0.25436912860382255,
+        "judgmentCoverage10": 0.6335000000000004,
+        "evidenceRecall10": null
+      },
+      "local": {
+        "samples": 200,
+        "medianMs": 4.520124999980908,
+        "p95Ms": 9.273292000056244
+      },
+      "wall": {
+        "samples": 200,
+        "medianMs": 4.520124999980908,
+        "p95Ms": 9.273292000056244
+      },
+      "embedding": {
+        "samples": 0,
+        "medianMs": null,
+        "p95Ms": null
+      },
+      "rerank": {
+        "samples": 0,
+        "medianMs": null,
+        "p95Ms": null
+      },
+      "failureRate": 0,
+      "degradationRate": 0,
+      "networkRequests": 0,
+      "cacheHits": 0
+    },
+    "vector": {
+      "samples": 200,
+      "metrics": {
+        "recall5": 0.8650932539682538,
+        "recall10": 0.9802023809523809,
+        "hit5": 0.985,
+        "hit10": 0.995,
+        "mrr10": 0.8348809523809524,
+        "ndcg10": 0.8462656164843263,
+        "precision5": 0.3640000000000005,
+        "precision10": 0.2250000000000003,
+        "judgedPrecision10": 0.2924940476190478,
+        "judgmentCoverage10": 0.7820000000000005,
+        "evidenceRecall10": null
+      },
+      "local": {
+        "samples": 200,
+        "medianMs": 56.98733299999731,
+        "p95Ms": 61.82670800003689
+      },
+      "wall": {
+        "samples": 200,
+        "medianMs": 56.98733299999731,
+        "p95Ms": 61.82670800003689
+      },
+      "embedding": {
+        "samples": 0,
+        "medianMs": null,
+        "p95Ms": null
+      },
+      "rerank": {
+        "samples": 0,
+        "medianMs": null,
+        "p95Ms": null
+      },
+      "failureRate": 0,
+      "degradationRate": 0,
+      "networkRequests": 0,
+      "cacheHits": 200
+    },
+    "rrf-rerank": {
+      "samples": 200,
+      "metrics": {
+        "recall5": 0.8645099206349205,
+        "recall10": 0.9787023809523809,
+        "hit5": 0.96,
+        "hit10": 0.99,
+        "mrr10": 0.8211309523809525,
+        "ndcg10": 0.8396633586702044,
+        "precision5": 0.3780000000000006,
+        "precision10": 0.22600000000000034,
+        "judgedPrecision10": 0.29779761904761914,
+        "judgmentCoverage10": 0.7780000000000007,
+        "evidenceRecall10": null
+      },
+      "local": {
+        "samples": 200,
+        "medianMs": 55.42962450001505,
+        "p95Ms": 62.240332999965176
+      },
+      "wall": {
+        "samples": 200,
+        "medianMs": 788.7852499999863,
+        "p95Ms": 976.1632500000414
+      },
+      "embedding": {
+        "samples": 0,
+        "medianMs": null,
+        "p95Ms": null
+      },
+      "rerank": {
+        "samples": 200,
+        "medianMs": 730.3315834999958,
+        "p95Ms": 920.876707999967
+      },
+      "failureRate": 0,
+      "degradationRate": 0,
+      "networkRequests": 200,
+      "cacheHits": 200
+    }
+  },
+  "notes": [
+    "续轮保留原200个开发问题；新留出题从未使用的 MIRACL official train/dev 抽取，排除所有历史问题哈希及正例文章。来源在 test:train:/test:dev: ID 中注明。",
+    "10000 段 MIRACL 资料加 80 篇 CMRC 资料；包含全部选中问题的已标注负例，额外干扰资料按固定种子从 15243 个官方 train/dev 已判定段落中抽取，并非均匀采样全维基。",
+    "这是受限语料检索评测，不可与 MIRACL 全语料排行榜直接比较。",
+    "未标注段落并非已知不相关；Precision/nDCG 按未标注为0计算，另报标注覆盖率。",
+    "无答案为受控移除资料场景，额外排除规范化的标题前三字符或答案仍在语料中的题目；不是原始 CMRC 无答案标注。",
+    "不含扫描件、导入编译、多轮、多跳及图谱质量验收。",
+    "本轮语料与问答样本随新抽样重新生成，不能直接跨语料对比延迟；所有方法在本轮同一语料评测。历次留出结果均保留，不只报告成功轮次。",
+    "wall 包含本轮实际发生的网络和缓存调用；不能把缓存重放结果当作真实线上延迟。",
+    "embedding/rerank 延迟仅统计实际网络请求的问题，零请求时样本量为0；同题重试等待也归入网络阶段。",
+    "失败问题保留并按零分计入，不丢弃失败样本。",
+    "MIRACL 不提供答案跨度，证据召回仅在 CMRC 问题上计算。",
+    "证据套件使用32768模型窗口对应的8192字符上下文预算；它验证检索片段，不代替模型问答。"
+  ]
+}

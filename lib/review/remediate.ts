@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db/client";
 import { reviewItems } from "@/lib/db/schema";
 import { appendLog, createPage, loadPageFile, updatePage } from "@/lib/vault/service";
 import { sha256 } from "@/lib/vault/atomic";
-import { commitVault, withCommitOperation } from "@/lib/git/auto-commit";
+import { backupVault, withCommitOperation } from "@/lib/git/auto-commit";
 import { enqueue, type JobContext } from "@/lib/jobs/runner";
 import { createProvider } from "@/lib/llm";
 import type { LlmProvider } from "@/lib/llm/types";
@@ -185,7 +185,7 @@ async function runRemediation(
     }
 
     try {
-      // 服务层的每次写都会自己收尾（reindex + commitVault，见 service.finalize），
+      // 服务层的每次写都会自己收尾（reindex + backupVault，见 service.finalize），
       // 所以这里不需要、也不该再叠一层提交
       const written = updatePage(target.id, { content: next, expectedHash: target.hash });
       lastSha = written.commitSha ?? lastSha;
@@ -244,7 +244,7 @@ async function runRemediation(
       `按批注修订 ${applied.length} 个词条、补建 ${created.length} 个 —— ${truncate(annotation, 80)}`,
     );
     // 这一次提交是这次修订的收尾记录（内容是上面那条日志），也是回滚时最该找的锚点
-    const closing = commitVault(`按批注修订：${truncate(plan.summary, 60)}`);
+    const closing = backupVault(`按批注修订：${truncate(plan.summary, 60)}`);
     sha = closing.sha ?? lastSha;
     commits = applied.length + created.length + (closing.committed ? 1 : 0);
   }

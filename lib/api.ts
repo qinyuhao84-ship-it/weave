@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ConflictError, PageNotFoundError, VaultRecoveryError } from "@/lib/vault/service";
-import { RevertConflictError, RootRevertError, ApplicationStateRevertError } from "@/lib/git/auto-commit";
 import { LlmError, StructuredOutputError } from "@/lib/llm/types";
 import { UnsupportedFormatError, ParseQualityError } from "@/lib/ingest/parse/types";
 import { ContextOverflowError } from "@/lib/chat/context";
@@ -25,12 +24,13 @@ export function ok<T>(data: T, init?: ResponseInit): NextResponse {
 }
 
 export function fail(message: string, status = 400, extra?: Record<string, unknown>): NextResponse {
-  return NextResponse.json({ ok: false, error: message, ...extra }, { status });
+  const codes: Record<number, string> = { 400: "INVALID_REQUEST", 403: "FORBIDDEN", 404: "NOT_FOUND", 409: "CONFLICT", 412: "PRECONDITION_FAILED", 413: "PAYLOAD_TOO_LARGE", 415: "UNSUPPORTED_FORMAT", 422: "UNPROCESSABLE_CONTENT", 502: "UPSTREAM_ERROR" };
+  return NextResponse.json({ ok: false, error: message, code: codes[status] ?? "INTERNAL_ERROR", ...extra }, { status });
 }
 
 /** 把内部异常翻译成用户能据以行动的中文说明 */
-export function toUserMessage(error: unknown): { message: string; status: number } {
-  if (error instanceof VaultRecoveryError) return { message: error.message, status: 500 };
+export function toUserMessage(error: unknown): { message: string; status: number; code?: string } {
+  if (error instanceof VaultRecoveryError) return { message: error.message, status: 500, code: "VAULT_RECOVERY_REQUIRED" };
   if (error instanceof PageNotFoundError) {
     return { message: error.message, status: 404 };
   }
@@ -48,15 +48,6 @@ export function toUserMessage(error: unknown): { message: string; status: number
     // 消息里已经写了「谁最大、能改哪个旋钮」，直接透传。
     return { message: error.message, status: 413 };
   }
-  if (error instanceof RootRevertError) {
-    // 409：请求本身能理解，只是这件事不该做
-    return { message: error.message, status: 409 };
-  }
-  if (error instanceof RevertConflictError) {
-    // 409：不是服务端坏了，是这次撤销和后续改动撞车了，用户换个做法就行
-    return { message: error.message, status: 409 };
-  }
-  if (error instanceof ApplicationStateRevertError) return { message: error.message, status: 409 };
   if (error instanceof LlmError) {
     // 模型层的错误已经带了可操作提示（额度不足 / 模型名不对 / 限流）
     return { message: error.message, status: error.status && error.status >= 400 ? 502 : 500 };
@@ -100,9 +91,9 @@ export async function handle<T>(fn: () => Promise<T> | T): Promise<NextResponse>
     if (result instanceof NextResponse) return result;
     return ok(result);
   } catch (error) {
-    const { message, status } = toUserMessage(error);
+    const { message, status, code } = toUserMessage(error);
     if (status >= 500) console.error("[api]", error);
-    return fail(message, status);
+    return fail(message, status, code ? { code } : undefined);
   }
 }
 

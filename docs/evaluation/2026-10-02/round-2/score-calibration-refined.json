@@ -1,0 +1,437 @@
+{
+  "scope": "只读取开发集真实轨迹；固定候选排序探索，不是在线延迟实测",
+  "configurations": [
+    {
+      "scale": "logit",
+      "weight": 0.78,
+      "exponent": 1,
+      "gap": 0.3,
+      "ndcg": 0.8755074236682023,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.78,
+      "exponent": 1,
+      "gap": 0.25,
+      "ndcg": 0.8754631701340139,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.78,
+      "exponent": 1,
+      "gap": 0.2,
+      "ndcg": 0.874650707900728,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.8,
+      "exponent": 1,
+      "gap": 0.3,
+      "ndcg": 0.8744571934387849,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.78,
+      "exponent": 1,
+      "gap": null,
+      "ndcg": 0.8744186282106705,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.8,
+      "exponent": 1,
+      "gap": 0.25,
+      "ndcg": 0.8744129399045965,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.78,
+      "exponent": 1,
+      "gap": 0.35,
+      "ndcg": 0.8743040450526921,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.84,
+      "exponent": 1,
+      "gap": 0.3,
+      "ndcg": 0.8740542198633316,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.84,
+      "exponent": 1,
+      "gap": 0.25,
+      "ndcg": 0.8740099663291432,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.8,
+      "exponent": 1,
+      "gap": 0.2,
+      "ndcg": 0.8734651652276858,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.84,
+      "exponent": 1,
+      "gap": null,
+      "ndcg": 0.8734311202066581,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.8,
+      "exponent": 1,
+      "gap": null,
+      "ndcg": 0.8733683979812531,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.82,
+      "exponent": 1,
+      "gap": 0.3,
+      "ndcg": 0.8733656685161332,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.82,
+      "exponent": 1,
+      "gap": 0.25,
+      "ndcg": 0.8733214149819447,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.84,
+      "exponent": 1,
+      "gap": 0.35,
+      "ndcg": 0.8733165370486796,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.8,
+      "exponent": 1,
+      "gap": 0.35,
+      "ndcg": 0.8732538148232746,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.82,
+      "exponent": 1,
+      "gap": null,
+      "ndcg": 0.8731428571338858,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.84,
+      "exponent": 1,
+      "gap": 0.2,
+      "ndcg": 0.8730340162041628,
+      "recall": 0.9866190476190476
+    },
+    {
+      "scale": "logit",
+      "weight": 0.82,
+      "exponent": 1,
+      "gap": 0.35,
+      "ndcg": 0.8730282739759072,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.86,
+      "exponent": 1,
+      "gap": 0.3,
+      "ndcg": 0.8726128717620837,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.86,
+      "exponent": 1,
+      "gap": 0.25,
+      "ndcg": 0.8725686182278952,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.82,
+      "exponent": 1,
+      "gap": 0.2,
+      "ndcg": 0.872373640305034,
+      "recall": 0.9866190476190476
+    },
+    {
+      "scale": "logit",
+      "weight": 0.78,
+      "exponent": 1,
+      "gap": 0.15,
+      "ndcg": 0.8720456672595779,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.86,
+      "exponent": 1,
+      "gap": null,
+      "ndcg": 0.8719139757596713,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.86,
+      "exponent": 1,
+      "gap": 0.35,
+      "ndcg": 0.8717993926016929,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.88,
+      "exponent": 1,
+      "gap": 0.25,
+      "ndcg": 0.8717371382254249,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.86,
+      "exponent": 1,
+      "gap": 0.2,
+      "ndcg": 0.8715926681029148,
+      "recall": 0.9866190476190476
+    },
+    {
+      "scale": "logit",
+      "weight": 0.8,
+      "exponent": 1,
+      "gap": 0.15,
+      "ndcg": 0.8708601245865357,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.88,
+      "exponent": 1,
+      "gap": 0.2,
+      "ndcg": 0.870726310655643,
+      "recall": 0.9866190476190476
+    },
+    {
+      "scale": "logit",
+      "weight": 0.84,
+      "exponent": 1,
+      "gap": 0.15,
+      "ndcg": 0.8704289755630128,
+      "recall": 0.9866190476190476
+    },
+    {
+      "scale": "logit",
+      "weight": 0.76,
+      "exponent": 1,
+      "gap": 0.3,
+      "ndcg": 0.8701577568652864,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.76,
+      "exponent": 1,
+      "gap": 0.25,
+      "ndcg": 0.870113503331098,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.74,
+      "exponent": 1,
+      "gap": 0.3,
+      "ndcg": 0.8699790073519776,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.88,
+      "exponent": 1,
+      "gap": 0.3,
+      "ndcg": 0.8699360405274708,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.74,
+      "exponent": 1,
+      "gap": 0.25,
+      "ndcg": 0.8699347538177891,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.82,
+      "exponent": 1,
+      "gap": 0.15,
+      "ndcg": 0.869768599663884,
+      "recall": 0.9866190476190476
+    },
+    {
+      "scale": "logit",
+      "weight": 0.76,
+      "exponent": 1,
+      "gap": null,
+      "ndcg": 0.8694063559479805,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.76,
+      "exponent": 1,
+      "gap": 0.2,
+      "ndcg": 0.8693010410978121,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.76,
+      "exponent": 1,
+      "gap": 0.35,
+      "ndcg": 0.869291772790002,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.88,
+      "exponent": 1,
+      "gap": null,
+      "ndcg": 0.8692537170088219,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.74,
+      "exponent": 1,
+      "gap": null,
+      "ndcg": 0.8692276064346717,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.74,
+      "exponent": 1,
+      "gap": 0.2,
+      "ndcg": 0.8691222915845032,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.74,
+      "exponent": 1,
+      "gap": 0.35,
+      "ndcg": 0.8691130232766932,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.88,
+      "exponent": 1,
+      "gap": 0.35,
+      "ndcg": 0.8690944863699431,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.86,
+      "exponent": 1,
+      "gap": 0.15,
+      "ndcg": 0.8689876274617647,
+      "recall": 0.9866190476190476
+    },
+    {
+      "scale": "logit",
+      "weight": 0.88,
+      "exponent": 1,
+      "gap": 0.15,
+      "ndcg": 0.8680319277317549,
+      "recall": 0.9866190476190476
+    },
+    {
+      "scale": "logit",
+      "weight": 0.72,
+      "exponent": 1,
+      "gap": 0.3,
+      "ndcg": 0.8672479882318883,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.72,
+      "exponent": 1,
+      "gap": 0.25,
+      "ndcg": 0.8672037346976998,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.76,
+      "exponent": 1,
+      "gap": 0.15,
+      "ndcg": 0.866696000456662,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.72,
+      "exponent": 1,
+      "gap": 0.2,
+      "ndcg": 0.8665214595355308,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.72,
+      "exponent": 1,
+      "gap": null,
+      "ndcg": 0.8664965873145823,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.72,
+      "exponent": 1,
+      "gap": 0.35,
+      "ndcg": 0.8663820041566038,
+      "recall": 0.9891190476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.74,
+      "exponent": 1,
+      "gap": 0.15,
+      "ndcg": 0.8663047235743025,
+      "recall": 0.9878690476190477
+    },
+    {
+      "scale": "logit",
+      "weight": 0.72,
+      "exponent": 1,
+      "gap": 0.15,
+      "ndcg": 0.8655492427574728,
+      "recall": 0.9878690476190477
+    }
+  ]
+}

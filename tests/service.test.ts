@@ -9,7 +9,8 @@ import {
   mergePages, restorePage, loadPageFile, ConflictError,
 } from "@/lib/vault/service";
 import { writePage, frontmatterFor, resetVault, vaultRoot, readPageRaw, pageExists } from "./helpers";
-import { ensureGitRepo, logVault } from "@/lib/git/auto-commit";
+import { gitHistory } from "./helpers";
+import { ensureGitRepo } from "@/lib/git/auto-commit";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 
@@ -527,15 +528,15 @@ describe("mergePages —— 合并重复实体", () => {
 describe("git 版本管理", () => {
   it("每次写操作产生一个提交", () => {
     seed();
-    const before = logVault(100).length;
+    const before = gitHistory(100).length;
     renamePage("01ZHANG", "张一鸣（创始人）");
-    const after = logVault(100).length;
+    const after = gitHistory(100).length;
     expect(after).toBeGreaterThan(before);
   });
 
   it("提交历史能读回人名与信息", () => {
     seed();
-    const commits = logVault(10);
+    const commits = gitHistory(10);
     expect(commits.length).toBeGreaterThan(0);
     expect(commits[0].sha).toBeTruthy();
     expect(commits[0].shortSha.length).toBeLessThan(commits[0].sha.length);

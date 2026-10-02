@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { fail, handle } from "@/lib/api";
+import { fail, handle, ok } from "@/lib/api";
 import { formatHtmlCitations, getArtifact, previewHtml } from "@/lib/chat/artifacts";
+import { HTML_PREVIEW_CSP } from "@/lib/documents/html";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         "Content-Security-Policy": "sandbox; default-src 'none'",
       } });
     }
-    return { content: artifact.mediaType === "text/html" ? previewHtml(content) : content, mediaType: artifact.mediaType, status: artifact.status };
+    const preview = artifact.mediaType === "text/html" ? previewHtml(content) : content;
+    if (artifact.mediaType === "text/html" && new URL(request.url).searchParams.get("preview") === "1") {
+      return new NextResponse(preview, { headers: {
+        "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff", "Content-Security-Policy": HTML_PREVIEW_CSP,
+      } });
+    }
+    const response = ok({ content: preview, mediaType: artifact.mediaType, status: artifact.status });
+    response.headers.set("Content-Security-Policy", HTML_PREVIEW_CSP);
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    return response;
   });
 }

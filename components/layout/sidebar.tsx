@@ -1,20 +1,34 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
-import * as React from "react";
-import { createPortal } from "react-dom";
+import { useAppData } from "@/components/app-provider";
+import { SessionListDialog } from "@/components/chat/session-list-dialog";
+import { JobIndicators } from "@/components/jobs/job-indicator";
+import { WeaveMark } from "@/components/ui/weave-mark";
+import { apiFetch } from "@/hooks/use-api";
+import { cn } from "@/lib/utils";
+import {
+  BookText,
+  History,
+  LoaderCircle,
+  Menu,
+  MessagesSquare,
+  Network,
+  PanelLeftClose, PanelLeftOpen,
+  Pencil,
+  Settings as SettingsIcon,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  BookText, Network, MessagesSquare, ShieldCheck, History, Settings as SettingsIcon, LoaderCircle,
-  PanelLeftClose, PanelLeftOpen, Menu, X, Pencil, Trash2, Sparkles,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAppData } from "@/components/app-provider";
-import { useIngest } from "@/components/ingest/ingest-provider";
-import { JobIndicators } from "@/components/jobs/job-indicator";
-import { apiFetch } from "@/hooks/use-api";
-import { SessionListDialog } from "@/components/chat/session-list-dialog";
-import { WeaveMark } from "@/components/ui/weave-mark";
+import * as React from "react";
+import { createPortal } from "react-dom";
+
+import { IngestIndicator } from "@/components/ingest/ingest-indicator";
+import { GroupLabel, NavItem, VaultStatus, type NavLeaf } from "./navigation-item";
 
 /**
  * 左侧导航。
@@ -64,33 +78,6 @@ function toggleCollapsed(): void {
 
 /* ------------------------------------------------------------- 导航模型 */
 
-type NavLeaf = {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  badge?: number;
-};
-
-/** 判断某个 href 是否命中当前地址。带 query 的目标要连查询串一起比 —— 
-    否则 /wiki 与 /wiki?view=graph 会同时高亮。 */
-function isActive(href: string, pathname: string, params: URLSearchParams): boolean {
-  const [path, query] = href.split("?");
-  const inPath = pathname === path || pathname.startsWith(`${path}/`);
-  if (!inPath) return false;
-  if (!query) {
-    // 不带查询串的目标：当前也不能带着「用来区分同一路由不同视图」的参数。
-    // /chat 用 s 区分会话、/wiki 用 view 区分视图 —— 少了这一步，
-    // 打开某段对话时「新对话」与那条会话会同时高亮，出现两个 aria-current。
-    if (path === "/chat") return !params.get("s");
-    if (path === "/wiki") return !params.get("view");
-    return true;
-  }
-  for (const [key, value] of new URLSearchParams(query)) {
-    if (params.get(key) !== value) return false;
-  }
-  return true;
-}
-
 /* ------------------------------------------------------------------ 组件 */
 
 export function AppNav() {
@@ -120,6 +107,7 @@ function SidebarBody({
   /** 传了就是移动端抽屉：右上角变成「关闭」而不是「折叠」 */
   onClose?: () => void;
 }) {
+  const { t } = useI18n();
   const collapsed = React.useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
   const pathname = usePathname();
   const router = useRouter();
@@ -199,23 +187,23 @@ function SidebarBody({
       try {
         await action();
         setSessionMenu(null);
-        bumpData();
+        bumpData("sessions");
       } catch (error) {
-        setSessionMenuError(error instanceof Error ? error.message : "操作失败。");
+        setSessionMenuError(error instanceof Error ? error.message : t("layout_sidebar.m001"));
       }
     },
-    [bumpData],
+    [bumpData, t],
   );
 
   // 全部并列，不再给「知识库」做一层分组 —— 分组把「关系网络 / 版本」说成了
   // 知识库的子功能，但它们本来就是同一层的三个视图，多一层缩进只是多一次理解。
   const primaryNav: NavLeaf[] = [
-    { href: "/chat", label: "新对话", icon: MessagesSquare },
-    { href: "/wiki", label: "知识库", icon: BookText },
-    { href: "/trash", label: "回收站", icon: Trash2 },
-    { href: "/wiki?view=graph", label: "关系网络", icon: Network },
-    { href: "/review", label: "体检", icon: ShieldCheck, badge: pendingReview },
-    { href: "/settings", label: "设置", icon: SettingsIcon },
+    { href: "/chat", label: t("layout_sidebar.m002"), icon: MessagesSquare },
+    { href: "/wiki", label: t("layout_sidebar.m003"), icon: BookText },
+    { href: "/trash", label: t("layout_sidebar.m004"), icon: Trash2 },
+    { href: "/wiki?view=graph", label: t("layout_sidebar.m005"), icon: Network },
+    { href: "/review", label: t("layout_sidebar.m006"), icon: ShieldCheck, badge: pendingReview },
+    { href: "/settings", label: t("layout_sidebar.m007"), icon: SettingsIcon },
   ];
 
   return (
@@ -225,9 +213,9 @@ function SidebarBody({
         {!onClose && <button
           type="button"
           onClick={toggleCollapsed}
-          aria-label={collapsed ? "展开导航" : "收起导航"}
+          aria-label={collapsed ? t("layout_sidebar.m008") : t("layout_sidebar.m009")}
           aria-expanded={!collapsed}
-          title={collapsed ? "展开导航" : "收起导航"}
+          title={collapsed ? t("layout_sidebar.m008") : t("layout_sidebar.m009")}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--muted)] hover:text-foreground"
         >
           {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.8} /> : <PanelLeftClose size={16} strokeWidth={1.8} />}
@@ -236,7 +224,7 @@ function SidebarBody({
           <WeaveMark className="h-5 w-5 text-foreground" />
           <span className="truncate text-[14px] font-semibold tracking-[0.06em] text-foreground">{agentName}</span>
         </Link>
-        {onClose && <button type="button" onClick={onClose} aria-label="关闭导航" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--muted)] hover:text-foreground"><X size={15} strokeWidth={1.8} /></button>}
+        {onClose && <button type="button" onClick={onClose} aria-label={t("layout_sidebar.m010")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--muted)] hover:text-foreground"><X size={15} strokeWidth={1.8} /></button>}
       </div>
 
       <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
@@ -251,7 +239,7 @@ function SidebarBody({
         {/* 最近对话 */}
         {sessions.length > 0 && (
           <>
-            <GroupLabel>最近对话</GroupLabel>
+            <GroupLabel>{t("layout_sidebar.m011")}</GroupLabel>
             <div className="space-y-0.5">
               {sessions.map((session) => {
                 const active = pathname === "/chat" && params.get("s") === session.id;
@@ -264,7 +252,7 @@ function SidebarBody({
                     href={`/chat?s=${session.id}`}
                     aria-current={active ? "page" : undefined}
                     aria-haspopup="menu"
-                    title={`${session.title || "未命名对话"} · 右键管理`}
+                    title={t("layout_sidebar.m013", {v0: session.title || t("layout_sidebar.m012")})}
                     onContextMenu={(event) => {
                       event.preventDefault();
                       sessionMenuTriggerRef.current = event.currentTarget;
@@ -272,7 +260,7 @@ function SidebarBody({
                         event.clientX,
                         event.clientY,
                         session.id,
-                        session.title || "未命名对话",
+                        session.title || t("layout_sidebar.m012"),
                       );
                     }}
                     onKeyDown={(event) => {
@@ -280,7 +268,7 @@ function SidebarBody({
                       event.preventDefault();
                       sessionMenuTriggerRef.current = event.currentTarget;
                       const rect = event.currentTarget.getBoundingClientRect();
-                      openSessionMenu(rect.left, rect.bottom, session.id, session.title || "未命名对话");
+                      openSessionMenu(rect.left, rect.bottom, session.id, session.title || t("layout_sidebar.m012"));
                     }}
                     className={cn(
                       // sidebar-item 让折叠态把图标居中；sidebar-label 只加在文字上
@@ -300,18 +288,18 @@ function SidebarBody({
                       aria-hidden
                     />
                     {session.generating
-                      ? <LoaderCircle size={13} strokeWidth={1.8} className="shrink-0 animate-spin text-[var(--ring)]" aria-label="正在生成回答" />
+                      ? <LoaderCircle size={13} strokeWidth={1.8} className="shrink-0 animate-spin text-[var(--ring)]" aria-label={t("layout_sidebar.m014")} />
                       : session.titleSummaryStatus === "pending" || session.titleSummaryStatus === "generating"
-                        ? <Sparkles size={13} strokeWidth={1.8} className="shrink-0 animate-pulse text-[var(--ring)]" aria-label="正在总结会话名称" />
+                        ? <Sparkles size={13} strokeWidth={1.8} className="shrink-0 animate-pulse text-[var(--ring)]" aria-label={t("layout_sidebar.m015")} />
                         : <MessagesSquare size={13} strokeWidth={1.8} className="shrink-0 opacity-70" />}
-                    <span className="sidebar-label truncate">{session.title || "未命名对话"}</span>
+                    <span className="sidebar-label truncate">{session.title || t("layout_sidebar.m012")}</span>
                   </Link>
                 );
               })}
             </div>
           </>
         )}
-        <button type="button" className="sidebar-item mt-2 flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-left text-[12.5px] text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setShowSessions(true)} aria-label="查看全部对话"><History size={14} className="shrink-0" /><span className="sidebar-label">全部对话</span></button>
+        <button type="button" className="sidebar-item mt-2 flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-left text-[12.5px] text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setShowSessions(true)} aria-label={t("layout_sidebar.m016")}><History size={14} className="shrink-0" /><span className="sidebar-label">{t("layout_sidebar.m017")}</span></button>
       </nav>
       {showSessions && <SessionListDialog onClose={() => { setShowSessions(false); onClose?.(); }} />}
 
@@ -326,7 +314,7 @@ function SidebarBody({
         <div
           ref={sessionMenuRef}
           role={renamingSession ? undefined : "menu"}
-          aria-label={`${sessionMenu.title}的操作`}
+          aria-label={t("layout_sidebar.m018", {v0: sessionMenu.title})}
           className="fixed z-[60] w-44 rounded-[10px] border border-border bg-popover p-1 shadow-dialog"
           style={{ left: sessionMenu.x, top: sessionMenu.y }}
         >
@@ -343,7 +331,7 @@ function SidebarBody({
                 });
               }}
             >
-              <label htmlFor="sidebar-session-title" className="sr-only">对话名称</label>
+              <label htmlFor="sidebar-session-title" className="sr-only">{t("layout_sidebar.m019")}</label>
               <input
                 id="sidebar-session-title"
                 autoFocus
@@ -358,11 +346,9 @@ function SidebarBody({
                   className="rounded-full px-2.5 py-1 text-[11.5px] text-muted-foreground hover:bg-[var(--muted)] hover:text-foreground"
                   onClick={() => { setRenamingSession(false); setSessionMenuError(null); }}
                 >
-                  取消
-                </button>
+                  {t("layout_sidebar.m020")}</button>
                 <button type="submit" className="rounded-full bg-primary px-2.5 py-1 text-[11.5px] text-primary-foreground hover:bg-primary/90">
-                  保存
-                </button>
+                  {t("layout_sidebar.m021")}</button>
               </div>
             </form>
           ) : (
@@ -377,7 +363,7 @@ function SidebarBody({
                   sessionMenuSession?.generating ||
                   !sessionMenuSession
                 }
-                title={sessionMenuSession?.generating ? "请等当前回答完成后再总结名称" : undefined}
+                title={sessionMenuSession?.generating ? t("layout_sidebar.m022") : undefined}
                 className="flex w-full items-center gap-2 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] text-foreground transition-colors hover:bg-[var(--muted)] disabled:cursor-wait disabled:opacity-55"
                 onClick={() => {
                   const id = sessionMenu.id;
@@ -395,12 +381,12 @@ function SidebarBody({
                 {summarizingSessionId === sessionMenu.id ||
                   sessionMenuSession?.titleSummaryStatus === "pending" ||
                   sessionMenuSession?.titleSummaryStatus === "generating"
-                  ? "正在总结名称…"
+                  ? t("layout_sidebar.m023")
                   : sessionMenuSession?.titleSummaryStatus === "failed"
-                    ? "重试 AI 总结"
+                    ? t("layout_sidebar.m024")
                     : sessionMenuSession?.titleOrigin === "ai"
-                      ? "AI 重新总结名称"
-                      : "AI 总结名称"}
+                      ? t("layout_sidebar.m025")
+                      : t("layout_sidebar.m026")}
               </button>
               <button
                 type="button"
@@ -409,8 +395,7 @@ function SidebarBody({
                 onClick={() => { setRenamingSession(true); setRenameDraft(sessionMenu.title); }}
               >
                 <Pencil size={13} strokeWidth={1.8} />
-                重命名
-              </button>
+                {t("layout_sidebar.m027")}</button>
               <button
                 type="button"
                 role="menuitem"
@@ -423,8 +408,7 @@ function SidebarBody({
                 }
               >
                 <Trash2 size={13} strokeWidth={1.8} />
-                删除对话
-              </button>
+                {t("layout_sidebar.m028")}</button>
             </>
           )}
           {sessionMenuError && (
@@ -439,146 +423,10 @@ function SidebarBody({
   );
 }
 
-function GroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="sidebar-label sidebar-group-label px-2.5 pb-1 pt-4 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
-      {children}
-    </p>
-  );
-}
-
-/**
- * 导航项。
- *
- * 选中态用灰底圆角（对齐参考站的视觉）。同时保留 design DNA 的签名「生长」动效 ——
- * 顶部横向导航里它是下划线宽度 0→100%，在这里转译成左边缘一根从 0 长到 14px 的竖条：
- * 横排变竖排时，把「生长」的方向一起转 90° 才是同一个语言。
- */
-function NavItem({
-  item,
-  pathname,
-  params,
-}: {
-  item: NavLeaf;
-  pathname: string;
-  params: URLSearchParams;
-}) {
-  const active = isActive(item.href, pathname, params);
-  const Icon = item.icon;
-
-  return (
-    <Link
-      href={item.href}
-      aria-current={active ? "page" : undefined}
-      title={item.label}
-      className={cn(
-        "sidebar-item group relative flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[13px] font-medium transition-colors duration-150",
-        active
-          ? "bg-[var(--muted)] text-foreground"
-          : "text-muted-foreground hover:bg-[var(--muted)] hover:text-foreground",
-      )}
-    >
-      <span
-        className={cn(
-          "absolute left-0 top-1/2 w-[2px] -translate-y-1/2 rounded-full bg-foreground transition-[height] duration-200 ease-out",
-          active ? "h-3.5" : "h-0 group-hover:h-2",
-        )}
-        aria-hidden
-      />
-      <Icon size={15} strokeWidth={1.8} className="shrink-0" />
-      <span className="sidebar-label truncate">{item.label}</span>
-      {item.badge !== undefined && item.badge > 0 && (
-        <span className="sidebar-label ml-auto rounded-full bg-[color-mix(in_srgb,var(--warning)_14%,transparent)] px-1.5 text-[10.5px] font-semibold tabular-nums text-[var(--warning)]">
-          {item.badge}
-        </span>
-      )}
-    </Link>
-  );
-}
-
-/**
- * 后台导入的指示器。
- *
- * 为什么必须存在：导入是分钟级的，而用户不该被扣在那个抽屉里。任务状态住在
- * IngestProvider 里，抽屉关掉之后总得有个地方能看见它 —— 否则「可以关掉窗口」
- * 就变成了「关掉之后就再也找不到进度了」。
- *
- * 三种状态各说一句话，都不是装饰：跑着（还差多少）、待审（该你了）、
- * 上次没成（可以重来）。没有任务时整块不渲染，不占位置。
- */
-function IngestIndicator() {
-  const { phase, progress, stageLabel, error, openDrawer } = useIngest();
-
-  const running = phase === "running";
-  // 只有三种情况值得占位置：跑着、等你审、上一次没成。
-  // done / duplicate 都是「已经看完结论」的状态，抽屉正开着，不必再挂一个指示器。
-  const visible = running || phase === "review" || (phase === "idle" && Boolean(error));
-  if (!visible) return null;
-  const label = running
-    ? `${stageLabel || "导入中"} ${Math.round(progress)}%`
-    : phase === "review"
-      ? "导入草稿待你审阅"
-      : "上次导入没完成";
-
-  // 整行可点，打开抽屉 —— 停止是抽屉里的动作，栏底只显示进度。
-  // 在 60px 宽的折叠栏里塞进第二个按钮，误点的代价是丢掉几分钟的工作。
-  return (
-    <button
-      type="button"
-      onClick={openDrawer}
-      title={label}
-      className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-left text-[12.5px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--muted)] hover:text-foreground"
-    >
-      <span
-        className={cn(
-          "h-1.5 w-1.5 shrink-0 rounded-full",
-          running && "animate-pulse",
-        )}
-        style={{
-          background: running ? "var(--ring)" : phase === "review" ? "var(--warning)" : "var(--destructive)",
-        }}
-        aria-hidden
-      />
-      <span className="sidebar-label min-w-0 flex-1 truncate">{label}</span>
-      {running && (
-        <span className="sidebar-label h-1 w-8 shrink-0 overflow-hidden rounded-full bg-[var(--muted)]">
-          <span
-            className="block h-full origin-left rounded-full bg-[var(--ring)] transition-transform duration-500 ease-out"
-            style={{ transform: `scaleX(${Math.max(0, Math.min(100, progress)) / 100})` }}
-          />
-        </span>
-      )}
-    </button>
-  );
-}
-
-/**
- * 知识库状态。纯展示，不可点击。
- *
- * 「从 Markdown 重建索引」搬去了设置页最后一节：它是索引损坏时的自救入口，
- * 一年也用不上一次，摆在常驻的侧栏里只会让人以为需要经常点。
- * 这里只回答一个问题 —— 知识库现在正常吗。
- */
-function VaultStatus({ pages, healthy }: { pages: number; healthy: boolean }) {
-  return (
-    <div
-      title={healthy ? `知识库正常 · ${pages} 个词条` : "索引状态异常 —— 可在设置页重建索引"}
-      className="flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[12.5px] text-muted-foreground"
-    >
-      <span
-        className="h-1.5 w-1.5 shrink-0 rounded-full"
-        style={{ background: healthy ? "var(--success)" : "var(--warning)" }}
-        aria-hidden
-      />
-      <span className="sidebar-label truncate">{healthy ? "知识库正常" : "索引状态异常"}</span>
-      <span className="sidebar-label ml-auto tabular-nums">{pages}</span>
-    </div>
-  );
-}
-
 /* -------------------------------------------------------------- 移动端 */
 
 function MobileNav() {
+  const { t } = useI18n();
   const [open, setOpen] = React.useState(false);
   const { agentName } = useAppData();
   const pathname = usePathname();
@@ -648,7 +496,7 @@ function MobileNav() {
           ref={triggerRef}
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="打开导航"
+          aria-label={t("layout_sidebar.m036")}
           aria-expanded={open}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[7px] text-foreground transition-colors hover:bg-[var(--muted)]"
         >
@@ -663,7 +511,7 @@ function MobileNav() {
           ref={drawerRef}
           role="dialog"
           aria-modal="true"
-          aria-label="导航"
+          aria-label={t("layout_sidebar.m037")}
           className="fixed inset-0 z-[var(--z-index-modal)] md:hidden"
         >
           <div

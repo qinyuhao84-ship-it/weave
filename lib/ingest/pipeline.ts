@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { ulid } from "ulid";
+import { diffChars } from "diff";
 
 import { getDb } from "@/lib/db/client";
 import { sources, reviewItems, jobs } from "@/lib/db/schema";
@@ -11,7 +12,7 @@ import { datePrefix, localISOString, truncate } from "@/lib/utils";
 import { slugify } from "@/lib/vault/slug";
 import { applyIngestBatch, loadPageFile, appendLog, ConflictError } from "@/lib/vault/service";
 import { buildCatalog, findSimilarTitles } from "@/lib/index/catalog";
-import { commitVault } from "@/lib/git/auto-commit";
+import { backupVault } from "@/lib/git/auto-commit";
 import {
   enqueue, saveDraft, readDraft, finishJob,
   claimAwaitingReview, releaseAwaitingReview, getJob,
@@ -148,8 +149,7 @@ export function startIngest(input: StartIngestInput): { jobId: string } {
   const inputPath = ingestInputPath(jobId);
   if (!input.resume) {
     fs.mkdirSync(path.dirname(inputPath), { recursive: true });
-    fs.writeFileSync(`${inputPath}.tmp`, input.buffer);
-    fs.renameSync(`${inputPath}.tmp`, inputPath);
+    writeFileAtomic(inputPath, input.buffer);
   }
 
   input = { ...input, buffer: Buffer.alloc(0) };
@@ -229,7 +229,7 @@ export function startIngest(input: StartIngestInput): { jobId: string } {
           const storedName = `${datePrefix()}-${slugify(titleFromFilename(originalName)) || "untitled"}${extension}`;
           docRelative = path.posix.join("raw", uniqueRawName(storedName));
           fs.mkdirSync(RAW_DIR, { recursive: true });
-          fs.writeFileSync(path.join(RAW_DIR, path.basename(docRelative)), buffer);
+          writeFileAtomic(path.join(RAW_DIR, path.basename(docRelative)), buffer);
           context.log(`原件已存入 ${docRelative}`);
 
           getDb()
@@ -284,6 +284,9 @@ export function startIngest(input: StartIngestInput): { jobId: string } {
           throw new ParseQualityError("没有从这份文件提取到可用正文。请检查文件内容，或将文件转换为支持的格式后重试。");
         }
 
+        const tokenEstimate = estimateTokens(parsed.markdown);
+        if (tokenEstimate > 250_000) throw new ParseQualityError("资料正文超过 250,000 个估算 token，请拆成较小文件后导入，以控制处理成本。");
+
         checkpoint.parsed = parsed;
         saveCheckpoint(sourceId, checkpoint);
         if (input.resume) context.log("已载入保存的解析进度，继续处理未完成部分。");
@@ -308,7 +311,6 @@ export function startIngest(input: StartIngestInput): { jobId: string } {
         for (const warning of parsed.warnings) context.log(warning, "warning");
         if (parsed.upgradeHint) context.log(parsed.upgradeHint, "info");
 
-        const tokenEstimate = estimateTokens(parsed.markdown);
         context.setFraction(1);
         context.log(`${parsed.parser} 解析完成，约 ${tokenEstimate.toLocaleString("zh-CN")} token`);
 
@@ -530,7 +532,7 @@ export function startIngest(input: StartIngestInput): { jobId: string } {
         context.setStage("reviewing", "等待你审阅");
         context.log("草稿已生成，等待审阅确认后写入知识库。");
 
-        return { awaitingReview: true, draft: result };
+        return { awaitingReview: true };
       } catch (error) {
         // 被停止时把来源行收回「待处理」。
         //
@@ -541,7 +543,7 @@ export function startIngest(input: StartIngestInput): { jobId: string } {
         if (context.isCancelled() && sourceRowId) {
           getDb().update(sources).set({ status: "pending" }).where(eq(sources.id, sourceRowId)).run();
           appendLog("INGEST", `导入《${originalName}》已停止，原件保留在 raw/，可以重新处理。`);
-          commitVault(`停止导入《${originalName}》`);
+          backupVault(`停止导入《${originalName}》`);
         } else if (sourceRowId) {
           getDb().update(sources).set({ status: "failed" }).where(eq(sources.id, sourceRowId)).run();
         }
@@ -725,6 +727,7 @@ export type CommitIngestResult = {
    */
   batchJobId: string | null;
   commitSha: string | null;
+  backupWarning: string | null;
   /** 冲突：提交时发现目标文件被外部改过 */
   conflicts: string[];
 };
@@ -971,7 +974,8 @@ export async function commitIngest(options: CommitIngestOptions): Promise<Commit
           expectedHash: target.hash,
         },
       });
-      updatedTitles.set(target.pageId, appended.length);
+      const changes = proposed ? diffChars(target.file.content, nextContent, { timeout: 100 }) : undefined;
+      updatedTitles.set(target.pageId, proposed ? changes?.reduce((count, part) => count + (part.added ? part.value.length : 0), 0) ?? nextContent.length : appended.length);
     }
 
     const byTitleAfter = buildTitleIndex([
@@ -989,7 +993,7 @@ export async function commitIngest(options: CommitIngestOptions): Promise<Commit
       creates,
       updates,
       message: "导入《" + staged.source.originalName + "》：新建 " + creates.length + " 个词条，更新 " + updates.length + " 个，" + allItems.length + " 条审阅事项",
-      beforeGitCommit: () => {
+      beforeCommit: () => {
         allItems.forEach((item, index) => {
           const verdict = decisionsByIndex.get(index);
           const clean = normalizeQuestion({ question: item.question, options: item.options }, item.title);
@@ -1089,6 +1093,7 @@ export async function commitIngest(options: CommitIngestOptions): Promise<Commit
       supplementedContradictions: supplemented.length,
       batchJobId,
       commitSha: applied.commitSha,
+      backupWarning: applied.backupWarning,
       conflicts: [],
     };
   } catch (error) {
@@ -1110,7 +1115,7 @@ export function discardIngest(jobId: string): void {
   try {
     // 原件保留在 raw/ 下 —— 用户可能只是想稍后再处理，不该把资料删掉。
     appendLog("INGEST", `放弃导入《${staged.source.originalName}》的草稿，原件保留在 ${staged.source.docPath}`);
-    commitVault(`放弃导入《${staged.source.originalName}》`);
+    backupVault(`放弃导入《${staged.source.originalName}》`);
     getDb()
       .update(sources)
       .set({ status: "pending" })

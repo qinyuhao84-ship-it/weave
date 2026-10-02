@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
 import * as React from "react";
 import { Plus, Trash2 } from "lucide-react";
@@ -6,7 +7,7 @@ import { Button, Input, Select, Textarea, Switch } from "@/components/ui";
 import { apiFetch, useApi } from "@/hooks/use-api";
 import { useAppData } from "@/components/app-provider";
 import { PROVIDER_PRESETS, isPresetKey } from "@/lib/llm/presets";
-import { EFFORT_LABELS, canonicalReasoningEffort, reasoningCapability, type ModelCapability } from "@/lib/llm/capabilities";
+import { canonicalReasoningEffort, reasoningCapability, type ModelCapability } from "@/lib/llm/capabilities";
 import type { PublicProvider, PublicSettings, ProviderOverrideField } from "@/lib/settings";
 
 // 凭据只保留在当前表单状态中，保存或取消后清除。
@@ -35,6 +36,8 @@ function publicInput(provider: PublicProvider) {
 }
 
 export function ModelSection() {
+  const { t } = useI18n();
+  const presetLabel = (key: string, original: string) => t.has("providerPresets." + key) ? t("providerPresets." + key) : original;
   const { bumpData } = useAppData();
   const { data, error: loadError, refresh } = useApi<Result>("/api/settings");
   const [saved, setSaved] = React.useState<Result | null>(null);
@@ -65,7 +68,7 @@ export function ModelSection() {
     change({ label: preset.label, baseUrl: preset.baseUrl, model: "", apiKey: "", clearApiKey: Boolean(editing?.hasApiKey), contextWindow: "32768", lightModel: "", reasoningEffort: "default", supportsStrictSchema: false, headersText: key === "gemini" ? '{"x-goog-api-client":"weave/0.1.0"}' : "{}" });
   };
   const edit = (provider?: PublicProvider) => {
-    if (draft && !window.confirm("放弃尚未保存的模型配置？")) return;
+    if (draft && !window.confirm(t("settings_model_section.m001"))) return;
     probeGeneration.current++; setProbing(null); setModels([]); setModelDetails([]);
     setPresetKey(Object.entries(PROVIDER_PRESETS).find(([, preset]) => preset.baseUrl === provider?.baseUrl)?.[0] ?? "openaiCompatible");
     setDraft(draftFor(provider)); setError(null); setNotice(null); setConfirmDelete(false);
@@ -80,7 +83,7 @@ export function ModelSection() {
     try {
       const next = await apiFetch<Result>("/api/settings", { method: "PATCH", body: JSON.stringify(body) });
       setSaved(next); setDraft(null); setConfirmDelete(false); setNotice(message); bumpData();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "保存失败，请重试。"); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : t("settings_model_section.m002")); }
     finally { setBusy(false); }
   };
   const save = async (event: React.FormEvent) => {
@@ -92,10 +95,10 @@ export function ModelSection() {
         const value: unknown = JSON.parse(draft.headersText);
         if (!value || Array.isArray(value) || typeof value !== "object" || Object.values(value).some(v => typeof v !== "string")) throw new Error();
         headers = value as Record<string, string>;
-      } catch { setError('请求头请填写 JSON 对象，名称和值都需为字符串；输入 {} 可清除。'); return; }
+      } catch { setError(t("settings_model_section.m003")); return; }
     }
     const input = {
-      id: draft.id, label: draft.label || (isPresetKey(presetKey) ? PROVIDER_PRESETS[presetKey].label : "自定义服务"), baseUrl: draft.baseUrl, model: draft.model,
+      id: draft.id, label: draft.label || (isPresetKey(presetKey) ? PROVIDER_PRESETS[presetKey].label : t("settings_model_section.m004")), baseUrl: draft.baseUrl, model: draft.model,
       ...(locked("apiKey") ? {} : { apiKey: draft.apiKey, clearApiKey: draft.clearApiKey && !draft.apiKey }),
       contextWindow: Number(draft.contextWindow), lightModel: draft.lightModel,
       reasoningEffort: canonicalReasoningEffort(draft.baseUrl, draft.model, draft.reasoningEffort as PublicProvider["reasoningEffort"]), temperature: Number(draft.temperature),
@@ -103,7 +106,7 @@ export function ModelSection() {
       ...(headers && !locked("headers") ? { headers } : {}),
     };
     const remaining = providers.filter(p => !p.environmentOnly && p.id !== draft.id).map(publicInput);
-    await persist({ providers: [...remaining, input], activeProviderId: draft.id, preferSavedModels: true }, "模型配置已保存。新任务会使用当前模型，无需重启。");
+    await persist({ providers: [...remaining, input], activeProviderId: draft.id, preferSavedModels: true }, t("settings_model_section.m005"));
   };
 
   const probe = async (provider?: PublicProvider, test = false) => {
@@ -118,7 +121,7 @@ export function ModelSection() {
         let headers: Record<string, string> | undefined;
         if (draft.headersText.trim()) {
           const parsed: unknown = JSON.parse(draft.headersText);
-          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || Object.values(parsed).some(value => typeof value !== "string")) throw new Error("附加请求头需为字符串 JSON 对象。");
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || Object.values(parsed).some(value => typeof value !== "string")) throw new Error(t("settings_model_section.m006"));
           headers = parsed as Record<string, string>;
         }
         body = { test, provider: { id, ...(draft.model.trim() ? { model: draft.model.trim() } : {}), baseUrl: draft.baseUrl, apiKey: draft.apiKey, clearApiKey: draft.clearApiKey && !draft.apiKey,
@@ -130,7 +133,7 @@ export function ModelSection() {
       const result = await apiFetch<{ models?: string[]; details?: ModelCapability[]; supported?: boolean; connected?: boolean; elapsedMs?: number }>("/api/settings/models", { method: "POST", body: JSON.stringify(body) });
       if (generation !== probeGeneration.current) return;
       if (test) {
-        const detail = `连接通过 · 所选模型已响应 · ${((result.elapsedMs ?? 0) / 1000).toFixed(1)} 秒`;
+        const detail = t("settings_model_section.m007", {v0: ((result.elapsedMs ?? 0) / 1000).toFixed(1)});
         setNotice(detail); return;
       }
       const available = result.models ?? [];
@@ -141,104 +144,105 @@ export function ModelSection() {
       }
       const model = provider?.model ?? draft?.model;
       const found = available.includes(model ?? "");
-      const detail = !result.supported ? "服务可达，但不提供模型列表；请手动填写模型名。"
-        : found ? "连接正常，已找到所选模型。" : available.length ? `已读取 ${available.length} 个模型，请选择或填写可用模型名。` : "服务未返回可用模型，请检查账号权限或本地已加载模型。";
+      const detail = !result.supported ? t("settings_model_section.m008")
+        : found ? t("settings_model_section.m009") : available.length ? t("settings_model_section.m010", {v0: available.length}) : t("settings_model_section.m011");
       setNotice(detail);
     } catch (cause) {
       if (generation !== probeGeneration.current) return;
-      const detail = cause instanceof Error ? cause.message : "连接检查失败，请重试。";
+      const detail = cause instanceof Error ? cause.message : t("settings_model_section.m012");
       setError(detail);
     } finally { if (generation === probeGeneration.current) setProbing(null); }
   };
 
   return <section id="model-service" aria-labelledby="model-service-title">
-    <div className="mb-4"><h2 id="model-service-title" className="text-[15px] font-semibold">模型</h2>
-      <p className="mt-1 text-[12.5px] text-muted-foreground">管理已连接的服务，选择默认模型。</p>
+    <div className="mb-4"><h2 id="model-service-title" className="text-[15px] font-semibold">{t("settings_model_section.m013")}</h2>
+      <p className="mt-1 text-[12.5px] text-muted-foreground">{t("settings_model_section.m014")}</p>
     </div>
     <div className="space-y-3">
-      {!result && !loadError && <p className="text-[12.5px] text-muted-foreground">正在读取模型配置…</p>}
-      {providers.length === 0 && result && <p className="py-4 text-[13px] text-muted-foreground">添加一个模型服务，即可开始问答。</p>}
+      {!result && !loadError && <p className="text-[12.5px] text-muted-foreground">{t("settings_model_section.m015")}</p>}
+      {providers.length === 0 && result && <p className="py-4 text-[13px] text-muted-foreground">{t("settings_model_section.m016")}</p>}
       <ul className="space-y-2">
         {providers.map(provider => <li key={provider.id} className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-4 sm:px-5">
-          <div className="min-w-0 flex-1"><p className="flex flex-wrap items-center gap-2 text-[14px] font-medium"><span className="break-words">{provider.label}</span>{provider.id === settings?.activeProviderId && <span className="inline-flex items-center gap-1.5 text-[11px] font-normal text-[var(--success)]"><span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />当前使用</span>}</p>
-            <p className="mt-1 break-all text-[12px] text-muted-foreground">{provider.model || "尚未选择模型"}</p>
-            <p className="mt-1 truncate text-[11px] text-muted-foreground" title={provider.baseUrl}>{serviceHost(provider.baseUrl)} · {provider.hasApiKey ? "密钥已配置" : provider.hasHeaders ? "请求头已配置" : "未设置密钥"}{provider.environmentOnly ? " · 启动配置" : ""}</p>
+          <div className="min-w-0 flex-1"><p className="flex flex-wrap items-center gap-2 text-[14px] font-medium"><span className="break-words">{provider.label}</span>{provider.id === settings?.activeProviderId && <span className="inline-flex items-center gap-1.5 text-[11px] font-normal text-[var(--success)]"><span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />{t("settings_model_section.m017")}</span>}</p>
+            <p className="mt-1 break-all text-[12px] text-muted-foreground">{provider.model || t("settings_model_section.m018")}</p>
+            <p className="mt-1 truncate text-[11px] text-muted-foreground" title={provider.baseUrl}>{serviceHost(provider.baseUrl, t("common.unconfiguredAddress"))} · {provider.hasApiKey ? t("settings_model_section.m019") : provider.hasHeaders ? t("settings_model_section.m020") : t("settings_model_section.m021")}{provider.environmentOnly ? t("settings_model_section.m022") : ""}</p>
           </div>
           <div className="flex shrink-0 gap-1">
-            {provider.id !== settings?.activeProviderId && !provider.environmentOnly && <Button size="sm" variant="ghost" disabled={busy || Boolean(draft)} onClick={() => void persist({ activeProviderId: provider.id, preferSavedModels: true }, "已切换模型。新任务会使用所选服务。")}>使用</Button>}
-            <Button size="sm" variant="secondary" aria-label={`编辑 ${provider.label}`} disabled={busy} onClick={() => edit(provider)}>编辑</Button>
+            {provider.id !== settings?.activeProviderId && !provider.environmentOnly && <Button size="sm" variant="ghost" disabled={busy || Boolean(draft)} onClick={() => void persist({ activeProviderId: provider.id, preferSavedModels: true }, t("settings_model_section.m023"))}>{t("settings_model_section.m024")}</Button>}
+            <Button size="sm" variant="secondary" aria-label={t("settings_model_section.m025", {v0: provider.label})} disabled={busy} onClick={() => edit(provider)}>{t("settings_model_section.m026")}</Button>
           </div>
         </li>)}
       </ul>
-      {!draft && result && <button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border text-[12.5px] text-muted-foreground transition-colors hover:border-input hover:text-foreground focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] disabled:opacity-50" disabled={busy} onClick={() => edit()}><Plus size={14} aria-hidden />添加模型服务</button>}
-      {draft && <form ref={formRef} onSubmit={event => void save(event)} className="rounded-xl border border-border bg-card p-5" aria-label="模型配置">
+      {!draft && result && <button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border text-[12.5px] text-muted-foreground transition-colors hover:border-input hover:text-foreground focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] disabled:opacity-50" disabled={busy} onClick={() => edit()}><Plus size={14} aria-hidden />{t("settings_model_section.m027")}</button>}
+      {draft && <form ref={formRef} onSubmit={event => void save(event)} className="rounded-xl border border-border bg-card p-5" aria-label={t("settings_model_section.m028")}>
         <fieldset disabled={busy} className="space-y-4">
-          <legend className="mb-4 text-[13px] font-medium">{editing ? "编辑模型服务" : "添加模型服务"}</legend>
-          {editing?.environmentOnly && <p className="text-[12px] leading-relaxed text-muted-foreground">来自启动配置。保存为本机配置后即可编辑，密钥会由服务端沿用。</p>}
-          <Field label="服务商">
-            <Select aria-label="服务商" disabled={locked("baseUrl") || locked("apiKey") || locked("model")} value={presetKey} onChange={event => selectPreset(event.target.value)}>{Object.entries(PROVIDER_PRESETS).filter(([key]) => commonPresets.includes(key) || key === presetKey).map(([key, preset]) => <option key={key} value={key}>{preset.label}</option>)}</Select>
+          <legend className="mb-4 text-[13px] font-medium">{editing ? t("settings_model_section.m029") : t("settings_model_section.m027")}</legend>
+          {editing?.environmentOnly && <p className="text-[12px] leading-relaxed text-muted-foreground">{t("settings_model_section.m030")}</p>}
+          <Field label={t("settings_model_section.m031")}>
+            <Select aria-label={t("settings_model_section.m031")} disabled={locked("baseUrl") || locked("apiKey") || locked("model")} value={presetKey} onChange={event => selectPreset(event.target.value)}>{Object.entries(PROVIDER_PRESETS).filter(([key]) => commonPresets.includes(key) || key === presetKey).map(([key, preset]) => <option key={key} value={key}>{presetLabel(key, preset.label)}</option>)}</Select>
 
           </Field>
-          <Field label="API Key" overridden={locked("apiKey")} hint={editing?.hasApiKey ? "已配置；留空保留原密钥。" : "本地服务可留空。"}>
-            <Input aria-label="API Key" type="password" autoComplete="new-password" disabled={locked("apiKey")} value={draft.apiKey} onChange={e => change({ apiKey: e.target.value })} placeholder={draft.clearApiKey ? "填写新服务的密钥" : editing?.hasApiKey ? "已配置，留空保留" : "本地服务可留空"} />
+          <Field label="API Key" overridden={locked("apiKey")} hint={editing?.hasApiKey ? t("settings_model_section.m032") : t("settings_model_section.m033")}>
+            <Input aria-label="API Key" type="password" autoComplete="new-password" disabled={locked("apiKey")} value={draft.apiKey} onChange={e => change({ apiKey: e.target.value })} placeholder={draft.clearApiKey ? t("settings_model_section.m034") : editing?.hasApiKey ? t("settings_model_section.m035") : t("settings_model_section.m036")} />
           </Field>
-          {presetKey === "openaiCompatible" && <Field label="API 地址"><Input aria-label="API 地址" type="url" required disabled={locked("baseUrl")} value={draft.baseUrl} onChange={e => change({ baseUrl: e.target.value })} placeholder="https://your-provider.example/v1" autoCapitalize="none" spellCheck={false} /></Field>}
-          <Field label="模型" overridden={locked("model")}>
-            {models.length ? <Select aria-label="模型名" disabled={locked("model")} value={draft.model} onChange={event => change({ model: event.target.value })}>{!models.includes(draft.model) && <option value={draft.model}>{draft.model || "选择模型"}</option>}{models.map(model => <option key={model} value={model}>{model}</option>)}</Select> : <Input aria-label="模型名" required disabled={locked("model")} value={draft.model} onChange={e => change({ model: e.target.value })} placeholder="点击读取可用模型，或填写模型名" autoCapitalize="none" spellCheck={false} />}
+          {presetKey === "openaiCompatible" && <Field label={t("settings_model_section.m037")}><Input aria-label={t("settings_model_section.m037")} type="url" required disabled={locked("baseUrl")} value={draft.baseUrl} onChange={e => change({ baseUrl: e.target.value })} placeholder="https://your-provider.example/v1" autoCapitalize="none" spellCheck={false} /></Field>}
+          <Field label={t("settings_model_section.m013")} overridden={locked("model")}>
+            {models.length ? <Select aria-label={t("settings_model_section.m038")} disabled={locked("model")} value={draft.model} onChange={event => change({ model: event.target.value })}>{!models.includes(draft.model) && <option value={draft.model}>{draft.model || t("settings_model_section.m039")}</option>}{models.map(model => <option key={model} value={model}>{model}</option>)}</Select> : <Input aria-label={t("settings_model_section.m038")} required disabled={locked("model")} value={draft.model} onChange={e => change({ model: e.target.value })} placeholder={t("settings_model_section.m040")} autoCapitalize="none" spellCheck={false} />}
           </Field>
-          <div className="flex flex-wrap items-center gap-3"><Button type="button" size="sm" loading={probing === draft.id} disabled={busy || Boolean(probing) || !draft.baseUrl} onClick={() => void probe()}>读取可用模型</Button><Button type="button" size="sm" variant="secondary" loading={probing === draft.id} disabled={busy || Boolean(probing) || !draft.baseUrl || !draft.model} onClick={() => void probe(undefined, true)}>测试连接</Button></div>
-          {editing?.hasApiKey && !locked("apiKey") && <Button type="button" size="sm" variant="ghost" onClick={() => change({ clearApiKey: !draft.clearApiKey, apiKey: "" })}>{draft.clearApiKey ? "取消清除密钥" : "清除已保存密钥"}</Button>}
-          {draft.clearApiKey && !draft.apiKey && <p role="status" className="text-xs text-muted-foreground">旧服务的密钥不会带到新的服务商，请填写新密钥。</p>}
-          <details className="space-y-4"><summary className="cursor-pointer text-[13px] font-medium">高级设置</summary>
+          <div className="flex flex-wrap items-center gap-3"><Button type="button" size="sm" loading={probing === draft.id} disabled={busy || Boolean(probing) || !draft.baseUrl} onClick={() => void probe()}>{t("settings_model_section.m041")}</Button><Button type="button" size="sm" variant="secondary" loading={probing === draft.id} disabled={busy || Boolean(probing) || !draft.baseUrl || !draft.model} onClick={() => void probe(undefined, true)}>{t("settings_model_section.m042")}</Button></div>
+          {editing?.hasApiKey && !locked("apiKey") && <Button type="button" size="sm" variant="ghost" onClick={() => change({ clearApiKey: !draft.clearApiKey, apiKey: "" })}>{draft.clearApiKey ? t("settings_model_section.m043") : t("settings_model_section.m044")}</Button>}
+          {draft.clearApiKey && !draft.apiKey && <p role="status" className="text-xs text-muted-foreground">{t("settings_model_section.m045")}</p>}
+          <details className="space-y-4"><summary className="cursor-pointer text-[13px] font-medium">{t("settings_model_section.m046")}</summary>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="其他服务商"><Select aria-label="其他服务商" value={presetKey} disabled={locked("baseUrl")} onChange={event => selectPreset(event.target.value)}>{Object.entries(PROVIDER_PRESETS).map(([key, preset]) => <option key={key} value={key}>{preset.label}</option>)}</Select></Field>
-            <Field label="服务名称"><Input aria-label="服务名称" maxLength={80} value={draft.label} onChange={e => change({ label: e.target.value })} placeholder="例如：我的本地模型" /></Field>
-            <Field label="API 地址" overridden={locked("baseUrl")} hint="填写 API 基础地址，不要包含 /chat/completions。"><Input aria-label="高级 API 地址" type="url" disabled={locked("baseUrl")} value={draft.baseUrl} onChange={e => change({ baseUrl: e.target.value })} placeholder="https://your-provider.example/v1" autoCapitalize="none" spellCheck={false} /></Field>
-            <Field label="上下文窗口（token）" overridden={locked("contextWindow")} hint="按模型实际容量填写，用于预算和自动摘要。"><Input aria-label="上下文窗口（token）" type="number" min={1000} max={10000000} step={1} disabled={locked("contextWindow")} value={draft.contextWindow} onChange={e => change({ contextWindow: e.target.value })} placeholder="填写实际 token 容量" /></Field>
+            <Field label={t("settings_model_section.m047")}><Select aria-label={t("settings_model_section.m047")} value={presetKey} disabled={locked("baseUrl")} onChange={event => selectPreset(event.target.value)}>{Object.entries(PROVIDER_PRESETS).map(([key, preset]) => <option key={key} value={key}>{preset.label}</option>)}</Select></Field>
+            <Field label={t("settings_model_section.m048")}><Input aria-label={t("settings_model_section.m048")} maxLength={80} value={draft.label} onChange={e => change({ label: e.target.value })} placeholder={t("settings_model_section.m049")} /></Field>
+            <Field label={t("settings_model_section.m037")} overridden={locked("baseUrl")} hint={t("settings_model_section.m050")}><Input aria-label={t("settings_model_section.m051")} type="url" disabled={locked("baseUrl")} value={draft.baseUrl} onChange={e => change({ baseUrl: e.target.value })} placeholder="https://your-provider.example/v1" autoCapitalize="none" spellCheck={false} /></Field>
+            <Field label={t("settings_model_section.m052")} overridden={locked("contextWindow")} hint={t("settings_model_section.m053")}><Input aria-label={t("settings_model_section.m052")} type="number" min={1000} max={10000000} step={1} disabled={locked("contextWindow")} value={draft.contextWindow} onChange={e => change({ contextWindow: e.target.value })} placeholder={t("settings_model_section.m054")} /></Field>
           </div>
 
-            <p className="text-xs text-muted-foreground">默认按 32K 预算控制输入；可按模型文档调整上下文容量。</p>
+            <p className="text-xs text-muted-foreground">{t("settings_model_section.m055")}</p>
             <div className="grid gap-4 pt-3 sm:grid-cols-2">
-              <Field label="轻量模型（可选）" overridden={locked("lightModel")}><Input aria-label="轻量模型" disabled={locked("lightModel")} value={draft.lightModel} onChange={e => change({ lightModel: e.target.value })} placeholder="留空使用主模型" /></Field>
-              <Field label="思考强度" overridden={locked("reasoningEffort")}><Select aria-label="思考强度" disabled={locked("reasoningEffort")} value={canonicalReasoningEffort(draft.baseUrl, draft.model, draft.reasoningEffort as PublicProvider["reasoningEffort"])} onChange={e => change({ reasoningEffort: e.target.value })}>{!effortOptions.includes(canonicalReasoningEffort(draft.baseUrl, draft.model, draft.reasoningEffort as PublicProvider["reasoningEffort"])) && <option value={draft.reasoningEffort} disabled>已保存：{draft.reasoningEffort}</option>}{effortOptions.map(value => <option key={value} value={value}>{EFFORT_LABELS[value]}</option>)}</Select></Field>
-              <Field label="温度"><Input aria-label="温度" type="number" min={0} max={2} step={0.1} required value={draft.temperature} onChange={e => change({ temperature: e.target.value })} /></Field>
-              <div className="flex items-center justify-between gap-3"><span className="text-[12px]">严格 JSON Schema</span><Switch label="严格 JSON Schema" checked={draft.supportsStrictSchema} onChange={value => change({ supportsStrictSchema: value })} /></div>
+              <Field label={t("settings_model_section.m056")} overridden={locked("lightModel")}><Input aria-label={t("settings_model_section.m057")} disabled={locked("lightModel")} value={draft.lightModel} onChange={e => change({ lightModel: e.target.value })} placeholder={t("settings_model_section.m058")} /></Field>
+              <Field label={t("settings_model_section.m059")} overridden={locked("reasoningEffort")}><Select aria-label={t("settings_model_section.m059")} disabled={locked("reasoningEffort")} value={canonicalReasoningEffort(draft.baseUrl, draft.model, draft.reasoningEffort as PublicProvider["reasoningEffort"])} onChange={e => change({ reasoningEffort: e.target.value })}>{!effortOptions.includes(canonicalReasoningEffort(draft.baseUrl, draft.model, draft.reasoningEffort as PublicProvider["reasoningEffort"])) && <option value={draft.reasoningEffort} disabled>{t("settings_model_section.m060")}{draft.reasoningEffort}</option>}{effortOptions.map(value => <option key={value} value={value}>{t("reasoning." + value)}</option>)}</Select></Field>
+              <Field label={t("settings_model_section.m061")}><Input aria-label={t("settings_model_section.m061")} type="number" min={0} max={2} step={0.1} required value={draft.temperature} onChange={e => change({ temperature: e.target.value })} /></Field>
+              <div className="flex items-center justify-between gap-3"><span className="text-[12px]">{t("settings_model_section.m062")}</span><Switch label={t("settings_model_section.m062")} checked={draft.supportsStrictSchema} onChange={value => change({ supportsStrictSchema: value })} /></div>
             </div>
-            <Field label="附加请求头（JSON）" overridden={locked("headers")} hint={editing?.hasHeaders ? "已有请求头不会回显；留空保留，输入 {} 清除。" : "仅在网关要求时填写；名称与值均为字符串。"}>
-              <Textarea aria-label="附加请求头（JSON）" disabled={locked("headers")} value={draft.headersText} onChange={e => change({ headersText: e.target.value })} rows={3} spellCheck={false} autoComplete="off" placeholder={'{"x-custom-header":"your-value"}'} />
+            <Field label={t("settings_model_section.m063")} overridden={locked("headers")} hint={editing?.hasHeaders ? t("settings_model_section.m064") : t("settings_model_section.m065")}>
+              <Textarea aria-label={t("settings_model_section.m063")} disabled={locked("headers")} value={draft.headersText} onChange={e => change({ headersText: e.target.value })} rows={3} spellCheck={false} autoComplete="off" placeholder={'{"x-custom-header":"your-value"}'} />
             </Field>
           </details>
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" size="sm" variant="primary" aria-label="保存模型配置" loading={busy}>{editing?.environmentOnly ? "保存为本机配置" : "保存"}</Button>
-            <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { setDraft(null); setConfirmDelete(false); setError(null); }}>取消</Button>
-            {editing && !editing.environmentOnly && <Button type="button" size="sm" variant="ghost" icon={<Trash2 size={13} />} onClick={() => setConfirmDelete(true)}>删除此服务</Button>}
+            <Button type="submit" size="sm" variant="primary" aria-label={t("settings_model_section.m066")} loading={busy}>{editing?.environmentOnly ? t("settings_model_section.m067") : t("settings_model_section.m068")}</Button>
+            <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { setDraft(null); setConfirmDelete(false); setError(null); }}>{t("settings_model_section.m069")}</Button>
+            {editing && !editing.environmentOnly && <Button type="button" size="sm" variant="ghost" icon={<Trash2 size={13} />} onClick={() => setConfirmDelete(true)}>{t("settings_model_section.m070")}</Button>}
           </div>
           {confirmDelete && editing && <div className="space-y-3 rounded-md bg-muted p-3">
-            <p className="text-[13px]">删除“{editing.label}”及其本机保存的凭据？运行中的任务不会中断。</p>
+            <p className="text-[13px]">{t("settings_model_section.m071")}{editing.label}{t("settings_model_section.m072")}</p>
             <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="danger" disabled={busy} onClick={() => {
               const remaining = providers.filter(p => !p.environmentOnly && p.id !== editing.id);
-              void persist({ providers: remaining.map(publicInput), activeProviderId: settings?.activeProviderId === editing.id ? remaining[0]?.id ?? "" : settings?.activeProviderId }, "模型服务已删除。");
-            }}>确认删除服务</Button><Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>保留服务</Button></div>
+              void persist({ providers: remaining.map(publicInput), activeProviderId: settings?.activeProviderId === editing.id ? remaining[0]?.id ?? "" : settings?.activeProviderId }, t("settings_model_section.m073"));
+            }}>{t("settings_model_section.m074")}</Button><Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>{t("settings_model_section.m075")}</Button></div>
           </div>}
         </fieldset>
       </form>}
-      {(error || loadError) && <div role="alert" className="space-y-2"><p className="text-[13px] text-[var(--destructive)]">{error || loadError}</p>{loadError && <Button size="sm" variant="ghost" onClick={() => void refresh()}>重新读取配置</Button>}</div>}
+      {(error || loadError) && <div role="alert" className="space-y-2"><p className="text-[13px] text-[var(--destructive)]">{error || loadError}</p>{loadError && <Button size="sm" variant="ghost" onClick={() => void refresh()}>{t("settings_model_section.m076")}</Button>}</div>}
       {notice && <p role="status" className="text-[13px] text-muted-foreground">{notice}</p>}
-      <p className="pt-1 text-[11px] leading-relaxed text-muted-foreground">凭据仅保存在本机；使用云端模型时，相关资料会发送至所选服务。</p>
+      <p className="pt-1 text-[11px] leading-relaxed text-muted-foreground">{t("settings_model_section.m077")}</p>
     </div>
   </section>;
 }
 
 function Field({ label, hint, overridden, children }: { label: string; hint?: string; overridden?: boolean; children: React.ReactNode }) {
+  const { t } = useI18n();
   const id = React.useId();
   const element = React.isValidElement<React.HTMLAttributes<HTMLElement>>(children) ? React.cloneElement(children, { id, "aria-describedby": hint ? `${id}-hint` : undefined }) : children;
   return <div className="min-w-0 space-y-1.5">
-    <label htmlFor={id} className="block text-[12px] font-medium">{label}{overridden && <span className="ml-2 text-xs font-normal text-muted-foreground">环境变量覆盖</span>}</label>
+    <label htmlFor={id} className="block text-[12px] font-medium">{label}{overridden && <span className="ml-2 text-xs font-normal text-muted-foreground">{t("settings_model_section.m078")}</span>}</label>
     {element}
     {hint && <p id={`${id}-hint`} className="text-xs leading-relaxed text-muted-foreground">{hint}</p>}
   </div>;
 }
 
-function serviceHost(value: string) {
-  try { return new URL(value).host; } catch { return "地址待配置"; }
+function serviceHost(value: string, fallback: string) {
+  try { return new URL(value).host; } catch { return fallback; }
 }

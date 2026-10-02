@@ -4,6 +4,7 @@ import { fail, handle, readJsonObject } from "@/lib/api";
 import {
   getPublicSettings, readStoredSettings, saveSettings, mergeProviderInputs,
   PERSONALITY_PRESETS, PersonalitySchema, ProviderInputSchema, isLlmConfigured,
+  RetrievalModelInputSchema, mergeRetrievalModelInput,
 } from "@/lib/settings";
 import { checkDocling } from "@/lib/ingest/parse/docling";
 
@@ -27,6 +28,7 @@ const SettingsPatchSchema = z.object({
   providers: z.array(ProviderInputSchema).max(30).optional(),
   activeProviderId: z.string().optional(),
   preferSavedModels: z.boolean().optional(),
+  retrievalModel: RetrievalModelInputSchema.optional(),
 }).strict();
 
 export async function PATCH(request: NextRequest) {
@@ -42,12 +44,18 @@ export async function PATCH(request: NextRequest) {
     if (activeId && !providers.some(p => p.id === activeId)) {
       return fail("请选择已保存的模型服务。", 400);
     }
-    const { providers: providerInputs, ...preferences } = parsed;
+    const { providers: providerInputs, retrievalModel, ...preferences } = parsed;
     saveSettings({
       ...preferences,
       ...(providerInputs ? { providers: mergeProviderInputs(providerInputs) } : {}),
+      ...(retrievalModel ? { retrievalModel: mergeRetrievalModelInput(retrievalModel) } : {}),
       activeProviderId: activeId,
     });
+    if (retrievalModel) {
+      const { scheduleEmbeddingIndex, stopEmbeddingIndex } = await import("@/lib/index/embeddings");
+      stopEmbeddingIndex();
+      scheduleEmbeddingIndex();
+    }
     return { settings: getPublicSettings(), model: { configured: isLlmConfigured() } };
   });
 }

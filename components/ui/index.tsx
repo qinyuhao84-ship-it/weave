@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/i18n-provider";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -129,11 +130,11 @@ export function InsetPanel({
 export type PageType = "entity" | "concept" | "source" | "query" | "overview";
 
 const TYPE_META: Record<PageType, { label: string; color: string }> = {
-  entity: { label: "实体", color: "var(--type-entity)" },
-  concept: { label: "概念", color: "var(--type-concept)" },
-  source: { label: "来源", color: "var(--type-source)" },
-  query: { label: "问答", color: "var(--type-query)" },
-  overview: { label: "综述", color: "var(--type-overview)" },
+  entity: { label: "pageTypes.entity", color: "var(--type-entity)" },
+  concept: { label: "pageTypes.concept", color: "var(--type-concept)" },
+  source: { label: "pageTypes.source", color: "var(--type-source)" },
+  query: { label: "pageTypes.query", color: "var(--type-query)" },
+  overview: { label: "pageTypes.overview", color: "var(--type-overview)" },
 };
 
 /**
@@ -149,6 +150,7 @@ export function TypeBadge({
   className?: string;
   showDot?: boolean;
 }) {
+  const { t } = useI18n();
   const meta = TYPE_META[type as PageType] ?? { label: type, color: "var(--muted-foreground)" };
   return (
     <span
@@ -168,7 +170,7 @@ export function TypeBadge({
           aria-hidden
         />
       )}
-      {meta.label}
+      {t.has(meta.label) ? t(meta.label) : meta.label}
     </span>
   );
 }
@@ -270,16 +272,18 @@ export function Label({
   children,
   hint,
   className,
+  htmlFor,
 }: {
   children: React.ReactNode;
   hint?: string;
   className?: string;
+  htmlFor?: string;
 }) {
   return (
-    <div className={cn("mb-1.5 flex items-baseline gap-2", className)}>
-      <span className="text-[12px] font-semibold tracking-[0.06em] text-foreground">
+    <div className={cn("mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1", className)}>
+      <label htmlFor={htmlFor} className="shrink-0 text-[12px] font-semibold tracking-[0.06em] text-foreground">
         {children}
-      </span>
+      </label>
       {hint && <span className="text-[11.5px] text-muted-foreground">{hint}</span>}
     </div>
   );

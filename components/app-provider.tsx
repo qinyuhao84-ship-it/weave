@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
 import * as React from "react";
 import { IngestDrawer } from "@/components/ingest/ingest-drawer";
@@ -7,6 +8,7 @@ import { JobsProvider } from "@/components/jobs/jobs-provider";
 import { useApi } from "@/hooks/use-api";
 import { normalizeLinkTarget } from "@/lib/vault/wikilinks";
 import type { WikilinkResolver } from "@/lib/markdown/wikilink-plugin";
+import { advanceDataVersions, initialDataVersions, type DataScope } from "@/lib/app-data-versions";
 
 /**
  * 应用级共享状态的宿主。
@@ -61,7 +63,7 @@ type AppDataValue = {
    */
   resolveWikilink: WikilinkResolver;
   /** 任何会改变页面上数据的事件（导入提交、会话增删、词条增删改）都调用它。 */
-  bumpData: () => void;
+  bumpData: (scope?: DataScope) => void;
   /** 侧栏用的三份摘要数据，提到这里统一取，见下面注释。 */
   vault: VaultSummary | null;
   sessions: SessionSummary[];
@@ -80,7 +82,16 @@ export function useAppData(): AppDataValue {
 }
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
-  const [dataVersion, setDataVersion] = React.useState(0);
+  const { t } = useI18n();
+  const [versions, advance] = React.useReducer(advanceDataVersions, initialDataVersions);
+  const dataVersion = versions.data;
+  const bumpData = React.useCallback((scope: DataScope = "all") => advance(scope), []);
+  const [backupWarning, setBackupWarning] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    const receive = (event: Event) => setBackupWarning((event as CustomEvent<string>).detail);
+    window.addEventListener("weave-backup-warning", receive);
+    return () => window.removeEventListener("weave-backup-warning", receive);
+  }, []);
   const [sessionRefresh, setSessionRefresh] = React.useState(0);
 
   // Finder / Obsidian 直接编辑 Markdown 时由服务端监听器重建索引；收到事件后，
@@ -90,7 +101,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     source.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data) as { type?: string };
-        if (payload.type === "change") setDataVersion((version) => version + 1);
+        if (payload.type === "change") advance("knowledge");
       } catch {
         // Ignore malformed or keepalive frames.
       }
@@ -106,22 +117,22 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   //
   // 这也兑现了 hooks/use-api.ts 里那句「将来真出现同 path 双消费者时再加去重」——
   // 与其加一层全局去重，不如让同一个数据只有一个所有者。
-  const { data: vault } = useApi<VaultSummary>("/api/vault", [dataVersion]);
+  const { data: vault } = useApi<VaultSummary>("/api/vault", [versions.knowledge]);
   const { data: sessionData } = useApi<{ sessions: SessionSummary[] }>(
     "/api/chat/sessions",
-    [dataVersion, sessionRefresh],
+    [versions.sessions, sessionRefresh],
   );
-  const { data: identityData } = useApi<{ agentName: string }>("/api/settings/identity", [dataVersion]);
+  const { data: identityData } = useApi<{ agentName: string }>("/api/settings/identity", [versions.settings]);
   // limit=1：只要 counts，不要列表本体
   const { data: reviewData } = useApi<{ counts: { pending: number } }>(
     "/api/review?status=pending&limit=1",
-    [dataVersion],
+    [versions.review],
   );
   // 双链解析表。跟着 dataVersion 走 —— 导入提交之后新建的词条立刻可点，
   // 否则刚写进库的 [[新词条]] 要等刷新才认得出来。
   const { data: wikilinkData } = useApi<{
     table: Record<string, { pageId: string; title: string }>;
-  }>("/api/wikilinks", [dataVersion]);
+  }>("/api/wikilinks", [versions.knowledge]);
 
   // 只在回答或标题仍在后台生成时轮询会话状态；其他页面不额外请求。
   React.useEffect(() => {
@@ -143,13 +154,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     () => ({
       dataVersion,
       resolveWikilink,
-      bumpData: () => setDataVersion((v) => v + 1),
+      bumpData,
       vault: vault ?? null,
       sessions: sessionData?.sessions ?? [],
       pendingReview: reviewData?.counts.pending ?? 0,
       agentName: identityData?.agentName ?? "织识",
     }),
-    [dataVersion, vault, sessionData, reviewData, identityData, resolveWikilink],
+    [dataVersion, vault, sessionData, reviewData, identityData, resolveWikilink, bumpData],
   );
 
   return (
@@ -161,7 +172,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       <IngestProvider>
         <JobsProvider>
           {children}
-          <IngestDrawer onCommitted={() => setDataVersion((v) => v + 1)} />
+          <IngestDrawer onCommitted={() => bumpData("knowledge")} />
+          {backupWarning && <div role="status" className="fixed bottom-4 right-4 z-[110] max-w-sm rounded-lg border border-border bg-background p-4 text-sm shadow-lg"><p>{t("backup.warning")}</p><button className="mt-2 min-h-9 underline" onClick={() => setBackupWarning(null)}>{t("app_provider.m001")}</button></div>}
         </JobsProvider>
       </IngestProvider>
     </AppDataContext.Provider>

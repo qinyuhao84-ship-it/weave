@@ -38,11 +38,42 @@ CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(
 );
 `;
 
+/** 名称属于派生索引；触发器确保改名、删除与名称检索同事务生效。 */
+const NAMES_DDL = `
+CREATE TABLE IF NOT EXISTS page_names (name TEXT NOT NULL, page_id TEXT NOT NULL, PRIMARY KEY(name, page_id));
+CREATE INDEX IF NOT EXISTS idx_page_names_page ON page_names(page_id);
+CREATE TRIGGER IF NOT EXISTS page_names_insert AFTER INSERT ON pages WHEN new.status = 'active' BEGIN
+  INSERT INTO page_names SELECT DISTINCT value, new.id FROM json_each(new.normalized_names) WHERE value <> '' ON CONFLICT(name, page_id) DO NOTHING;
+END;
+CREATE TRIGGER IF NOT EXISTS page_names_update AFTER UPDATE OF normalized_names, status ON pages BEGIN
+  DELETE FROM page_names WHERE page_id = old.id;
+  INSERT INTO page_names SELECT DISTINCT value, new.id FROM json_each(new.normalized_names) WHERE new.status = 'active' AND value <> '' ON CONFLICT(name, page_id) DO NOTHING;
+END;
+CREATE TRIGGER IF NOT EXISTS page_names_delete AFTER DELETE ON pages BEGIN
+  DELETE FROM page_names WHERE page_id = old.id;
+END;
+INSERT OR IGNORE INTO page_names SELECT names.value, pages.id FROM pages, json_each(pages.normalized_names) AS names WHERE pages.status = 'active' AND names.value <> '';
+`;
+
+const EMBEDDINGS_DDL = `
+CREATE TABLE IF NOT EXISTS page_embeddings (
+  profile TEXT NOT NULL, page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+  content_hash TEXT NOT NULL, chunk_index INTEGER NOT NULL, chunk_start INTEGER NOT NULL,
+  dimensions INTEGER NOT NULL, vector BLOB NOT NULL,
+  PRIMARY KEY(profile, page_id, chunk_index)
+);
+CREATE INDEX IF NOT EXISTS idx_page_embeddings_page ON page_embeddings(page_id);
+CREATE TRIGGER IF NOT EXISTS page_embeddings_update AFTER UPDATE OF content_hash, status, title, file_path ON pages
+WHEN old.content_hash <> new.content_hash OR old.status <> new.status OR old.title <> new.title OR old.file_path <> new.file_path BEGIN
+  DELETE FROM page_embeddings WHERE page_id = new.id;
+END;
+`;
+
 /** 建立表结构。迁移是幂等的，重复调用安全。 */
 function initialize(sqlite: Database.Database, db: WeaveDb): void {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
-  sqlite.pragma("synchronous = NORMAL");
+  sqlite.pragma("synchronous = FULL");
   sqlite.pragma("busy_timeout = 5000");
 
   const migrationsFolder = path.join(process.cwd(), "drizzle");
@@ -55,6 +86,8 @@ function initialize(sqlite: Database.Database, db: WeaveDb): void {
   }
 
   sqlite.exec(FTS_DDL);
+  sqlite.exec(NAMES_DDL);
+  sqlite.exec(EMBEDDINGS_DDL);
 }
 
 export function getConnection(): Connection {

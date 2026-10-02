@@ -7,7 +7,7 @@ import {
   appendLog, createPage, deletePage, loadPageFile, mergePages, previewDelete, updatePage,
 } from "@/lib/vault/service";
 import { sha256 } from "@/lib/vault/atomic";
-import { commitVault, withCommitOperation } from "@/lib/git/auto-commit";
+import { backupVault, withCommitOperation } from "@/lib/git/auto-commit";
 import { enqueue, getJob, readDraft, saveDraft, finishJob, type JobContext } from "@/lib/jobs/runner";
 import { createProvider } from "@/lib/llm";
 import type { LlmProvider } from "@/lib/llm/types";
@@ -460,7 +460,7 @@ async function finalize(
       "EDIT",
       `按回答处理 ${applied.edits.length} 个词条、补建 ${applied.created.length} 个 —— ${truncate(summary, 80)}`,
     );
-    const closing = commitVault(`按回答处理：${truncate(summary, 60)}`);
+    const closing = backupVault(`按回答处理：${truncate(summary, 60)}`);
     sha = closing.sha;
     applied.commits = applied.edits.length + applied.created.length + (closing.committed ? 1 : 0);
   }
@@ -611,7 +611,7 @@ export function applyReviewPlan(jobId: string, input: ApplyInput): ApplyResult {
   let sha: string | null = null;
   if (deleted > 0 || merged > 0) {
     appendLog("EDIT", `按你的确认执行了 ${deleted} 项删除、${merged} 项合并`);
-    const closing = commitVault(`按确认处理 ${deleted + merged} 项`);
+    const closing = backupVault(`按确认处理 ${deleted + merged} 项`);
     sha = closing.sha;
     // 服务层每写一次各留一条记录，收尾这次再加一条
     applied.commits += deleted + merged + (closing.committed ? 1 : 0);
@@ -841,7 +841,7 @@ export function applyFixPlan(
   let sha: string | null = null;
   if (created > 0) {
     appendLog("EDIT", `按修复计划补建了 ${created} 个词条`);
-    sha = commitVault(`体检补建 ${created} 个词条`).sha;
+    sha = backupVault(`体检补建 ${created} 个词条`).sha;
   }
 
   finishJob(jobId, {

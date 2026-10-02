@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   async headers() {
     // srcdoc 自身限制网络；父页面策略同时禁止 iframe 自行导航到外部站点。
     return ["/chat", "/sources/:path*"].map(source => ({ source, headers: [{ key: "Content-Security-Policy", value: "frame-src 'self'; object-src 'none'" }] }));

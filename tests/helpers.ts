@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 /** 当前测试文件专属的临时 vault 根目录（由 tests/setup.ts 创建） */
 export function vaultRoot(): string {
@@ -81,8 +82,14 @@ export function pageExists(relative: string): boolean {
 export function resetVault(): void {
   // .weave/trash 也要清：墓碑是「合并/删除建立了什么重定向」的唯一文件证据，
   // 重建索引会读它。不清的话，上一个用例删掉的词条会以重定向的形式漏进下一个用例。
-  for (const sub of ["wiki", "raw", path.join(".weave", "trash"), path.join(".weave", "ingest-queue")]) {
+  for (const sub of ["wiki", "raw", path.join(".weave", "trash"), path.join(".weave", "ingest-queue"), path.join(".weave", "transactions")]) {
     const dir = path.join(vaultRoot(), sub);
     if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
   }
+}
+
+/** 测试直接核对 Git 备份，不保留已移除的历史产品 API。 */
+export function gitHistory(limit = 50): Array<{ sha: string; shortSha: string }> {
+  const raw = execFileSync("git", ["log", `-${limit}`, "--format=%H %h"], { cwd: vaultRoot(), encoding: "utf8" });
+  return raw.trim().split("\n").map(line => { const [sha, shortSha] = line.split(" "); return { sha, shortSha }; });
 }

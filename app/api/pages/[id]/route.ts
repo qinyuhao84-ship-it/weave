@@ -1,3 +1,4 @@
+import { eq, or, inArray } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { handle, fail, toUserMessage } from "@/lib/api";
@@ -19,13 +20,14 @@ export async function GET(
     const file = loadPageFile(id);
     const db = getDb();
 
-    const allLinks = db.select().from(links).all();
+    const allLinks = db.select().from(links).where(or(eq(links.srcPageId, id), eq(links.dstPageId, id))).all();
     const outgoing = allLinks.filter((l) => l.srcPageId === id);
     const incoming = allLinks.filter((l) => l.dstPageId === id);
 
-    const titleById = new Map(
-      db.select().from(pages).all().map((p) => [p.id, p.title]),
-    );
+    const relatedIds = [...new Set(allLinks.flatMap(link => [link.srcPageId, link.dstPageId]).filter((pageId): pageId is string => Boolean(pageId)))];
+    const titleById = new Map(relatedIds.length
+      ? db.select({ id: pages.id, title: pages.title }).from(pages).where(inArray(pages.id, relatedIds)).all().map(page => [page.id, page.title])
+      : []);
 
     return {
       id: file.pageId,

@@ -1,0 +1,7 @@
+export type EvalDocument = { id: string; article: string; title: string; text: string };
+export type EvalQuery = { id: string; query: string; split: "dev" | "test"; qrels: Record<string, number> };
+export type AnswerCase = { id: string; question: string; documentId: string | null; answers: string[]; spans: Array<{ start: number; end: number }>; kind: "answerable" | "controlled-unanswerable"; excludedArticle?: string };
+export type EvalManifest = { version: 1; seed: number; sources: Array<{ name: string; revision: string; url: string; license: string }>; files: Record<string, string>; documents: number; dev: number; test: number; answerable: number; unanswerable: number; corpusScanned: number; notes: string[]; previousEvaluation?: { datasetHash: string; excludedQueryHashes: string[]; excludedArticles: string[]; excludedQaTitles?: string[] } };
+export type EvalHit = { id: string; content: string; score: number };
+export type QueryMetrics = { recall5: number; recall10: number; hit5: number; hit10: number; mrr10: number; ndcg10: number; precision5: number; precision10: number; judgedPrecision10: number | null; judgmentCoverage10: number; evidenceRecall10: number | null };
+export type EvalRow = { id: string; method: string; metrics: QueryMetrics; hits: EvalHit[]; localMs: number; wallMs: number; embeddingMs: number; rerankMs: number; cacheHits: number; networkRequests: number; degraded: boolean; failed: boolean };

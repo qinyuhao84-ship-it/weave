@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { writeFileAtomic } from "./atomic";
 
 type PendingMove = { from: string; to: string };
 type LocationConfig = { activeRoot?: string; pendingMove?: PendingMove };
@@ -24,10 +25,7 @@ function readConfig(): LocationConfig {
 
 function writeConfig(value: LocationConfig): void {
   const file = configFile();
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const temporary = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
-  fs.renameSync(temporary, file);
+  writeFileAtomic(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 export function isVaultPathOverridden(): boolean {

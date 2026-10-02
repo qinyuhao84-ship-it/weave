@@ -9,6 +9,7 @@ import { isSmallTalkQuestion } from "./title-utils";
 import { ChatConfigSchema, restoreChatConfig, type ChatConfig, type ChatTimings, type ChatArtifact } from "./config";
 import { defaultChatConfig } from "./config-server";
 import { messageArtifacts } from "./artifacts";
+import { validateCitations, assessQuality } from "./citations";
 
 /** 对话历史管理。用户明确要求：不做成一次性问答，问过的结论要能找回来。 */
 
@@ -292,7 +293,8 @@ export function saveChatRunProgress(runId: string, text: string): void {
   const run = db.select().from(chatRuns).where(eq(chatRuns.id, runId)).get();
   if (!run || run.status !== "running") return;
   const now = localISOString();
-  db.update(chatMessages).set({ content: text }).where(eq(chatMessages.id, run.assistantMessageId)).run();
+  // answer() 已校验并保存正文后，错误收尾不能用原始流覆盖它。
+  db.update(chatMessages).set({ content: text }).where(and(eq(chatMessages.id, run.assistantMessageId), isNull(chatMessages.citationsJson))).run();
   db.update(chatRuns).set({ updatedAt: now }).where(eq(chatRuns.id, runId)).run();
 }
 
@@ -317,8 +319,24 @@ export function updateAssistantMessage(input: {
 
 export function finishChatRun(runId: string, status: Exclude<ChatRunStatus, "running">, error: string | null = null): void {
   const now = localISOString();
-  getDb().update(chatRuns).set({ status, error, updatedAt: now, finishedAt: now })
-    .where(and(eq(chatRuns.id, runId), eq(chatRuns.status, "running"))).run();
+  const db = getDb();
+  db.transaction(() => {
+    const run = db.select().from(chatRuns).where(and(eq(chatRuns.id, runId), eq(chatRuns.status, "running"))).get();
+    if (!run) return;
+    if (status === "failed" || status === "cancelled") sanitizeUnvalidatedMessage(run.assistantMessageId);
+    db.update(chatRuns).set({ status, error, updatedAt: now, finishedAt: now })
+      .where(and(eq(chatRuns.id, runId), eq(chatRuns.status, "running"))).run();
+  });
+}
+
+/** 进程/链路在校验前中断时，没有可验证证据的编号一律移除。 */
+function sanitizeUnvalidatedMessage(messageId: string): void {
+  const db = getDb();
+  const row = db.select().from(chatMessages).where(and(eq(chatMessages.id, messageId), isNull(chatMessages.citationsJson))).get();
+  if (!row) return;
+  const report = validateCitations(row.content, []);
+  db.update(chatMessages).set({ content: report.text, citationsJson: JSON.stringify({ list: [], quality: assessQuality(report), hallucinated: report.hallucinatedIndices }) })
+    .where(and(eq(chatMessages.id, messageId), isNull(chatMessages.citationsJson))).run();
 }
 
 export function saveChatTimings(runId: string, timings: ChatTimings): void {
@@ -342,6 +360,7 @@ export function markInterruptedChatRunsFailed(): number {
   if (rows.length === 0) return 0;
   const now = localISOString();
   for (const row of rows) {
+    sanitizeUnvalidatedMessage(row.assistantMessageId);
     db.update(chatRuns).set({
       status: "failed",
       error: "服务重启时回答尚未完成，已保留当前内容。",

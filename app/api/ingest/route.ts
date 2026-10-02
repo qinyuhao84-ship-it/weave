@@ -3,7 +3,6 @@ import { ok, fail } from "@/lib/api";
 import { startIngest } from "@/lib/ingest/pipeline";
 import { canImport } from "@/lib/ingest/parse/router";
 import { isLlmConfigured } from "@/lib/settings";
-import { ensureGitRepo } from "@/lib/git/auto-commit";
 import { ensureVaultLayout } from "@/lib/vault/paths";
 
 /** 一次最多接收的文件大小：200MB。本机单用户，不做分片上传。 */
@@ -15,7 +14,6 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   ensureVaultLayout();
-  ensureGitRepo();
 
   let form: FormData;
   try {

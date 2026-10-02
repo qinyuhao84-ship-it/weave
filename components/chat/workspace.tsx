@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
 import * as React from "react";
 import Link from "next/link";
@@ -9,21 +10,17 @@ import {
 import { useAppData } from "@/components/app-provider";
 import { useIngest } from "@/components/ingest/ingest-provider";
 import {
-  Button, Badge, TypeBadge, Card, Input, Textarea, Hairline, AiWorkingFrame, ProgressRing,
+  Button, Badge, TypeBadge, Card, Textarea, Hairline, AiWorkingFrame, ProgressRing,
 } from "@/components/ui";
 import { COMPRESS_THRESHOLD, CONTEXT_WARN_THRESHOLD } from "@/lib/chat/tokens";
-import { MarkdownRenderer } from "@/components/markdown/renderer";
 import { apiFetch } from "@/hooks/use-api";
 import { useModalFocus } from "@/hooks/use-modal-focus";
-import type { WikilinkResolver } from "@/lib/markdown/wikilink-plugin";
 import { stripWikilinks } from "@/lib/vault/wikilinks";
-import { cn, truncate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { ChatProgress } from "@/lib/chat/progress";
 import { restoreChatConfig, type ChatConfig, type ChatArtifact } from "@/lib/chat/config";
 import type { PublicSettings } from "@/lib/settings";
 import { ChatControls } from "./chat-controls";
-import { WaitingStatus } from "./waiting-status";
-import { ArtifactCard, ArtifactPlaceholder } from "./artifact-card";
 import { WeaveMark } from "@/components/ui/weave-mark";
 
 /**
@@ -35,45 +32,9 @@ import { WeaveMark } from "@/components/ui/weave-mark";
  *   3. 引用角标可查看检索到的词条片段及关联原始资料
  */
 
-type Citation = {
-  index: number;
-  pageId: string;
-  pageTitle: string;
-  pageType: string;
-  sourcePage: number | null;
-  sourceDoc: string | null;
-  excerpt: string;
-  sourceRefs?: Array<{
-    sourceId: string | null;
-    originalName: string;
-    page: number | null;
-    quote: string | null;
-  }>;
-};
-
-type Quality = {
-  citationCount: number;
-  hallucinationCount: number;
-  hallucinationRate: number;
-  hasNoCitations: boolean;
-  isNoAnswer: boolean;
-};
-
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  citations: { list?: Citation[]; quality?: Quality; hallucinated?: number[]; process?: ChatProgress[] } | null;
-  filedAsPageId: string | null;
-  /** 这条回答是被用户中途停掉的。界面要如实标出来，不能让它看起来像答完了 */
-  interrupted?: boolean;
-  runStatus?: "running" | "done" | "failed" | "cancelled" | null;
-  runError?: string | null;
-  process?: ChatProgress[];
-  createdAt: string;
-  config?: ChatConfig | null;
-  artifacts?: ChatArtifact[];
-};
+import type { Citation, Quality, Message } from "./types";
+import { MessageBubble } from "./message-bubble";
+import { AnswerFilingDialog } from "./answer-filing-dialog";
 
 type ActiveRun = {
   id: string;
@@ -87,9 +48,6 @@ type ActiveRun = {
   createdAt?: string;
   config?: ChatConfig | null;
 };
-
-type FilingTarget = { id: string; title: string; contentHash: string };
-type FilingPageOption = { pageId: string; title: string; type: string };
 
 /** 与 lib/chat/context.ts 的 ContextUsage 对应。前端只渲染，不做算术。 */
 type ContextUsage = {
@@ -183,16 +141,8 @@ function mergePreservingIdentity(previous: Message[], incoming: Message[]): Mess
   });
 }
 
-/** 把只在当前问答轮次有效的引用编号，落成词条之间可长期使用的双链。 */
-function answerForFiling(message: Message): string {
-  const byIndex = new Map((message.citations?.list ?? []).map((citation) => [citation.index, citation]));
-  return message.content.replace(/\[\s*ID\s*[:：]\s*(\d+)\s*\]/gi, (marker, indexText: string) => {
-    const citation = byIndex.get(Number(indexText));
-    return citation ? `[[${citation.pageTitle}]]` : marker;
-  });
-}
-
 export function ChatWorkspace() {
+  const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { bumpData, resolveWikilink, vault, agentName, sessions } = useAppData();
@@ -202,7 +152,7 @@ export function ChatWorkspace() {
   const [activeSessionId, setActiveSessionId] = React.useState<string | null>(
     () => searchParams.get("s"),
   );
-  const [sessionTitle, setSessionTitle] = React.useState("新对话");
+  const [sessionTitle, setSessionTitle] = React.useState(t("chat_workspace.m001"));
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [input, setInput] = React.useState("");
   const [activeRun, setActiveRun] = React.useState<ActiveRun | null>(null);
@@ -214,15 +164,6 @@ export function ChatWorkspace() {
   useModalFocus(Boolean(openCitation), citationPanel, closeCitation);
   const [citationPageState, setCitationPageState] = React.useState<"checking" | "available" | "stale" | "error" | null>(null);
   const [filingMessage, setFilingMessage] = React.useState<Message | null>(null);
-  const [filingMode, setFilingMode] = React.useState<"new" | "existing">("new");
-  const [filingTitle, setFilingTitle] = React.useState("");
-  const [filingContent, setFilingContent] = React.useState("");
-  const [filingSearch, setFilingSearch] = React.useState("");
-  const [filingOptions, setFilingOptions] = React.useState<FilingPageOption[]>([]);
-  const [filingTarget, setFilingTarget] = React.useState<FilingTarget | null>(null);
-  const [filingLoading, setFilingLoading] = React.useState(false);
-  const [filingSaving, setFilingSaving] = React.useState(false);
-  const [filingError, setFilingError] = React.useState<string | null>(null);
   const [configMissing, setConfigMissing] = React.useState(false);
   const [settings, setSettings] = React.useState<PublicSettings | null>(null);
   const [chatConfig, setChatConfig] = React.useState<ChatConfig | null>(null);
@@ -306,7 +247,7 @@ export function ChatWorkspace() {
         activeRun: ActiveRun | null;
       }>(`/api/chat/sessions/${sessionId}`);
       if (current !== messagesGeneration.current) return;
-      setSessionTitle(data.session?.title ?? "对话");
+      setSessionTitle(data.session?.title ?? t("chat_workspace.m002"));
       if (restoreConfig) setChatConfig(data.session.config);
       setActiveRun(data.activeRun ?? null);
       // 保留没变的那几条消息的**对象引用**。
@@ -333,7 +274,7 @@ export function ChatWorkspace() {
         setCompression(null);
       }
     }
-  }, []);
+  }, [t]);
 
   // 读取本机模型配置状态；凭据不返回浏览器。
   React.useEffect(() => {
@@ -442,7 +383,7 @@ export function ChatWorkspace() {
         setActiveSessionId(run.sessionId);
         router.replace(`/chat?s=${run.sessionId}`);
       }
-      bumpData();
+      bumpData("sessions");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setInput((current) => current || question);
@@ -459,8 +400,8 @@ export function ChatWorkspace() {
     // 顺序保存，避免快速切换时较早的请求覆盖最终选择。
     pendingConfigWrite.current = pendingConfigWrite.current.then(async () => {
       await apiFetch(`/api/chat/sessions/${sessionId}`, { method: "PATCH", body: JSON.stringify({ config }) });
-    }).catch(error => { if (currentSessionRef.current === sessionId) setError(error instanceof Error ? error.message : "问答配置保存失败，发送时将重试当前选择。"); });
-  }, [activeSessionId]);
+    }).catch(error => { if (currentSessionRef.current === sessionId) setError(error instanceof Error ? error.message : t("chat_workspace.m003")); });
+  }, [activeSessionId, t]);
 
   /**
    * 客户端只订阅服务端任务。离开聊天页时清理这个订阅不会中止模型生成；
@@ -545,14 +486,14 @@ export function ChatWorkspace() {
       if (currentSessionRef.current === sessionId) {
         if (details.context) setContext(details.context);
         if (details.compression) setCompression(details.compression);
-        bumpData();
+        bumpData("sessions");
         void loadMessages(sessionId, false).then(() => {
           if (details.compression && currentSessionRef.current === sessionId) {
             setCompression(details.compression);
           }
         });
       } else {
-        bumpData();
+        bumpData("sessions");
       }
       source.close();
     };
@@ -593,7 +534,7 @@ export function ChatWorkspace() {
             text: accumulated,
             citations: run.citations,
             quality: run.quality,
-            error: typeof run.error === "string" ? run.error : "回答生成失败。",
+            error: typeof run.error === "string" ? run.error : t("chat_workspace.m004"),
           });
         }
         return;
@@ -618,7 +559,7 @@ export function ChatWorkspace() {
       } else if (event.type === "error") {
         finish("failed", {
           text: accumulated,
-          error: typeof event.message === "string" ? event.message : "回答生成失败。",
+          error: typeof event.message === "string" ? event.message : t("chat_workspace.m004"),
         });
       }
     };
@@ -629,7 +570,7 @@ export function ChatWorkspace() {
       if (flushTimer !== null) window.clearTimeout(flushTimer);
       source.close();
     };
-  }, [activeRun, activeSessionId, bumpData, loadMessages]);
+  }, [activeRun, activeSessionId, bumpData, loadMessages, t]);
 
   const handleStop = React.useCallback(async () => {
     if (!activeRun || activeRun.sessionId !== activeSessionId) return;
@@ -639,15 +580,15 @@ export function ChatWorkspace() {
         body: JSON.stringify({ sessionId: activeRun.sessionId }),
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "停止请求没有完成。");
+      setError(err instanceof Error ? err.message : t("chat_workspace.m005"));
     }
-  }, [activeRun, activeSessionId]);
+  }, [activeRun, activeSessionId, t]);
 
   // 会话是**惰性创建**的：服务端在第一句提问时才落库。所以「新对话」只是
   // 回到不带 ?s 的 /chat，不需要先建一个空会话出来。
   const handleNewSession = React.useCallback(() => {
     setActiveSessionId(null);
-    setSessionTitle("新对话");
+    setSessionTitle(t("chat_workspace.m001"));
     setMessages([]);
     setError(null);
     setContext(null);
@@ -656,14 +597,14 @@ export function ChatWorkspace() {
     const provider = settings?.providers.find(entry => entry.id === settings.activeProviderId);
     setChatConfig(provider?.model ? { providerId: provider.id, model: provider.model, reasoningEffort: provider.reasoningEffort, contextWindow: provider.contextWindow, showMe: false } : null);
     router.push("/chat");
-  }, [router, settings]);
+  }, [router, settings, t]);
 
   const handleDeleteSession = React.useCallback(
     async (sessionId: string) => {
       try {
         await apiFetch(`/api/chat/sessions/${sessionId}`, { method: "DELETE" });
         handleNewSession();
-        bumpData(); // 让侧栏的最近对话把这条去掉
+        bumpData("sessions"); // 让侧栏的最近对话把这条去掉
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -671,86 +612,11 @@ export function ChatWorkspace() {
     [handleNewSession, bumpData],
   );
 
+  const closeFiledAnswer = React.useCallback(() => setFilingMessage(null), []);
   const handleFile = React.useCallback((messageId: string) => {
-    const message = messages.find((item) => item.id === messageId);
-    if (!message) return;
-    setFilingMessage(message);
-    setFilingMode("new");
-    setFilingTitle(truncate(message.content.replace(/\[\s*ID\s*[:：]\s*\d+\s*\]/gi, "").split("\n")[0].trim(), 40));
-    setFilingContent(answerForFiling(message));
-    setFilingSearch("");
-    setFilingOptions([]);
-    setFilingTarget(null);
-    setFilingError(null);
+    const message = messages.find(item => item.id === messageId);
+    if (message) setFilingMessage(message);
   }, [messages]);
-
-  React.useEffect(() => {
-    const query = filingSearch.trim();
-    if (!filingMessage || filingMode !== "existing" || filingTarget || query.length < 2) {
-      setFilingOptions([]);
-      return;
-    }
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      setFilingLoading(true);
-      void apiFetch<{ results: FilingPageOption[] }>(`/api/search?q=${encodeURIComponent(query)}&limit=12`)
-        .then((result) => {
-          if (!cancelled) setFilingOptions(result.results);
-        })
-        .catch((err) => {
-          if (!cancelled) setFilingError(err instanceof Error ? err.message : String(err));
-        })
-        .finally(() => {
-          if (!cancelled) setFilingLoading(false);
-        });
-    }, 250);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [filingMessage, filingMode, filingSearch, filingTarget]);
-
-  const selectFilingTarget = React.useCallback(async (option: FilingPageOption) => {
-    if (!filingMessage) return;
-    setFilingError(null);
-    setFilingLoading(true);
-    try {
-      const page = await apiFetch<{ id: string; title: string; content: string; contentHash: string }>(`/api/pages/${option.pageId}`);
-      setFilingTarget({ id: page.id, title: page.title, contentHash: page.contentHash });
-      setFilingContent(`${page.content.trimEnd()}\n\n## 来自问答的补充\n\n${answerForFiling(filingMessage).trim()}`);
-    } catch (err) {
-      setFilingError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setFilingLoading(false);
-    }
-  }, [filingMessage]);
-
-  const saveFiledAnswer = React.useCallback(async () => {
-    if (!filingMessage || !activeSessionId) return;
-    setFilingSaving(true);
-    setFilingError(null);
-    try {
-      await apiFetch(`/api/chat/sessions/${activeSessionId}/file`, {
-        method: "POST",
-        body: JSON.stringify({
-          messageId: filingMessage.id,
-          ...(filingMode === "new" ? { title: filingTitle } : {}),
-          ...(filingTarget ? {
-            targetPageId: filingTarget.id,
-            expectedHash: filingTarget.contentHash,
-            content: filingContent,
-          } : filingMode === "new" ? { content: filingContent } : {}),
-        }),
-      });
-      await loadMessages(activeSessionId);
-      bumpData();
-      setFilingMessage(null);
-    } catch (err) {
-      setFilingError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setFilingSaving(false);
-    }
-  }, [filingMessage, activeSessionId, filingMode, filingTitle, filingTarget, filingContent, loadMessages, bumpData]);
 
   return (
     <>
@@ -766,8 +632,8 @@ export function ChatWorkspace() {
                   type="button"
                   onClick={() => setShowContext((open) => !open)}
                   aria-expanded={showContext}
-                  aria-label={`上下文占用 ${contextPercent(context)}%，点击${showContext ? "收起" : "展开"}明细`}
-                  title={`上下文占用 ${contextPercent(context)}% · ${context.measured ? "实测" : "估算"}`}
+                  aria-label={t("chat_workspace.m009", {v0: contextPercent(context), v1: showContext ? t("chat_workspace.m007") : t("chat_workspace.m008")})}
+                  title={t("chat_workspace.m012", {v0: contextPercent(context), v1: context.measured ? t("chat_workspace.m010") : t("chat_workspace.m011")})}
                   className="flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2 text-[11.5px] text-muted-foreground transition-colors hover:bg-[var(--muted)] hover:text-foreground"
                 >
                   <ProgressRing
@@ -783,8 +649,8 @@ export function ChatWorkspace() {
                 <button
                   type="button"
                   onClick={() => void handleDeleteSession(activeSessionId)}
-                  aria-label="删除这段对话"
-                  title="删除这段对话"
+                  aria-label={t("chat_workspace.m013")}
+                  title={t("chat_workspace.m013")}
                   className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-[var(--muted)] hover:text-[var(--destructive)]"
                 >
                   <Trash2 size={13} strokeWidth={1.8} />
@@ -797,8 +663,7 @@ export function ChatWorkspace() {
                   className="flex h-7 items-center gap-1 rounded-full px-2 text-[12px] text-muted-foreground transition-colors hover:bg-[var(--muted)] hover:text-foreground"
                 >
                   <Plus size={13} strokeWidth={1.8} />
-                  新对话
-                </button>
+                  {t("chat_workspace.m001")}</button>
               )}
             </div>
           </div>
@@ -814,49 +679,44 @@ export function ChatWorkspace() {
                   </span>
                   <span>
                     （{contextPercent(context)}%）
-                    {context.measured ? " · 实测" : " · 估算"}
+                    {context.measured ? t("chat_workspace.m014") : t("chat_workspace.m015")}
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                  <span>系统 {formatTokenCount(context.breakdown.system)}</span>
+                  <span>{t("chat_workspace.m016")}{formatTokenCount(context.breakdown.system)}</span>
                   {context.breakdown.summary > 0 && (
-                    <span>摘要 {formatTokenCount(context.breakdown.summary)}</span>
+                    <span>{t("chat_workspace.m017")}{formatTokenCount(context.breakdown.summary)}</span>
                   )}
-                  <span>对话历史 {formatTokenCount(context.breakdown.history)}</span>
-                  <span>检索资料 {formatTokenCount(context.breakdown.context)}</span>
-                  <span>本次提问 {formatTokenCount(context.breakdown.question)}</span>
+                  <span>{t("chat_workspace.m018")}{formatTokenCount(context.breakdown.history)}</span>
+                  <span>{t("chat_workspace.m019")}{formatTokenCount(context.breakdown.context)}</span>
+                  <span>{t("chat_workspace.m020")}{formatTokenCount(context.breakdown.question)}</span>
                 </div>
                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                  <span>逐字保留 {context.historyMessages} 条</span>
-                  {context.summarizedMessages > 0 && <span>已摘要 {context.summarizedMessages} 条</span>}
-                  {context.compressionCount > 0 && <span>压缩过 {context.compressionCount} 次</span>}
+                  <span>{t("chat_workspace.m021")}{context.historyMessages} {t("chat_workspace.m022")}</span>
+                  {context.summarizedMessages > 0 && <span>{t("chat_workspace.m023")}{context.summarizedMessages} {t("chat_workspace.m022")}</span>}
+                  {context.compressionCount > 0 && <span>{t("chat_workspace.m024")}{context.compressionCount} {t("chat_workspace.m025")}</span>}
                   {/* 硬丢弃的条数取自落库的实测记录，所以刷新页面后仍然在。
                       下面那段文字只在刚发生截断的那一轮出现 —— 少了这一行，
                       刷新一次「丢了 3 条对话」就消失了，而顶部百分比照样好看。 */}
-                  {context.droppedMessages > 0 && <span>已丢弃 {context.droppedMessages} 条</span>}
+                  {context.droppedMessages > 0 && <span>{t("chat_workspace.m026")}{context.droppedMessages} {t("chat_workspace.m022")}</span>}
                 </div>
                 {!context.measured && context.breakdown.context === 0 && (
                   <p className="mt-1">
-                    这一页没有正在进行的提问，所以「检索资料」与「本次提问」为空 ——
-                    真实占用还要再多出这两项。
-                  </p>
+                    {t("chat_workspace.m027")}</p>
                 )}
                 {/* 这几条用前景色而不是语义色：语义色在本设计系统里只用于图标、边框与
                     底色，正文一律走前景/次级前景 —— 11.5px 的 --warning 压在暖米白上
                     对比度只有 2:1 量级，读不清就失去了提示的意义。 */}
                 {compression?.phase === "failed" && (
                   <p className="mt-1 text-foreground">
-                    注意：上一次自动压缩没成功（{compression.reason}），对话本身不受影响。
-                  </p>
+                    {t("chat_workspace.m028")}{compression.reason}{t("chat_workspace.m029")}</p>
                 )}
                 {compression?.phase === "skipped" && compression.reason === "cooldown" && (
-                  <p className="mt-1 text-foreground">上次压缩失败，已暂停 5 分钟再试，免得每轮都白等一次。</p>
+                  <p className="mt-1 text-foreground">{t("chat_workspace.m030")}</p>
                 )}
                 {compression?.phase === "truncated" && (
                   <p className="mt-1 text-foreground">
-                    注意：为了塞进窗口，已丢弃最早的 {compression.droppedMessages} 条对话
-                    {compression.reason ? `（${compression.reason}）` : ""}。这段内容不在摘要里。
-                  </p>
+                    {t("chat_workspace.m031")}{compression.droppedMessages} {t("chat_workspace.m032")}{compression.reason ? `（${compression.reason}）` : ""}{t("chat_workspace.m033")}</p>
                 )}
               </div>
             </div>
@@ -889,10 +749,9 @@ export function ChatWorkspace() {
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle size={15} className="mt-0.5 shrink-0 text-[var(--warning)]" />
                     <div>
-                      <p className="text-[13px] font-medium text-foreground">先配置你的模型</p>
+                      <p className="text-[13px] font-medium text-foreground">{t("chat_workspace.m034")}</p>
                       <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
-                        请先连接你自己的云端或本地模型，保存后即可开始问答。
-                        <Link href="/settings#model-service" className="ml-1 underline underline-offset-4">去配置模型</Link>
+                        {t("chat_workspace.m035")}<Link href="/settings#model-service" className="ml-1 underline underline-offset-4">{t("chat_workspace.m036")}</Link>
                       </p>
                     </div>
                   </div>
@@ -903,8 +762,7 @@ export function ChatWorkspace() {
                 <div className="flex flex-col items-center pt-8 text-center">
                   <WeaveMark animate className="mb-5 h-10 w-10 text-foreground" />
                   <h2 className="max-w-full text-balance text-[1.55rem] font-semibold leading-[1.35] tracking-[-0.025em] text-foreground sm:text-[1.85rem]">
-                    {agentName}，今天想了解什么？
-                  </h2>
+                    {agentName}{t("chat_workspace.m037")}</h2>
                   {vault?.stats.pages === 0 && (
                     <Button
                       variant="secondary"
@@ -913,8 +771,7 @@ export function ChatWorkspace() {
                       icon={<BookMarked size={13} />}
                       onClick={openIngest}
                     >
-                      先导入资料
-                    </Button>
+                      {t("chat_workspace.m038")}</Button>
                   )}
                 </div>
               )}
@@ -969,8 +826,8 @@ export function ChatWorkspace() {
                         void handleSend();
                       }
                     }}
-                    placeholder="问问你的知识库，比如：这几篇资料对项目风险有什么不同看法？"
-                    aria-label="向知识库提问"
+                    placeholder={t("chat_workspace.m039")}
+                    aria-label={t("chat_workspace.m040")}
                     rows={1}
                     className="min-h-[88px] border-0 bg-transparent px-1.5 py-2 text-[16px] focus:border-0 focus-visible:outline-none sm:min-h-[44px] sm:text-[14px]"
                     disabled={busy}
@@ -987,8 +844,7 @@ export function ChatWorkspace() {
                         onClick={() => void handleStop()}
                         icon={<CircleStop size={12} strokeWidth={2} />}
                       >
-                        停止
-                      </Button>
+                        {t("chat_workspace.m041")}</Button>
                     ) : (
                       <Button
                         variant="primary"
@@ -998,7 +854,7 @@ export function ChatWorkspace() {
                         onClick={() => void handleSend()}
                         icon={<Send size={12} strokeWidth={2} />}
                       >
-                        {hasConversation ? "发送" : "开始提问"}
+                        {hasConversation ? t("chat_workspace.m042") : t("chat_workspace.m043")}
                       </Button>
                     )}
                   </div>
@@ -1008,8 +864,7 @@ export function ChatWorkspace() {
             {!hasConversation && (
               <p className="mx-auto mt-3 flex max-w-3xl items-baseline justify-center gap-1.5 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-[11.5px] text-muted-foreground md:px-6">
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)]" aria-hidden />
-                资料保存在本机，入库前可以检查 AI 生成的变更。
-              </p>
+                {t("chat_workspace.m044")}</p>
             )}
           </div>
 
@@ -1021,35 +876,34 @@ export function ChatWorkspace() {
 
       {/* 引用详情抽屉 */}
       {openCitation && (
-        <div ref={citationPanel} role="dialog" aria-modal="true" aria-label={`引用 ${openCitation.index}：${openCitation.pageTitle}`} tabIndex={-1} className="fixed inset-0 z-[var(--z-index-modal)] outline-none">
+        <div ref={citationPanel} role="dialog" aria-modal="true" aria-label={t("chat_workspace.m045", {v0: openCitation.index, v1: openCitation.pageTitle})} tabIndex={-1} className="fixed inset-0 z-[var(--z-index-modal)] outline-none">
           <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]" onClick={closeCitation} aria-hidden />
           <aside className="panel-in absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto border-l border-border bg-background p-5 shadow-dialog">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11.5px] font-semibold tracking-[0.1em] text-muted-foreground">
-                  引用 [{openCitation.index}]
+                  {t("chat_workspace.m046")}{openCitation.index}]
                 </p>
                 <p className="mt-1 text-[15px] font-medium text-foreground">{openCitation.pageTitle}</p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <TypeBadge type={openCitation.pageType} />
                   {openCitation.sourcePage && (
-                    <Badge tone="accent">原文第 {openCitation.sourcePage} 页</Badge>
+                    <Badge tone="accent">{t("chat_workspace.m047")}{openCitation.sourcePage} {t("chat_workspace.m048")}</Badge>
                   )}
                 </div>
                 {citationPageState === "stale" && (
                   <p role="status" className="mt-2 max-w-[300px] text-[11.5px] leading-relaxed text-[var(--warning)]">
-                    这条引用来自已删除或已清空的知识库快照。原对话中的引用片段仍保留，当前词条已不可用。
-                  </p>
+                    {t("chat_workspace.m049")}</p>
                 )}
                 {citationPageState === "error" && (
-                  <p role="status" className="mt-2 text-[11.5px] text-muted-foreground">暂时无法核对这条引用对应的词条。</p>
+                  <p role="status" className="mt-2 text-[11.5px] text-muted-foreground">{t("chat_workspace.m050")}</p>
                 )}
               </div>
               <button
                 type="button"
                 onClick={closeCitation}
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-[var(--muted)] hover:text-foreground"
-                aria-label="关闭"
+                aria-label={t("chat_workspace.m051")}
               >
                 <X size={14} />
               </button>
@@ -1059,8 +913,7 @@ export function ChatWorkspace() {
 
             <div className="mb-2 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
               <Quote size={11} />
-              本次检索到的知识库词条片段
-            </div>
+              {t("chat_workspace.m052")}</div>
             <div className="rounded-[12px] border border-border bg-card p-3.5">
               <p className="text-[12.5px] leading-relaxed text-foreground">
                 {stripWikilinks(openCitation.excerpt)}
@@ -1068,17 +921,16 @@ export function ChatWorkspace() {
             </div>
 
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-              编号只确认答案引用了本次检索结果，不代表该片段在语义上足以推出回答中的结论。
-            </p>
+              {t("chat_workspace.m053")}</p>
 
             {openCitation.sourceRefs && openCitation.sourceRefs.length > 0 && (
               <div className="mt-4 space-y-3">
-                <p className="text-[11.5px] font-medium text-foreground">关联原文</p>
+                <p className="text-[11.5px] font-medium text-foreground">{t("chat_workspace.m054")}</p>
                 {openCitation.sourceRefs.map((source, index) => (
                   <div key={`${source.sourceId ?? source.originalName}-${index}`} className="rounded-[12px] border border-border bg-card p-3.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="min-w-0 truncate text-[12px] text-foreground">{source.originalName}</span>
-                      {source.page && <Badge tone="neutral">第 {source.page} 页</Badge>}
+                      {source.page && <Badge tone="neutral">{t("chat_workspace.m055")}{source.page} {t("chat_workspace.m048")}</Badge>}
                     </div>
                     {source.quote && (
                       <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-muted-foreground">
@@ -1086,15 +938,13 @@ export function ChatWorkspace() {
                       </p>
                     )}
                     {source.sourceId && citationPageState === "stale" ? (
-                      <p className="mt-2.5 text-[11px] text-muted-foreground">原件已随旧知识库归档；恢复对应回收站批次后可再次查看。</p>
+                      <p className="mt-2.5 text-[11px] text-muted-foreground">{t("chat_workspace.m056")}</p>
                     ) : source.sourceId && (
                       <div className="mt-2.5 flex gap-3 text-[11.5px]">
                         <a href={`/api/sources/${source.sourceId}/raw`} className="text-foreground underline underline-offset-4">
-                          下载原件
-                        </a>
+                          {t("chat_workspace.m057")}</a>
                         <a href={`/api/sources/${source.sourceId}/parsed`} target="_blank" rel="noreferrer" className="text-foreground underline underline-offset-4">
-                          查看解析稿
-                        </a>
+                          {t("chat_workspace.m058")}</a>
                       </div>
                     )}
                   </div>
@@ -1105,8 +955,8 @@ export function ChatWorkspace() {
             {openCitation.sourceDoc && (!openCitation.sourceRefs || openCitation.sourceRefs.length === 0) && (
               <p className="mt-2 text-[11.5px] text-muted-foreground">
                 {/[\\/]|^[A-Za-z]:/.test(openCitation.sourceDoc)
-                  ? "此引用来自旧版来源记录；请通过关联词条核对原始资料。"
-                  : `来源：${openCitation.sourceDoc}`}
+                  ? t("chat_workspace.m059")
+                  : t("chat_workspace.m060", {v0: openCitation.sourceDoc})}
               </p>
             )}
 
@@ -1119,321 +969,15 @@ export function ChatWorkspace() {
                 if (citationPageState === "available") router.push(`/wiki/${openCitation.pageId}`);
               }}
             >
-              {citationPageState === "checking" ? "正在核对词条…" : citationPageState === "stale" ? "词条已失效" : citationPageState === "error" ? "暂时无法打开词条" : "打开完整词条"}
+              {citationPageState === "checking" ? t("chat_workspace.m061") : citationPageState === "stale" ? t("chat_workspace.m062") : citationPageState === "error" ? t("chat_workspace.m063") : t("chat_workspace.m064")}
             </Button>
           </aside>
         </div>
       )}
 
-      {filingMessage && (
-        <>
-          <div
-            className="fixed inset-0 z-[var(--z-index-overlay)] bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]"
-            onClick={() => setFilingMessage(null)}
-            aria-hidden
-          />
-          <aside className="panel-in fixed right-0 top-0 z-[var(--z-index-modal)] flex h-full w-full max-w-xl flex-col border-l border-border bg-background shadow-dialog">
-            <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-5">
-              <div>
-                <h2 className="text-[14px] font-semibold text-foreground">保存回答到知识库</h2>
-                <p className="mt-0.5 text-[11.5px] text-muted-foreground">保留回答里的引用与原始资料来源</p>
-              </div>
-              <button type="button" onClick={() => setFilingMessage(null)} aria-label="关闭" className="rounded-full p-2 text-muted-foreground hover:bg-[var(--muted)] hover:text-foreground">
-                <X size={14} />
-              </button>
-            </header>
+      {filingMessage && <AnswerFilingDialog key={filingMessage.id} message={filingMessage} sessionId={activeSessionId}
+        onClose={closeFiledAnswer} onSaved={async () => { if (activeSessionId) await loadMessages(activeSessionId); bumpData(); }} />}
 
-            <div className="flex-1 space-y-4 overflow-y-auto p-5">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  aria-pressed={filingMode === "new"}
-                  onClick={() => { setFilingMode("new"); setFilingTarget(null); }}
-                  className={cn("rounded-full border px-3 py-1.5 text-[12px]", filingMode === "new" ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground")}
-                >
-                  新建词条
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={filingMode === "existing"}
-                  onClick={() => { setFilingMode("existing"); setFilingTarget(null); setFilingContent(""); }}
-                  className={cn("rounded-full border px-3 py-1.5 text-[12px]", filingMode === "existing" ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground")}
-                >
-                  合并到已有词条
-                </button>
-              </div>
-
-              {filingMode === "new" ? (
-                <div>
-                  <label className="mb-1.5 block text-[12px] font-medium text-foreground" htmlFor="filing-title">词条标题</label>
-                  <Input id="filing-title" value={filingTitle} onChange={(event) => setFilingTitle(event.target.value)} maxLength={120} />
-                </div>
-              ) : (
-                <div>
-                  <label className="mb-1.5 block text-[12px] font-medium text-foreground" htmlFor="filing-search">查找要合并的词条</label>
-                  {filingTarget ? (
-                    <div className="flex items-center justify-between gap-3 rounded-[10px] border border-border bg-card px-3 py-2.5">
-                      <span className="truncate text-[12.5px] text-foreground">{filingTarget.title}</span>
-                      <Button size="sm" variant="ghost" onClick={() => { setFilingTarget(null); setFilingSearch(""); setFilingContent(""); }}>更换</Button>
-                    </div>
-                  ) : (
-                    <>
-                      <Input id="filing-search" value={filingSearch} onChange={(event) => setFilingSearch(event.target.value)} placeholder="输入词条标题或相关内容…" />
-                      {filingLoading && <p className="mt-2 text-[11.5px] text-muted-foreground">正在查找…</p>}
-                      {filingOptions.length > 0 && (
-                        <div className="mt-2 max-h-48 overflow-y-auto rounded-[10px] border border-border bg-card">
-                          {filingOptions.map((option) => (
-                            <button key={option.pageId} type="button" onClick={() => void selectFilingTarget(option)} className="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2.5 text-left last:border-b-0 hover:bg-[var(--muted)]">
-                              <span className="truncate text-[12.5px] text-foreground">{option.title}</span>
-                              <TypeBadge type={option.type} />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {filingSearch.trim().length >= 2 && !filingLoading && filingOptions.length === 0 && (
-                        <p className="mt-2 text-[11.5px] text-muted-foreground">没有找到匹配词条，请换个关键词。</p>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {(filingMode === "new" || filingTarget) && (
-                <div>
-                  <label className="mb-1.5 block text-[12px] font-medium text-foreground" htmlFor="filing-content">
-                    {filingMode === "new" ? "词条正文预览" : "合并后的正文预览，可继续编辑"}
-                  </label>
-                  {filingMode === "existing" && (
-                    <p className="mb-2 text-[11.5px] leading-relaxed text-muted-foreground">
-                      预览保留原词条正文，并在末尾加入这条回答；保存时会检查原词条是否被同时修改。
-                    </p>
-                  )}
-                  <Textarea id="filing-content" value={filingContent} onChange={(event) => setFilingContent(event.target.value)} rows={18} />
-                </div>
-              )}
-
-              {filingError && <p role="alert" className="rounded-[10px] border border-[color-mix(in_srgb,var(--destructive)_30%,transparent)] bg-[color-mix(in_srgb,var(--destructive)_7%,transparent)] p-3 text-[12px] text-foreground">{filingError}</p>}
-            </div>
-
-            <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-3.5">
-              <Button variant="ghost" size="sm" disabled={filingSaving} onClick={() => setFilingMessage(null)}>取消</Button>
-              <Button
-                variant="primary"
-                size="sm"
-                loading={filingSaving}
-                disabled={filingMode === "existing" && !filingTarget}
-                onClick={() => void saveFiledAnswer()}
-              >
-                {filingMode === "new" ? "创建词条" : "确认合并"}
-              </Button>
-            </footer>
-          </aside>
-        </>
-      )}
     </>
   );
 }
-
-/**
- * 回答上方那一行小字。
- *
- * 存在的理由只有一个：**它必须始终在、且高度固定**。
- * 流式时它写「正在检索 / 正在生成」，完成后它写引用统计 —— 同一行、同一高度，
- * 所以正文的起始位置从等待到落定始终不动。这正是「生成回答时跳一下」的解法：
- * 不是把动画调快，而是让状态切换根本不改变布局。
- *
- * 用 h-5 钉死高度、truncate 保证不换行：换行会让高度重新变成变量，
- * 那就等于把刚修好的坑又挖回来。
- */
-function AnswerMeta({
-  working = false,
-  label,
-  parts,
-}: {
-  working?: boolean;
-  /** 流式状态下的那句话 */
-  label?: string;
-  /** 完成后的统计片段，用 · 连接 */
-  parts?: React.ReactNode[];
-}) {
-  return (
-    <div className="mb-2 flex h-5 items-center gap-1.5 text-[11.5px] text-muted-foreground">
-      {working ? (
-        <>
-          <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--ring)]" aria-hidden />
-          <span className="truncate">{label}</span>
-        </>
-      ) : (
-        <span className="flex min-w-0 items-center gap-1.5 truncate">
-          {(parts ?? []).map((part, index) => (
-            <React.Fragment key={index}>
-              {index > 0 && <span aria-hidden>·</span>}
-              {part}
-            </React.Fragment>
-          ))}
-        </span>
-      )}
-    </div>
-  );
-}
-
-const MessageBubble = React.memo(function MessageBubble({
-  message,
-  animate,
-  resolveWikilink,
-  onCitationClick,
-  onFile,
-  onNavigate,
-  working,
-}: {
-  message: Message;
-  /** 这条消息是不是刚出现。false = 它已经在屏幕上待过了，别重播入场动效 */
-  animate: boolean;
-  /** 必须引用稳定：换个函数身份，这条消息的 markdown 就整篇重解析 */
-  resolveWikilink: WikilinkResolver;
-  onCitationClick: (citation: Citation) => void;
-  onFile: (messageId: string) => void;
-  onNavigate: (pageId: string) => void;
-  working: boolean;
-}) {
-  const citations = React.useMemo(() => message.citations?.list ?? [], [message.citations?.list]);
-  const quality = message.citations?.quality;
-
-  const citationMap = React.useMemo(() => {
-    const map = new Map<number, { pageId: string; title: string; sourcePage: number | null }>();
-    for (const citation of citations) {
-      map.set(citation.index, {
-        pageId: citation.pageId,
-        title: citation.pageTitle,
-        sourcePage: citation.sourcePage,
-      });
-    }
-    return map;
-  }, [citations]);
-
-  if (message.role === "user") {
-    return (
-      <div className={cn("flex justify-end", animate && "msg-in")}>
-        <div className="max-w-[85%] rounded-[16px] rounded-br-[6px] bg-primary px-4 py-2.5 text-[13.5px] leading-relaxed text-primary-foreground">
-          {message.content}
-        </div>
-      </div>
-    );
-  }
-
-  // 引用统计放在正文上方的状态行里（与流式时那一行同一个位置），
-  // 不再在正文下面另起一个标题行 —— 一屏里两处说同一件事，读起来是噪音。
-  const metaParts: React.ReactNode[] = [];
-  if (!working && message.interrupted) {
-    metaParts.push(
-      <span key="interrupted" className="text-[var(--warning)]">
-        已停止生成
-      </span>,
-    );
-  }
-  if (!working && citations.length > 0) {
-    metaParts.push(`已校验的引用 ${citations.length} 处`);
-  } else if (!working && quality?.isNoAnswer) {
-    metaParts.push("知识库里没有能回答这个问题的内容");
-  } else if (!working && message.runStatus !== "failed") {
-    metaParts.push("这次回答没有引用知识库内容");
-  }
-  if (message.runStatus === "failed") {
-    metaParts.push(
-      <span key="failed" className="text-[var(--warning)]">
-        {message.runError ? `生成失败：${message.runError}` : "回答生成失败"}
-      </span>,
-    );
-  }
-  if (quality && quality.hallucinationCount > 0) {
-    metaParts.push(
-      <span key="hallucination" className="text-[var(--warning)]">
-        剔除 {quality.hallucinationCount} 条对不上原文的引用
-      </span>,
-    );
-  }
-
-  return (
-    <div className={cn("group", animate && "msg-in")}>
-      {working && <WaitingStatus createdAt={message.createdAt} hasText={Boolean(message.content.trim())} />}
-      {!working && <AnswerMeta parts={metaParts} />}
-
-      {message.content.trim() ? (
-      <MarkdownRenderer
-        content={message.content}
-        resolveWikilink={resolveWikilink}
-        // 回答里指向不存在词条的 [[X]] 直接当普通文字：对读者来说
-        // 「这个词条还没有」不是他能处理的事，虚线只会让回答看着像坏了
-        brokenWikilinks="plain"
-        citations={citationMap}
-        pendingCitations={working}
-        onCitationClick={(index) => {
-          const citation = citations.find((c) => c.index === index);
-          if (citation) onCitationClick(citation);
-        }}
-        onWikilinkClick={(pageId) => pageId && onNavigate(pageId)}
-        density="conversation"
-        className={working ? "streaming-caret" : undefined}
-      />
-      ) : working ? null : message.interrupted || message.runStatus === "cancelled" ? (
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
-          已停止生成，这一轮还没有产出内容。
-        </p>
-      ) : message.runStatus === "failed" ? (
-        <p className="text-[13px] leading-relaxed text-muted-foreground">没有生成回答内容。</p>
-      ) : (
-        <p className="text-[13px] leading-relaxed text-muted-foreground">回答内容为空。</p>
-      )}
-
-      {message.artifacts?.map(artifact => <ArtifactCard key={artifact.id} artifact={artifact} />)}
-      {working && message.config?.showMe && !message.artifacts?.length && <ArtifactPlaceholder />}
-
-      {/* 引用列表 */}
-      {citations.length > 0 && (
-        <div className="mt-3 border-t border-border pt-3">
-          <div className="flex flex-wrap gap-1.5">
-            {citations.map((citation) => (
-              <button
-                key={citation.index}
-                type="button"
-                onClick={() => onCitationClick(citation)}
-                className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11.5px] transition-colors hover:border-[var(--focus-ring)] hover:bg-[var(--muted)]"
-              >
-                <span className="font-semibold tabular-nums text-[var(--ring)]">
-                  {citation.index}
-                </span>
-                <span className="text-foreground">{truncate(citation.pageTitle, 16)}</span>
-                {citation.sourcePage && (
-                  <span className="text-muted-foreground">p.{citation.sourcePage}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 回填 wiki */}
-      {/* 隐藏用的是父容器的 opacity —— 祖先的 opacity 会乘到整棵子树，
-          子元素加 focus-visible:opacity-100 是反超不了的（这是同一个 opacity 的两个层级）。
-          键盘用户 Tab 到这个会真的写数据的按钮上时必须能看见它，所以把 focus-within
-          加在父容器上。 */}
-      <div className="mt-2.5 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-        {message.filedAsPageId ? (
-          <Badge tone="success">
-            <BookMarked size={9} />
-            已归档为词条
-          </Badge>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onFile(message.id)}
-            className="flex items-center gap-1 text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <BookMarked size={11} />
-            归档为新词条
-          </button>
-        )}
-      </div>
-    </div>
-  );
-});

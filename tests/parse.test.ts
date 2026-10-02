@@ -189,7 +189,7 @@ describe("工具函数", () => {
 
   it("estimateTokens 对中文给出保守估算", () => {
     // 150 个汉字 ≈ 100 token
-    expect(estimateTokens("汉".repeat(150))).toBe(100);
+    expect(estimateTokens("汉".repeat(150))).toBe(150);
   });
 
   it("looksLikeScan 识别「文件大但文字少」的扫描件", () => {

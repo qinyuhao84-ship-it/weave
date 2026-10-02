@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import { scoreQuery } from '../scripts/eval/metrics';
+const read=(p:string)=>fs.readFileSync(p,'utf8').trim().split('\n').map(x=>JSON.parse(x));
+const queries=new Map(read('.eval-cache/dataset-v3-final/queries.jsonl').filter(x=>x.split==='dev').map(x=>[x.id,x]));
+const traces=read('docs/evaluation/2026-10-02/round-2/dev/trace.jsonl').filter(x=>x.method==='current');
+const cases=traces.map(r=>{const ranked=r.traces.find((x:any)=>x.stage==='reranking').hits, vectors=r.traces.find((x:any)=>x.stage==='vectors').hits;const vm=new Map(vectors.map((x:any,i:number)=>[x.pageId,{score:x.score,rank:i}]));const vs=vectors.map((x:any)=>x.score),rs=ranked.map((x:any)=>x.score);const stats=(xs:number[])=>{const mean=xs.reduce((a,b)=>a+b,0)/xs.length;return {mean,sd:Math.sqrt(xs.reduce((a,b)=>a+(b-mean)**2,0)/xs.length)||1,min:Math.min(...xs),max:Math.max(...xs)}};return {q:queries.get(r.id),ranked,vm,vs:stats(vs),rs:stats(rs)};});
+const configurations=[];
+for(const scale of ['range','zscore','logit','power'])for(const weight of [.1,.2,.3,.4,.5,.6,.7,.8,.9])for(const exponent of scale==='power'?[.25,.5,1,2,4]:[1])for(const gap of [null,.1,.2,.3,.4]){
+ let ndcg=0,recall=0;
+ for(const c of cases){const w=gap===null||c.ranked[0].score-(c.ranked[1]?.score??0)<gap?weight:0;const hits=c.ranked.map((h:any,i:number)=>{const v:any=c.vm.get(h.pageId);let s:number;if(!w)s=-i;else if(!v)s=-100;else if(scale==='range')s=(1-w)*(h.score-c.rs.min)/(c.rs.max-c.rs.min||1)+w*(v.score-c.vs.min)/(c.vs.max-c.vs.min||1);else if(scale==='zscore')s=(1-w)*(h.score-c.rs.mean)/c.rs.sd+w*(v.score-c.vs.mean)/c.vs.sd;else if(scale==='logit')s=(1-w)*Math.log(Math.max(1e-5,h.score)/Math.max(1e-5,1-h.score))+w*10*v.score;else s=(1-w)/((i+1)**exponent)+w/((v.rank+1)**exponent);return {id:h.pageId,content:'',score:s}}).sort((a:any,b:any)=>b.score-a.score).slice(0,10);const m=scoreQuery(c.q.qrels,hits);ndcg+=m.ndcg10;recall+=m.recall10;}
+ configurations.push({scale,weight,exponent,gap,ndcg:ndcg/200,recall:recall/200});
+}
+configurations.sort((a,b)=>b.ndcg-a.ndcg);fs.writeFileSync('docs/evaluation/2026-10-02/round-2/score-calibration.json',JSON.stringify({scope:'只读取开发集真实轨迹；固定候选排序探索，不是在线延迟实测',configurations},null,2)+'\n');console.log(configurations.slice(0,12));

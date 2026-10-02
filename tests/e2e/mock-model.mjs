@@ -7,6 +7,14 @@ http.createServer(async(req,res)=>{
   if(req.url==='/models'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data:[{id:'audit-model',context_length:32768,reasoning_efforts:['low','medium','high']},{id:'audit-fast',context_length:16384,reasoning_efforts:['low','high']}]}));return;}
   const chunks=[];for await(const chunk of req)chunks.push(chunk);
   const body=JSON.parse(Buffer.concat(chunks).toString());
+  if(req.url==='/embeddings') {
+    res.setHeader('Content-Type','application/json');
+    res.end(JSON.stringify({data:body.input.map((text,index)=>({index,embedding:/推荐|协同|recommend/.test(text)?[1,0,0]:[0,1,0]}))}));return;
+  }
+  if(req.url==='/rerank') {
+    res.setHeader('Content-Type','application/json');
+    res.end(JSON.stringify({results:body.documents.map((text,index)=>({index,relevance_score:/推荐|协同/.test(text)?.9:.1})).sort((a,b)=>b.relevance_score-a.relevance_score)}));return;
+  }
   const prompt=body.messages.map(m=>m.content).join('\n');
   let kind='title',text='推荐算法讨论';
   if(body.stream){kind='chat';text='推荐算法用于预测用户偏好。[ID:1]';}

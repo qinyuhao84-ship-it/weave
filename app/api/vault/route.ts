@@ -3,7 +3,7 @@ import { getSqlite } from "@/lib/db/client";
 import { reindexAll } from "@/lib/index/reindex";
 import { rebuildIndexFile } from "@/lib/index/index-file";
 import { ensureVaultLayout, VAULT_ROOT, RAW_DIR, WIKI_DIR, WORK_DIR } from "@/lib/vault/paths";
-import { commitVault, ensureGitRepo, hasUncommittedChanges } from "@/lib/git/auto-commit";
+import { backupVault, hasUncommittedChanges } from "@/lib/git/auto-commit";
 import { graphStats } from "@/lib/index/catalog";
 import fs from "node:fs";
 import { isVaultPathOverridden, pendingVaultMove } from "@/lib/vault/location";
@@ -16,7 +16,6 @@ export const maxDuration = 300;
 export async function GET() {
   return handle(() => {
     ensureVaultLayout();
-    ensureGitRepo();
     const sqlite = getSqlite();
     const dbSize = fs.existsSync(WORK_DIR)
       ? fs.statSync(`${WORK_DIR}/weave.db`).size
@@ -56,9 +55,10 @@ export async function POST() {
     // 不提交的话工作区永远脏着：「改动记录」页会常驻显示「有改动正在写入」，
     // 而实际什么都没在写；重建出的目录也永远进不了版本历史。
     // 所有写路径都必须以一次提交收尾（CLAUDE.md 不变式 2）。
-    const { sha } = commitVault("从 Markdown 重建索引");
+    const backup = backupVault("从 Markdown 重建索引");
     return {
-      commitSha: sha,
+      commitSha: backup.commitSha,
+      backupWarning: backup.backupWarning,
       ...report,
       note: `索引已从 ${report.pages} 个词条重建完成。`,
     };

@@ -1,0 +1,212 @@
+[
+  {
+    "id": "DEV_618_QUERY_0",
+    "excludedArticle": "富泰公共运输交汇处",
+    "aliasPattern": "富泰|屯贵|屯貴",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_310_QUERY_0",
+    "excludedArticle": "阿阇黎",
+    "aliasPattern": "阿阇黎|阿闍黎|轨范师|軌範師|ācārya",
+    "aliasMatches": [
+      {
+        "id": "18682#7",
+        "title": "上座部佛教",
+        "excerpt": "的四大派系，在教義上，傳承了上座部早期學說，與大眾部的差異不如後起上座部派系同大眾部的差異那樣大。因此傳入斯里蘭卡的分支，與其他二部都有相同點——律藏註釋稱摩哂陀以目犍連子帝須為和尚而出家，摩訶提婆為阿闍黎受十戒，以摩闡提為阿闍黎受具足戒，表明此時沒有不可調和的分歧。"
+      }
+    ],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "阿闍黎仅作为受戒角色出现，未解释词语意译。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_1027_QUERY_0",
+    "excludedArticle": "布洛涅森林",
+    "aliasPattern": "布洛涅|bois de boulogne",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_530_QUERY_0",
+    "excludedArticle": "一号风球 (澳门)",
+    "aliasPattern": "一号风球|一號風球|澳门.{0,20}气旋|澳門.{0,20}氣旋",
+    "aliasMatches": [
+      {
+        "id": "cmrc:DEV_531",
+        "title": "九号风球 (澳门)",
+        "excerpt": "九号风球 (澳门)\n九号风球（）。为澳门第二高的热带气旋警告。高一级的信号为十号风球，低一级为八号风球。最近一次是受台风天鸽影响而于2017年8月23日上午10时45分悬挂。当热带气旋中心继续逼近澳门特别行政区，预料其强度足以使澳门特别行政区受严重影响。「严重影响」一般是指若热带气旋中心继续靠近可能使澳门直接受其风力最大的眼墙区域所影响，并可能达到十号风球的情况。1917年设立数字热带气旋警告信号系统至1930年期间，澳门曾发出六号信号1次；自1931年改制至今，当局发出九号信号27次，当中有23次在1946年或之后。九号信号及改制前之六号信号合计，一共发出28次。下表为本信号列表，热带气旋套上黄色背景表示最终引致澳门悬挂十号风球，粗体名字表示香港天文台亦为该热带气旋发出九号或以上信号。"
+      }
+    ],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "九号风球资料仅定义九号并提及八号、十号，不能说明一号或最低级定义。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_224_QUERY_0",
+    "excludedArticle": "胴丸",
+    "aliasPattern": "胴丸|腹卷|腹巻",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_1040_QUERY_0",
+    "excludedArticle": "灰凤冠雉",
+    "aliasPattern": "灰凤冠|灰鳳冠|盔凤冠|盔鳳冠",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_17_QUERY_0",
+    "excludedArticle": "德龙烟铁路",
+    "aliasPattern": "德龙烟|德龍煙|德大.{0,30}大莱龙|德大.{0,30}大萊龍",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_256_QUERY_0",
+    "excludedArticle": "羗山道",
+    "aliasPattern": "羗山|羌山",
+    "aliasMatches": [
+      {
+        "id": "772801#0",
+        "title": "羗山",
+        "excerpt": "羗山\n羗山（，舊作薑山）是香港新界大嶼山西部的一個山峰，海拔約459米，位置約為大澳至石壁之間。"
+      }
+    ],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "羗山资料描述山峰所在地，不描述羗山道；不能由同名山峰推定道路位置。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_227_QUERY_0",
+    "excludedArticle": "成纪县",
+    "aliasPattern": "成纪|成紀",
+    "aliasMatches": [
+      {
+        "id": "31257#0",
+        "title": "李渊",
+        "excerpt": "李渊\n唐高祖李淵（），字叔德，陇西成纪人，唐朝開國皇帝，618年6月18日－626年9月4日在位共8年 。即位前是隋朝外戚、唐國公、山西河東郡慰撫大使、右驍衛將軍。是隋文帝楊堅皇后獨孤伽羅的外甥，隋煬帝楊廣的表兄。於玄武門之變后不久被逼禪位于唐太宗，稱號“太上皇”。"
+      }
+    ],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "李渊资料仅提历史籍贯陇西成纪，未解释其现代县址。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_1028_QUERY_0",
+    "excludedArticle": "许申",
+    "aliasPattern": "许申|許申",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_370_QUERY_0",
+    "excludedArticle": "洪洞大槐树",
+    "aliasPattern": "洪洞大槐|贾村|賈村",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_586_QUERY_0",
+    "excludedArticle": "祭遵",
+    "aliasPattern": "祭遵",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_241_QUERY_0",
+    "excludedArticle": "魏裔介",
+    "aliasPattern": "魏裔介",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_252_QUERY_0",
+    "excludedArticle": "嘉诺撒圣家学校",
+    "aliasPattern": "嘉诺撒圣家|嘉諾撒聖家",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_69_QUERY_0",
+    "excludedArticle": "鑫诺一号通信卫星",
+    "aliasPattern": "鑫诺|鑫諾",
+    "aliasMatches": [
+      {
+        "id": "132554#17",
+        "title": "中国中央电视台综合频道",
+        "excerpt": "間，中國中央電視台為避免世界杯版權爭議，首次將該頻道的國內版本進行分途廣播，該頻道的高清版本、国干网有線電視信號的該頻道的標清版以及中星九號的「戶戶通」Ku波段加密信號的該頻道的標清版轉播世界杯賽事，鑫諾六號（中星6A）、中星6B以及中星九號「一代機」標清版開路信號则改播其他節目。"
+      }
+    ],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "央视资料中的鑫諾六號属于不同卫星，无鑫诺一号制造商信息。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_178_QUERY_0",
+    "excludedArticle": "伊芳·卡特菲",
+    "aliasPattern": "伊芳|卡特菲|Yvonne Catterfeld",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_29_QUERY_0",
+    "excludedArticle": "魏斯可金融公司",
+    "aliasPattern": "魏斯可|wesco financial",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_113_QUERY_0",
+    "excludedArticle": "灵昭真君",
+    "aliasPattern": "灵昭|靈昭",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_349_QUERY_0",
+    "excludedArticle": "数珠丸",
+    "aliasPattern": "数珠丸|數珠丸",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  },
+  {
+    "id": "DEV_270_QUERY_0",
+    "excludedArticle": "唐鱼",
+    "aliasPattern": "唐鱼|唐魚|白云金丝|白雲金絲|tanichthys",
+    "aliasMatches": [],
+    "reviewer": "Codex",
+    "method": "agent-assisted",
+    "notes": "移除原文章后，标准答案与主题/已知异体别名核查未发现可支持该问题的资料。 仅作为受控缺证据场景；由 Codex 核查。"
+  }
+]

@@ -8,7 +8,7 @@ import { pages, redirects } from "@/lib/db/schema";
 import { reindexAll, flattenRedirects } from "@/lib/index/reindex";
 import { suppressWatcher } from "@/lib/index/watch-suppression";
 import { rebuildIndexFile } from "@/lib/index/index-file";
-import { commitVault, ensureGitRepo } from "@/lib/git/auto-commit";
+import { backupVault } from "@/lib/git/auto-commit";
 import { localISOString, datePrefix } from "@/lib/utils";
 
 import {
@@ -18,7 +18,8 @@ import {
   parsePage, serializePage, touch, createFrontmatter,
   type PageFrontmatter, type SourceRef,
 } from "./frontmatter";
-import { readFileIfExists, writeFileAtomic, removeFileIfExists } from "./atomic";
+import { readFileIfExists, writeFileAtomic, removeFileIfExists, AtomicWriteConflictError } from "./atomic";
+import { prepareJournal, markJournalCommitted, finishJournal, hasUnfinishedVaultTransaction } from "./transaction-journal";
 import { slugify, uniqueSlug } from "./slug";
 import {
   rewriteWikilinks, stripWikilinksTo, repointWikilinks, normalizeLinkTarget,
@@ -29,7 +30,7 @@ import {
 type Snapshot = string | null;
 
 /**
- * 文件级事务：把所有改动先在内存里算完，再一次性落盘，失败则按快照回滚。
+ * 文件级事务：先计算改动，再持久化恢复日志并落盘；失败按首次读取版本恢复。
  *
  * 为什么需要它：一次改名要改 1 个词条文件 + N 个引用它的文件，还要移动文件。
  * 如果写到第 5 个文件时磁盘满了，前 4 个已经落盘 —— vault 就处于半改状态，
@@ -39,6 +40,8 @@ class VaultTransaction {
   private writes = new Map<string, string>();
   private removals = new Set<string>();
   private snapshots = new Map<string, Snapshot>();
+  private applied = new Set<string>();
+  private journalId: string | null = null;
 
   private snapshot(relative: string): void {
     if (!this.snapshots.has(relative)) {
@@ -46,8 +49,9 @@ class VaultTransaction {
     }
   }
 
-  capture(relative: string): void {
-    this.snapshot(relative);
+  capture(relative: string, original?: string): void {
+    if (original !== undefined && !this.snapshots.has(relative)) this.snapshots.set(relative, original);
+    else this.snapshot(relative);
   }
 
   write(relative: string, content: string): void {
@@ -73,7 +77,8 @@ class VaultTransaction {
     if (this.removals.has(relative)) return null;
     const pending = this.writes.get(relative);
     if (pending !== undefined) return pending;
-    return readFileIfExists(absolutePath(relative));
+    this.snapshot(relative);
+    return this.snapshots.get(relative) ?? null;
   }
 
   /** 移动 = 写新路径 + 删旧路径。退化成两个基本操作，回滚逻辑就不必特判。 */
@@ -88,28 +93,61 @@ class VaultTransaction {
 
   /** 写入失败由 completeTransaction 统一恢复，避免重复回滚掩盖原始错误。 */
   commit(): void {
+    // read() 记录的版本才是计算改写时的版本；不能在 write() 时才拍快照。
+    for (const relative of this.touchedFiles) this.assertUnchanged(relative);
+    const journal = prepareJournal([...this.snapshots].filter(([relative]) => this.touchedFiles.includes(relative) || relative === "index.md").map(([relative, original]) => ({
+      relative, original, ...(relative === "index.md" ? {} : { next: this.writes.get(relative) ?? null }),
+    })));
+    this.journalId = journal.id;
     suppressWatcher();
     for (const [relative, content] of this.writes) {
-      writeFileAtomic(absolutePath(relative), content);
+      this.assertUnchanged(relative);
+      this.applied.add(relative);
+      try { writeFileAtomic(absolutePath(relative), content, { expected: this.snapshots.get(relative) ?? null }); }
+      catch (error) {
+        if (error instanceof AtomicWriteConflictError) {
+          this.applied.delete(relative); // 发布前拒绝，不能将外部版本当成本事务改动恢复。
+          throw new ConflictError("涉及的文件在操作期间被外部修改，请刷新后重试。", relative);
+        }
+        throw error;
+      }
     }
     for (const relative of this.removals) {
+      this.assertUnchanged(relative);
+      this.applied.add(relative);
       removeFileIfExists(absolutePath(relative));
     }
   }
+
+  private assertUnchanged(relative: string): void {
+    if (readFileIfExists(absolutePath(relative)) !== this.snapshots.get(relative)) {
+      throw new ConflictError("涉及的文件在操作期间被外部修改，请刷新后重试。", relative);
+    }
+  }
+
+  indexWillChange(): void { this.applied.add("index.md"); }
+  markCommitted(): void { if (this.journalId) markJournalCommitted(this.journalId); }
+  finish(): void { if (this.journalId) { finishJournal(this.journalId); this.journalId = null; } }
 
   /** 某一文件恢复失败也继续尝试其余快照。 */
   rollback(): void {
     suppressWatcher();
     const failures: Error[] = [];
     for (const [relative, original] of [...this.snapshots.entries()].reverse()) {
+      if (!this.applied.has(relative)) continue;
       try {
+        const current = readFileIfExists(absolutePath(relative));
+        if (relative !== "index.md" && current !== original && current !== (this.writes.get(relative) ?? null)) {
+          throw new ConflictError("恢复期间检测到外部修改，已保留现有文件和恢复日志。", relative);
+        }
         if (original === null || original === undefined) removeFileIfExists(absolutePath(relative));
-        else writeFileAtomic(absolutePath(relative), original);
+        else writeFileAtomic(absolutePath(relative), original, { expected: current });
       } catch (cause) {
         failures.push(new Error(`无法恢复文件：${relative}`, { cause }));
       }
     }
     if (failures.length) throw new AggregateError(failures, "文件快照未完整恢复。");
+    this.finish();
   }
 }
 
@@ -247,7 +285,7 @@ const LOG_HEADER = `# 织识 · 操作日志
 > KIND ∈ {INGEST, QUERY, LINT, REVIEW, RENAME, MERGE, DELETE, EDIT, CREATE, RESTORE}
 `;
 
-export function appendLog(kind: LogKind, message: string, tx?: VaultTransaction): void {
+export function appendLog(kind: LogKind, message: string, tx?: VaultTransaction, beforeWrite?: (next: string) => void): void {
   const relative = "log.md";
   // 优先读事务内的待写入内容，避免同一事务内多次追加时互相覆盖
   const current = tx ? tx.read(relative) : readFileIfExists(absolutePath(relative));
@@ -256,6 +294,7 @@ export function appendLog(kind: LogKind, message: string, tx?: VaultTransaction)
 
   // 文件末尾保证只有一个换行，追加后自然成行
   const next = `${base.replace(/\s*$/, "")}\n${line}`;
+  beforeWrite?.(next);
   if (tx) tx.write(relative, next);
   else writeFileAtomic(absolutePath(relative), next);
 }
@@ -266,6 +305,7 @@ export type WriteResult = {
   pageId: string;
   relativePath: string;
   commitSha: string | null;
+  backupWarning: string | null;
   /** 被这次操作牵连改动的其他词条数 */
   affectedPages: number;
   /** 被重写/降级/重指向的链接条数 */
@@ -274,34 +314,32 @@ export type WriteResult = {
   indexed: { pages: number; links: number; edges: number };
 };
 
-/** 文件快照与 SQLite 事务覆盖索引、重定向和 Git 收尾。 */
-function completeTransaction(tx: VaultTransaction, message: string, beforeFinalize?: () => void, beforeGitCommit?: () => void) {
-  ensureGitRepo();
+/** 内容与应用状态先提交，Git 只是后续备份，不能使成功保存回滚。 */
+function completeTransaction(tx: VaultTransaction, message: string, beforeFinalize?: () => void, beforeCommit?: () => void) {
+  if (hasUnfinishedVaultTransaction()) throw new VaultRecoveryError(new Error("存在未恢复的文件事务。"), []);
   tx.capture("index.md");
   tx.capture("log.md");
-  const gitIndexPath = path.join(VAULT_ROOT, ".git", "index");
-  const gitIndex = fs.existsSync(gitIndexPath) ? fs.readFileSync(gitIndexPath) : null;
+  let report;
   try {
-    return getDb().transaction(() => {
+    report = getDb().transaction(() => {
       tx.commit();
       beforeFinalize?.();
       const report = reindexAll();
+      tx.indexWillChange();
       rebuildIndexFile();
-      beforeGitCommit?.();
-      const { sha } = commitVault(message);
-      return { pages: report.pages, links: report.links, edges: report.edges, commitSha: sha };
+      beforeCommit?.();
+      tx.markCommitted();
+      return { pages: report.pages, links: report.links, edges: report.edges };
     });
   } catch (error) {
     const failures: unknown[] = [];
     try { tx.rollback(); } catch (recoveryError) { failures.push(recoveryError); }
-    // 文件恢复失败也要尝试恢复原有暂存状态，不能留下失败操作的 git add。
-    try {
-      if (gitIndex) fs.writeFileSync(gitIndexPath, gitIndex);
-      else removeFileIfExists(gitIndexPath);
-    } catch (recoveryError) { failures.push(recoveryError); }
     if (failures.length) throw new VaultRecoveryError(error, failures);
     throw error;
   }
+  // 清理失败不能改变已提交结果；启动恢复会依据 SQLite 标记保留保存内容。
+  try { tx.finish(); } catch (error) { console.error("[vault] 保存成功，恢复日志清理失败：", error); }
+  return { ...report, ...backupVault(message) };
 }
 
 /* ---------------------------------------------------------------- 新建 */
@@ -347,6 +385,7 @@ export function createPage(input: CreatePageInput): WriteResult {
     pageId: frontmatter.id,
     relativePath: relative,
     commitSha: indexed.commitSha,
+    backupWarning: indexed.backupWarning,
     affectedPages: 0,
     linksTouched: 0,
     indexed: { pages: indexed.pages, links: indexed.links, edges: indexed.edges },
@@ -385,6 +424,7 @@ export function updatePage(pageId: string, input: UpdatePageInput): WriteResult 
   }
 
   const tx = new VaultTransaction();
+  tx.capture(file.relativePath, file.raw);
   const now = localISOString();
   const titleChanged = title !== undefined && title !== file.data.title;
 
@@ -455,6 +495,7 @@ export function updatePage(pageId: string, input: UpdatePageInput): WriteResult 
     pageId,
     relativePath: relative,
     commitSha: indexed.commitSha,
+    backupWarning: indexed.backupWarning,
     affectedPages,
     linksTouched,
     indexed: { pages: indexed.pages, links: indexed.links, edges: indexed.edges },
@@ -465,6 +506,7 @@ export type IngestBatchResult = {
   created: Array<{ pageId: string; title: string; relativePath: string }>;
   updated: Array<{ pageId: string; title: string }>;
   commitSha: string | null;
+  backupWarning: string | null;
   indexed: { pages: number; links: number; edges: number };
 };
 
@@ -473,7 +515,7 @@ export function applyIngestBatch(input: {
   creates: Array<CreatePageInput & { id: string }>;
   updates: Array<{ pageId: string; input: UpdatePageInput & { expectedHash: string } }>;
   message: string;
-  beforeGitCommit?: () => void;
+  beforeCommit?: () => void;
 }): IngestBatchResult {
   const tx = new VaultTransaction();
   const created: IngestBatchResult["created"] = [];
@@ -515,6 +557,7 @@ export function applyIngestBatch(input: {
         file.relativePath,
       );
     }
+    tx.capture(file.relativePath, file.raw);
     const nextData = touch({
       ...file.data,
       ...(entry.input.aliases !== undefined ? { aliases: entry.input.aliases } : {}),
@@ -526,8 +569,9 @@ export function applyIngestBatch(input: {
   }
 
   appendLog("INGEST", input.message, tx);
-  const indexed = completeTransaction(tx, input.message, undefined, input.beforeGitCommit);
-  return { created, updated, commitSha: indexed.commitSha, indexed: { pages: indexed.pages, links: indexed.links, edges: indexed.edges } };
+  const indexed = completeTransaction(tx, input.message, undefined, input.beforeCommit);
+  return { created, updated, commitSha: indexed.commitSha,
+    backupWarning: indexed.backupWarning, indexed: { pages: indexed.pages, links: indexed.links, edges: indexed.edges } };
 }
 
 /* ---------------------------------------------------------------- 改名 */
@@ -671,6 +715,7 @@ export function deletePage(
   }
 
   const tx = new VaultTransaction();
+  tx.capture(file.relativePath, file.raw);
   const now = localISOString();
   let linksTouched = 0;
   const affectedPageIds = new Set<string>();
@@ -738,6 +783,7 @@ export function deletePage(
     pageId,
     relativePath: trashRelative,
     commitSha: indexed.commitSha,
+    backupWarning: indexed.backupWarning,
     affectedPages: affectedPageIds.size,
     linksTouched,
     indexed: { pages: indexed.pages, links: indexed.links, edges: indexed.edges },
@@ -754,6 +800,7 @@ export function restorePage(pageId: string): WriteResult {
   if (!parsed.ok) throw new Error(`回收站文件损坏：${parsed.error}`);
 
   const tx = new VaultTransaction();
+  tx.capture(trashRelative, raw);
   const restored: PageFrontmatter = { ...parsed.data, updated: localISOString() };
   delete restored.deleted_at;
   // redirect_to 也必须清掉。留着它，reindexAll 里那句
@@ -777,6 +824,7 @@ export function restorePage(pageId: string): WriteResult {
     pageId,
     relativePath: relative,
     commitSha: indexed.commitSha,
+    backupWarning: indexed.backupWarning,
     affectedPages: 0,
     linksTouched: 0,
     indexed: { pages: indexed.pages, links: indexed.links, edges: indexed.edges },
@@ -839,6 +887,8 @@ export function mergePages(input: MergePagesInput): WriteResult & { mergedAliase
   }
 
   const tx = new VaultTransaction();
+  tx.capture(source.relativePath, source.raw);
+  tx.capture(target.relativePath, target.raw);
   const now = localISOString();
 
   const mergedTitle = input.title?.trim() || target.data.title;
@@ -933,6 +983,7 @@ export function mergePages(input: MergePagesInput): WriteResult & { mergedAliase
     pageId: target.pageId,
     relativePath: mergedRelative,
     commitSha: indexed.commitSha,
+    backupWarning: indexed.backupWarning,
     affectedPages: affectedPageIds.size,
     linksTouched,
     mergedAliases,

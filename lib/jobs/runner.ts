@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, desc, notInArray } from "drizzle-orm";
 import { ulid } from "ulid";
 import { getDb, getSqlite } from "@/lib/db/client";
 import { jobs, sources, reviewItems } from "@/lib/db/schema";
@@ -454,11 +454,10 @@ export function listJobs(
   return getDb()
     .select()
     .from(jobs)
+    .where(and(filters.kind ? eq(jobs.kind, filters.kind) : undefined, filters.activeOnly ? notInArray(jobs.status, ["done", "failed", "cancelled"]) : undefined))
+    .orderBy(desc(jobs.createdAt), desc(jobs.id))
+    .limit(Math.max(1, Math.min(1000, Math.floor(limit))))
     .all()
-    .filter((row) => (filters.kind ? row.kind === filters.kind : true))
-    .filter((row) => (filters.activeOnly ? !isTerminal(row.status as JobStatus) : true))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, limit)
     .map(toView);
 }
 

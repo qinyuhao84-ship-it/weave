@@ -159,6 +159,17 @@ export const ProviderEntrySchema = z.object({
 
 export type ProviderEntry = z.infer<typeof ProviderEntrySchema>;
 
+/** 独立于聊天服务；禁用时不向外发送任何检索文本。 */
+export const RetrievalModelSchema = z.object({
+  enabled: z.boolean().default(false),
+  baseUrl: z.string().default("https://api.siliconflow.cn/v1"),
+  apiKey: z.string().default(""),
+  embeddingModel: z.string().default("BAAI/bge-m3"),
+  rerankModel: z.string().default("BAAI/bge-reranker-v2-m3"),
+  chunkChars: z.number().int().min(256).max(6000).default(2000),
+});
+export type RetrievalModelSettings = z.infer<typeof RetrievalModelSchema>;
+
 /** 旧的单 provider 形状，读取时自动迁移，不让用户重输 */
 const LegacyLlmSchema = z.object({
   preset: z.string().default("dashscope"),
@@ -186,6 +197,7 @@ export const AppSettingsSchema = z.object({
   theme: z.enum(["light", "dark", "system"]).default("system"),
   /** 问答检索时最多读取多少个词条 */
   retrievalLimit: z.number().int().min(1).max(50).default(12),
+  retrievalModel: RetrievalModelSchema.prefault({}),
 });
 
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
@@ -373,6 +385,7 @@ export function saveSettings(patch: {
   personality?: Partial<Personality>;
   theme?: AppSettings["theme"];
   retrievalLimit?: number;
+  retrievalModel?: RetrievalModelSettings;
 }): AppSettings {
   // 从原始配置合并，绝不将环境变量的生效视图写回数据库。
   const current = readStoredSettings();
@@ -409,13 +422,16 @@ export type PublicProvider = Omit<ProviderEntry, "apiKey" | "headers"> & {
   environmentOnly: boolean;
 };
 
-export type PublicSettings = Omit<AppSettings, "providers" | "llm"> & {
+export type PublicRetrievalModel = Omit<RetrievalModelSettings, "apiKey"> & { hasApiKey: boolean };
+export type PublicSettings = Omit<AppSettings, "providers" | "llm" | "retrievalModel"> & {
   providers: PublicProvider[];
+  retrievalModel: PublicRetrievalModel;
   hint: string | null;
 };
 
 export function getPublicSettings(): PublicSettings {
-  const { providers: entries, llm: _legacy, ...settings } = getSettings();
+  const { providers: entries, llm: _legacy, retrievalModel, ...settings } = getSettings();
+  const { apiKey: retrievalKey, ...retrievalPublic } = retrievalModel;
   const stored = readStoredSettings();
   const env = effectiveModelEnv(stored);
   const providers: PublicProvider[] = entries.map(entry => {
@@ -434,6 +450,7 @@ export function getPublicSettings(): PublicSettings {
   return {
     ...settings,
     providers,
+    retrievalModel: { ...retrievalPublic, hasApiKey: Boolean(retrievalKey) },
     hint: active?.baseUrl && active.model ? null : "请在设置中配置你的模型服务，再开始导入或问答。",
   };
 }
@@ -448,6 +465,18 @@ const HttpUrlSchema = z.string().trim().url("请输入完整的 API 地址").ref
   const url = new URL(value);
   return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash;
 }, "地址需使用 HTTP 或 HTTPS，且不能包含凭据、查询参数或片段");
+
+export const RetrievalModelInputSchema = RetrievalModelSchema.omit({ apiKey: true }).extend({
+  baseUrl: HttpUrlSchema,
+  embeddingModel: z.string().trim().min(1).max(200),
+  rerankModel: z.string().trim().max(200),
+  apiKey: z.string().trim().max(1000).optional(),
+  clearApiKey: z.boolean().optional(),
+}).strict();
+export function mergeRetrievalModelInput(input: z.infer<typeof RetrievalModelInputSchema>): RetrievalModelSettings {
+  const { clearApiKey, ...rest } = input;
+  return RetrievalModelSchema.parse({ ...rest, apiKey: clearApiKey ? "" : input.apiKey || readStoredSettings().retrievalModel.apiKey });
+}
 
 /** 浏览器编辑模型时，凭据省略或留空表示保留；清除必须显式指定。 */
 export const ProviderInputSchema = ProviderEntrySchema.omit({ apiKey: true, headers: true }).extend({

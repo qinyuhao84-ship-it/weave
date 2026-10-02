@@ -1,5 +1,10 @@
 import chokidar, { type FSWatcher } from "chokidar";
 import path from "node:path";
+import fs from "node:fs";
+import { eq } from "drizzle-orm";
+import { getDb } from "@/lib/db/client";
+import { pages } from "@/lib/db/schema";
+import { sha256 } from "@/lib/vault/atomic";
 import { VAULT_ROOT, WIKI_DIR, RAW_DIR } from "@/lib/vault/paths";
 import { reindexAll, type ReindexReport } from "./reindex";
 import { isWatcherSuppressed } from "./watch-suppression";
@@ -51,12 +56,21 @@ function notify(changes: ExternalChange[], report: ReindexReport): void {
 }
 
 function runReindex(changes: ExternalChange[]): void {
-  if (changes.length === 0) return;
   try {
+  changes = changes.filter(change => {
+    if (!change.relativePath.startsWith("wiki/")) return true;
+    const indexed = getDb().select({ hash: pages.contentHash, status: pages.status }).from(pages).where(eq(pages.filePath, change.relativePath)).get();
+    const file = path.join(VAULT_ROOT, change.relativePath);
+    if (!fs.existsSync(file)) return indexed?.status === "active";
+    return !indexed || indexed.status !== "active" || indexed.hash !== sha256(fs.readFileSync(file));
+  });
+  if (changes.length === 0) return;
     const report = reindexAll();
     notify(changes, report);
   } catch (error) {
     console.error("[watcher] 索引重建失败：", error);
+    for (const change of changes) if (!pending.has(change.relativePath)) pending.set(change.relativePath, change);
+    scheduleReindex(1000);
   }
 }
 
@@ -66,18 +80,19 @@ function runReindex(changes: ExternalChange[]): void {
  * 300ms 是刻意的：编辑器保存时常常「先写临时文件再 rename」，一次保存会触发
  * 多个事件；用户连续敲 Cmd+S 时也不该每次都重建整个索引。
  */
-function scheduleReindex(): void {
+function scheduleReindex(delay = 300): void {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
     if (isWatcherSuppressed()) {
-      pending.clear();
+      // 延迟处理而非丢弃：抑制期间仍可能有真实的外部编辑。
+      scheduleReindex();
       return;
     }
     const changes = [...pending.values()];
     pending.clear();
     runReindex(changes);
-  }, 300);
+  }, delay);
 }
 
 function record(kind: ExternalChange["kind"], absolutePath: string): void {

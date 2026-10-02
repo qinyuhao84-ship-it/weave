@@ -1,0 +1,24 @@
+name: macOS desktop package
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+      - run: npm install --global pnpm@11.7.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm package:mac
+      - run: hdiutil verify dist/Weave-*-macOS-arm64.dmg
+      - uses: actions/upload-artifact@v5
+        with:
+          name: weave-macos-arm64
+          path: dist/
+          retention-days: 14

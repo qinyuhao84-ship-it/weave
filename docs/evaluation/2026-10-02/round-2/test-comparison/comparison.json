@@ -1,0 +1,144 @@
+{
+  "split": "test",
+  "datasetHash": "5cb2a2f1b7039499bd09711228ba24d4776438f3df3484403fa8ca1c5d8c4318",
+  "baseline": "vector",
+  "current": {
+    "samples": 200,
+    "metrics": {
+      "recall5": 0.875660714285714,
+      "recall10": 0.9847499999999999,
+      "hit5": 0.98,
+      "hit10": 1,
+      "mrr10": 0.8134642857142858,
+      "ndcg10": 0.8382199996606516,
+      "precision5": 0.3890000000000008,
+      "precision10": 0.2340000000000004,
+      "judgedPrecision10": 0.281511904761905,
+      "judgmentCoverage10": 0.8370000000000001,
+      "evidenceRecall10": null
+    },
+    "local": {
+      "samples": 200,
+      "medianMs": 86.43352099999174,
+      "p95Ms": 94.97595800000272
+    },
+    "wall": {
+      "samples": 200,
+      "medianMs": 86.43352099999174,
+      "p95Ms": 94.97595800000272
+    },
+    "embedding": {
+      "samples": 0,
+      "medianMs": null,
+      "p95Ms": null
+    },
+    "rerank": {
+      "samples": 0,
+      "medianMs": null,
+      "p95Ms": null
+    },
+    "failureRate": 0,
+    "degradationRate": 0,
+    "networkRequests": 0,
+    "cacheHits": 400
+  },
+  "reference": {
+    "samples": 200,
+    "metrics": {
+      "recall5": 0.8452797619047616,
+      "recall10": 0.9756547619047619,
+      "hit5": 0.97,
+      "hit10": 1,
+      "mrr10": 0.8155059523809524,
+      "ndcg10": 0.8249964869455524,
+      "precision5": 0.37200000000000055,
+      "precision10": 0.23050000000000043,
+      "judgedPrecision10": 0.2874285714285717,
+      "judgmentCoverage10": 0.8080000000000003,
+      "evidenceRecall10": null
+    },
+    "local": {
+      "samples": 200,
+      "medianMs": 56.407875000000786,
+      "p95Ms": 60.954083000004175
+    },
+    "wall": {
+      "samples": 200,
+      "medianMs": 56.407875000000786,
+      "p95Ms": 60.954083000004175
+    },
+    "embedding": {
+      "samples": 0,
+      "medianMs": null,
+      "p95Ms": null
+    },
+    "rerank": {
+      "samples": 0,
+      "medianMs": null,
+      "p95Ms": null
+    },
+    "failureRate": 0,
+    "degradationRate": 0,
+    "networkRequests": 0,
+    "cacheHits": 200
+  },
+  "original": {
+    "samples": 200,
+    "metrics": {
+      "recall5": 0.8757916666666664,
+      "recall10": 0.9874166666666666,
+      "hit5": 0.98,
+      "hit10": 1,
+      "mrr10": 0.8196507936507939,
+      "ndcg10": 0.8393619463677544,
+      "precision5": 0.3880000000000007,
+      "precision10": 0.2350000000000004,
+      "judgedPrecision10": 0.288589285714286,
+      "judgmentCoverage10": 0.8215,
+      "evidenceRecall10": null
+    },
+    "local": {
+      "samples": 200,
+      "medianMs": 78.0796665000089,
+      "p95Ms": 92.08350000003702
+    },
+    "wall": {
+      "samples": 200,
+      "medianMs": 751.0438329999924,
+      "p95Ms": 1033.7856249999895
+    },
+    "embedding": {
+      "samples": 200,
+      "medianMs": 177.62464549999277,
+      "p95Ms": 404.76716699999815
+    },
+    "rerank": {
+      "samples": 200,
+      "medianMs": 479.046875,
+      "p95Ms": 639.2590419999906
+    },
+    "failureRate": 0,
+    "degradationRate": 0,
+    "networkRequests": 400,
+    "cacheHits": 0
+  },
+  "bootstrap": {
+    "samples": 200,
+    "repetitions": 5000,
+    "seed": 20261002,
+    "mean": 0.013223512715099401,
+    "lower95": -0.0027869373978507434,
+    "upper95": 0.028273487806979386
+  },
+  "gates": {
+    "recall": true,
+    "ranking": true,
+    "baselineGain": false,
+    "confidence": false,
+    "recallNonRegression": true,
+    "latency": true,
+    "services": true
+  },
+  "passed": false,
+  "answerVerification": "pending"
+}

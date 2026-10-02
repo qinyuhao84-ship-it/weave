@@ -25,7 +25,7 @@ import {
   type LintResult, type DecisionContext,
 } from "@/lib/llm/prompts";
 import { appendLog } from "@/lib/vault/service";
-import { commitVault, withCommitOperation } from "@/lib/git/auto-commit";
+import { backupVault, withCommitOperation } from "@/lib/git/auto-commit";
 import { enqueue, type JobContext } from "@/lib/jobs/runner";
 import type { LlmProvider } from "@/lib/llm/types";
 
@@ -358,7 +358,7 @@ export async function runLint(options: RunLintOptions = {}): Promise<LintReport>
     `体检完成：${mechanical.length} 项客观问题、${llmFindings.length} 项待判断事项，新入队 ${queued} 条` +
       (flattenedRedirects > 0 ? `，自动压平 ${flattenedRedirects} 条重定向链` : ""),
   );
-  commitVault("体检了知识库");
+  backupVault("体检了知识库");
   context?.setFraction(1);
 
   if (checkpointPath) { try { fs.rmSync(checkpointPath, { force: true }); } catch { /* 收尾已完成。 */ } }
@@ -722,7 +722,7 @@ export function decideReviewItem(
     "REVIEW",
     `裁决「${row.title}」：${VERDICT_LABEL[decision]}${cleanNote ? ` —— ${cleanNote}` : ""}`,
   );
-  commitVault(`裁决审阅事项：${row.title}`);
+  backupVault(`裁决审阅事项：${row.title}`);
 
   return true;
 }

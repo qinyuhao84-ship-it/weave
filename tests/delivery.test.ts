@@ -1,14 +1,13 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { eq } from "drizzle-orm";
 import { getDb, dropAllIndexTables } from "@/lib/db/client";
 import { jobs, sources, ingestQueue, chatSessions, chatMessages, redirects } from "@/lib/db/schema";
 import { clearKnowledgeBase, restoreArchiveBatch, listArchiveBatches, listDeletedPages, purgeTrash } from "@/lib/vault/archive-batches";
 import { createPage, updatePage, renamePage, loadPageFile, deletePage, ConflictError, VaultRecoveryError } from "@/lib/vault/service";
 import { ensureVaultLayout, VAULT_ROOT, INGEST_QUEUE_DIR } from "@/lib/vault/paths";
-import { hasUncommittedChanges, commitVault, revertCommit, logVault } from "@/lib/git/auto-commit";
+import { hasUncommittedChanges, commitVault } from "@/lib/git/auto-commit";
 import { sha256 } from "@/lib/vault/atomic";
 import * as atomic from "@/lib/vault/atomic";
 import { excerptForQuery, retrieve } from "@/lib/chat/retrieve";
@@ -90,12 +89,13 @@ describe("清空和批次恢复", () => {
     expect(listDeletedPages()).toHaveLength(0); expect(listArchiveBatches()).toHaveLength(0);
     expect(loadPageFile(active.pageId).content.trim()).toBe("新正文");
   });
-  it("回收站删除提交失败时恢复文件，仍然可以恢复词条", () => {
+  it("回收站删除备份失败不撤销已完成的清理", () => {
     const page = createPage({ type: "concept", title: "删除失败", content: "保留副本" });
     deletePage(page.pageId, { kind: "keep_dangling" });
-    failGit(); expect(() => purgeTrash({ kind: "page", id: page.pageId })).toThrow();
-    expect(listDeletedPages().map(item => item.id)).toContain(page.pageId);
-    expect(hasUncommittedChanges()).toBe(false);
+    failGit(); const result = purgeTrash({ kind: "page", id: page.pageId });
+    expect(result.deleted).toBe(1); expect(result.backupWarning).toContain("内容已保存");
+    expect(listDeletedPages().map(item => item.id)).not.toContain(page.pageId);
+    expect(hasUncommittedChanges()).toBe(true);
   });
   it("恢复完整人工草稿、队列原件和来源状态，并保持工作区干净", async () => {
     createPage({ type: "concept", title: "概念", content: "正文" }); seedDraft();
@@ -110,14 +110,18 @@ describe("清空和批次恢复", () => {
     expect(fs.readFileSync(path.join(INGEST_QUEUE_DIR, `${queued.id}.bin`), "utf8")).toBe("排队正文");
     expect(hasUncommittedChanges()).toBe(false);
   });
-  it("Git 清空失败不改变文件、来源、草稿和暂存状态", () => {
+  it("Git 清空备份失败仍保留已完成的归档结果", () => {
     const page = createPage({ type: "concept", title: "概念", content: "正文" }); seedDraft(); commitVault("保存样本");
-    failGit(); expect(() => clearKnowledgeBase()).toThrow();
-    expect(loadPageFile(page.pageId).content).toContain("正文"); expect(getDb().select().from(jobs).get()!.status).toBe("awaiting_review");
-    expect(listArchiveBatches()).toHaveLength(0); expect(hasUncommittedChanges()).toBe(false);
+    failGit(); const batch = clearKnowledgeBase();
+    expect(batch.backupWarning).toContain("内容已保存");
+    expect(() => loadPageFile(page.pageId)).toThrow();
+    expect(getDb().select().from(jobs).all()).toHaveLength(0);
+    expect(listArchiveBatches()).toHaveLength(1);
+    expect(fs.existsSync(path.join(VAULT_ROOT, ".weave/trash/batches", batch.id, "wiki", page.relativePath.slice(5)))).toBe(true);
   });
   it("恢复失败仍可安全重试，不留下已恢复标记和半份资料", () => {
-    seedDraft(); const batch = clearKnowledgeBase(); failGit();
+    seedDraft(); const batch = clearKnowledgeBase();
+    vi.spyOn(indexModule, "reindexAll").mockImplementationOnce(() => { throw new Error("restore index fault"); });
     expect(() => restoreArchiveBatch(batch.id)).toThrow(); expect(getDb().select().from(sources).all()).toHaveLength(0);
     expect(listArchiveBatches()[0].restoredAt).toBeNull(); expect(hasUncommittedChanges()).toBe(false);
     stopFailingGit(); restoreArchiveBatch(batch.id); expect(getDb().select().from(jobs).get()!.id).toBe("DRAFT");
@@ -132,7 +136,7 @@ describe("清空和批次恢复", () => {
 });
 
 describe("文件、索引、Git 失败的原子性", () => {
-  it("文件恢复失败仍恢复其余快照与原有 Git 暂存，报告原始和恢复错误", () => {
+  it("文件恢复失败仍恢复其余快照，Git 暂存不受影响并报告恢复错误", () => {
     const page = createPage({ type: "concept", title: "恢复故障", content: "原内容" });
     const before = loadPageFile(page.pageId);
     const indexPath = path.join(VAULT_ROOT, ".git/index");
@@ -143,52 +147,43 @@ describe("文件、索引、Git 失败的原子性", () => {
       if (file === path.join(VAULT_ROOT, before.relativePath) && content === before.raw) throw new Error("recovery fault");
       write(file, content);
     });
-    failGit();
+    vi.spyOn(indexModule, "reindexAll").mockImplementationOnce(() => { throw new Error("index fault"); });
     let caught: unknown;
     try { updatePage(page.pageId, { content: "新内容" }); } catch (error) { caught = error; }
     expect(caught).toBeInstanceOf(VaultRecoveryError);
     const error = caught as VaultRecoveryError;
-    expect(String(error.cause)).toContain("git");
+    expect(String(error.cause)).toContain("index fault");
     expect(error.errors).toHaveLength(2);
     expect(String(error.errors[1])).toContain("文件快照未完整恢复");
     expect(fs.readFileSync(indexPath)).toEqual(gitIndex);
     expect(fs.readFileSync(path.join(VAULT_ROOT, "log.md"), "utf8")).toBe(log);
-    expect(toUserMessage(error)).toEqual({ message: error.message, status: 500 });
+    expect(toUserMessage(error)).toEqual({ message: error.message, status: 500, code: "VAULT_RECOVERY_REQUIRED" });
     expect(error.message).toContain("不要继续写入");
     expect(error.message).not.toContain(VAULT_ROOT);
   });
 
-  it("多个恢复失败全部报告，Git 暂存恢复失败不替换原始故障", () => {
+  it("Git 暂存恢复也失败时，仍不回滚已保存的内容", () => {
     const page = createPage({ type: "concept", title: "暂存恢复故障", content: "原内容" });
-    const before = loadPageFile(page.pageId);
     const indexPath = path.join(VAULT_ROOT, ".git/index");
-    const write = atomic.writeFileAtomic;
-    const writeFile = fs.writeFileSync;
-    vi.spyOn(atomic, "writeFileAtomic").mockImplementation((file, content) => {
-      if (file === path.join(VAULT_ROOT, before.relativePath) && content === before.raw) throw new Error("recovery fault");
-      write(file, content);
-    });
-    vi.spyOn(fs, "writeFileSync").mockImplementation((...args: Parameters<typeof fs.writeFileSync>) => {
-      if (String(args[0]) === indexPath) throw new Error("index recovery fault");
-      writeFile(...args);
+    const rename = fs.renameSync;
+    vi.spyOn(fs, "renameSync").mockImplementation((from, to) => {
+      if (String(to) === indexPath) throw new Error("index recovery fault");
+      rename(from, to);
     });
     failGit();
-    let caught: unknown;
-    try { updatePage(page.pageId, { content: "新内容" }); } catch (error) { caught = error; }
-    expect(caught).toBeInstanceOf(VaultRecoveryError);
-    const error = caught as VaultRecoveryError;
-    expect(error.errors).toHaveLength(3);
-    expect(String(error.cause)).toContain("git");
-    expect(String(error.errors[2])).toContain("index recovery fault");
+    const saved = updatePage(page.pageId, { content: "新内容" });
+    expect(saved.commitSha).toBeNull(); expect(saved.backupWarning).toContain("内容已保存");
+    expect(loadPageFile(page.pageId).content).toContain("新内容");
   });
-  it("改名 Git 失败后正文、引用、重定向、Git 暂存与索引均回滚", () => {
+  it("改名 Git 备份失败后正文、引用、重定向与索引仍已提交", () => {
     const first = createPage({ type: "concept", title: "旧名", content: "原内容" });
     const linked = createPage({ type: "concept", title: "引用者", content: "[[旧名]]" });
-    const before = loadPageFile(first.pageId).raw; const log = fs.readFileSync(path.join(VAULT_ROOT, "log.md"), "utf8");
-    failGit(); expect(() => renamePage(first.pageId, "新名")).toThrow();
-    expect(loadPageFile(first.pageId).raw).toBe(before); expect(loadPageFile(linked.pageId).content).toContain("[[旧名]]");
-    expect(getDb().select().from(redirects).all()).toHaveLength(0); expect(hasUncommittedChanges()).toBe(false);
-    expect(fs.readFileSync(path.join(VAULT_ROOT, "log.md"), "utf8")).toBe(log);
+    failGit(); const saved = renamePage(first.pageId, "新名");
+    expect(saved.commitSha).toBeNull(); expect(saved.backupWarning).toContain("内容已保存");
+    expect(loadPageFile(first.pageId).data.title).toBe("新名");
+    expect(loadPageFile(linked.pageId).content).toContain("[[新名");
+    expect(getDb().select().from(redirects).all().length).toBeGreaterThan(0);
+    expect(hasUncommittedChanges()).toBe(true);
   });
   it("索引失败不留下已保存正文，可重试", () => {
     const page = createPage({ type: "concept", title: "索引失败", content: "原内容" }); const raw = loadPageFile(page.pageId).raw;
@@ -274,7 +269,7 @@ describe("人工成果、旧格式和撤销归档", () => {
   it("撤销归档或删除词条后答案恢复可归档状态", () => {
     const session = createSession(); const message = appendMessage({ sessionId: session, role: "assistant", content: "可归档答案" });
     const page = createPage({ type: "query", title: "归档", content: "答案" }); markFiled(message, page.pageId);
-    expect(getMessages(session)[0].filedAsPageId).toBe(page.pageId); revertCommit(page.commitSha!); indexModule.reindexAll();
+    expect(getMessages(session)[0].filedAsPageId).toBe(page.pageId); fs.unlinkSync(path.join(VAULT_ROOT, loadPageFile(page.pageId).relativePath)); indexModule.reindexAll();
     expect(getMessages(session)[0].filedAsPageId).toBeNull();
     const again = createPage({ type: "query", title: "再次归档", content: "答案" }); markFiled(message, again.pageId); deletePage(again.pageId, { kind: "clean_refs" }); expect(getMessages(session)[0].filedAsPageId).toBeNull();
   });
@@ -294,10 +289,5 @@ describe("超出首屏的数据仍可到达", () => {
     for (let i = 0; i < 51; i++) writePage(`page-${i}`, frontmatterFor(`P${i}`, `候选${i}`), "正文"); indexModule.reindexAll();
     const response = await (await pageList(new Request("http://localhost/api/pages?limit=50&offset=50"))).json(); expect(response.data.pages).toHaveLength(1); expect(response.data.total).toBe(51);
   });
-  it("51条历史可翻页，提交标识不含空白", () => {
-    createPage({ type: "concept", title: "历史", content: "正文" });
-    // 测试自行生成历史，不依赖机器上的 Git 身份或签名配置。
-    for (let i = 0; i < 51; i++) execFileSync("git", ["-c", "user.name=测试夹具", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-m", `记录${i}`], { cwd: VAULT_ROOT, stdio: "ignore" });
-    const earlier = logVault(50, 50); expect(earlier.length).toBeGreaterThan(0); expect(earlier.every(commit => /^[0-9a-f]{40}$/.test(commit.sha))).toBe(true);
-  });
+
 });

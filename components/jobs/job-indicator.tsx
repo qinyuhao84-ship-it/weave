@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/i18n-provider";
 
 import * as React from "react";
 import Link from "next/link";
@@ -22,15 +23,17 @@ import { useJobs, type ActiveJob } from "./jobs-provider";
  */
 
 const KIND_META: Record<string, { label: string; icon: React.ElementType; href: string }> = {
-  lint: { label: "体检", icon: ShieldCheck, href: "/review" },
-  remediate: { label: "按批注修订", icon: Sparkles, href: "/review" },
-  review_batch: { label: "体检修订", icon: Sparkles, href: "/review" },
-  reindex: { label: "重建索引", icon: Sparkles, href: "/settings" },
-  rebuild_graph: { label: "重建图谱", icon: Sparkles, href: "/settings" },
-  refile: { label: "回填词条", icon: Sparkles, href: "/wiki" },
+  lint: { label: "jobKinds.lint", icon: ShieldCheck, href: "/review" },
+  remediate: { label: "jobKinds.remediate", icon: Sparkles, href: "/review" },
+  review_batch: { label: "jobKinds.review_batch", icon: Sparkles, href: "/review" },
+  reindex: { label: "jobKinds.reindex", icon: Sparkles, href: "/settings" },
+  embeddings: { label: "jobKinds.embeddings", icon: Sparkles, href: "/settings" },
+  rebuild_graph: { label: "jobKinds.rebuild_graph", icon: Sparkles, href: "/settings" },
+  refile: { label: "jobKinds.refile", icon: Sparkles, href: "/wiki" },
 };
 
 export function JobIndicators() {
+  const { t } = useI18n();
   const { jobs } = useJobs();
   const [expanded, setExpanded] = React.useState(false);
   if (jobs.length === 0) return null;
@@ -39,9 +42,9 @@ export function JobIndicators() {
 
   return (
     <div className="min-w-0">
-      <button type="button" aria-label={`后台任务 ${jobs.length} 个`} aria-expanded={expanded} aria-controls="sidebar-jobs" onClick={() => setExpanded(value => !value)} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]">
+      <button type="button" aria-label={t("jobs_job_indicator.m001", {v0: jobs.length})} aria-expanded={expanded} aria-controls="sidebar-jobs" onClick={() => setExpanded(value => !value)} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]">
         <Sparkles size={13} className="shrink-0" />
-        <span className="sidebar-label min-w-0 flex-1">后台任务 · {jobs.length}<span className="mt-0.5 block text-[11px]">{running ? `${running} 个进行中` : ""}{running && queued ? " · " : ""}{queued ? `${queued} 个排队中` : ""}{!running && !queued ? "有待处理的任务" : ""}</span></span>
+        <span className="sidebar-label min-w-0 flex-1">{t("jobs_job_indicator.m002")}{jobs.length}<span className="mt-0.5 block text-[11px]">{running ? t("jobs_job_indicator.m003", {v0: running}) : ""}{running && queued ? " · " : ""}{queued ? t("jobs_job_indicator.m004", {v0: queued}) : ""}{!running && !queued ? t("jobs_job_indicator.m005") : ""}</span></span>
         <ChevronDown size={13} className={cn("sidebar-label shrink-0 transition-transform", expanded && "rotate-180")} />
       </button>
       {expanded && <div id="sidebar-jobs" className="max-h-52 overflow-y-auto overscroll-contain">
@@ -54,20 +57,21 @@ export function JobIndicators() {
 }
 
 function JobRow({ job }: { job: ActiveJob }) {
+  const { t, locale } = useI18n();
   const meta = KIND_META[job.kind] ?? { label: job.kind, icon: Sparkles, href: "/wiki" };
   const Icon = meta.icon;
   const running = job.status === "running";
   const queued = job.status === "queued";
   const percent = Math.max(0, Math.min(100, job.progress));
 
-  const name = job.payload?.title ?? `${meta.label} · ${new Date(job.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} · ${job.id.slice(-4)}`;
-  const label = `${name} · ${queued ? "排队中" : job.status === "awaiting_review" ? "待处理" : `${Math.round(percent)}%`}`;
+  const name = job.payload?.title ?? `${t.has(meta.label) ? t(meta.label) : meta.label} · ${new Date(job.createdAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })} · ${job.id.slice(-4)}`;
+  const label = `${name} · ${queued ? t("jobs_job_indicator.m006") : job.status === "awaiting_review" ? t("jobs_job_indicator.m007") : `${Math.round(percent)}%`}`;
 
   return (
     <Link
       href={meta.href}
       // 阶段信息收进悬浮提示：想知道它卡在哪一步，把鼠标停上去，或者点进去看过程记录
-      title={job.stageLabel ? `${label} · ${job.stageLabel}` : label}
+      title={job.stageLabel ? `${label} · ${locale === "en" && t.has("stages." + job.stage) ? t("stages." + job.stage) : job.stageLabel}` : label}
       className="flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[12.5px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--muted)] hover:text-foreground"
     >
       <span

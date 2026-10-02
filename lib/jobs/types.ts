@@ -103,6 +103,11 @@ export const REVIEW_STAGES = [
  */
 export function stagesForKind(kind: string): JobStageTable {
   switch (kind) {
+    case "embeddings":
+      return [
+        { stage: "uploaded", label: "已排队", weight: 0, expectedMs: 0 },
+        { stage: "embedding", label: "更新向量索引", weight: 100, expectedMs: 30_000 },
+      ];
     case "lint":
       return LINT_STAGES;
     case "remediate":
@@ -138,6 +143,7 @@ export const JOB_KINDS = [
   "remediate",
   /** 批量处理用户的回答（或机械发现的修复计划），见 lib/review/batch.ts */
   "review_batch",
+  "embeddings",
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 

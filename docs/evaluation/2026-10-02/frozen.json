@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-01T22:26:18.650Z",
+  "datasetHash": "b537fddb5c7c849d94a159c82fbaa1f820ac04e45a86f6a6b856e5a53f2dcf04",
+  "sourceHash": "0823d0c38d963c97be8da15a197006a020bbcdb1baab535433f7f2cca52c76aa",
+  "implementationHashes": {
+    "lib/chat/retrieve.ts": "0823d0c38d963c97be8da15a197006a020bbcdb1baab535433f7f2cca52c76aa",
+    "lib/chat/answer.ts": "daa817d4df1a497dba29da061470826610abb524e1647a46fcf4b4900137539a",
+    "lib/chat/context.ts": "8690bd623f0721b5d40ee5849dc915449a8a226761c6804c5434a8c2fa1e4979",
+    "lib/index/embeddings.ts": "bec631661dd832f28c7f4938ca8159fc64d87566b43949b84b1d18db24a37dbe",
+    "lib/llm/retrieval.ts": "4cd7b8c184113716fdbdff69b84b6550bd1ee0df9e9d73d02b794d05bb875d4a",
+    "scripts/eval/run.ts": "2772a1c88241620e2fe135c09087e073b05354e49057873afae51745dfc0a825",
+    "scripts/eval/cache.ts": "294c99edc375eb840326d25b591c9c02758b200ad45300f895230724174aef0e",
+    "scripts/eval/metrics.ts": "0bcf6a2a322ab014392455c8c48d4560e6e7356601ea46a1ecce636c51cef4d4",
+    "scripts/eval/prepare.ts": "c0e634ef104dbfc19c644e8dec54b5aa412bcb9bc3a90d6e61c988814b445973",
+    "pnpm-lock.yaml": "3338508751965c286d2a152e69d98cb4691146c724ec670b666a9c99dab1209e"
+  },
+  "originalHash": "3209daf6d921894e774835a29a2f095d96c35a2a71ac1e4712643b4baaa61355",
+  "baseline": "vector",
+  "devSummaryHash": "d17dc31413492d209d2f44598b29bf05afa18c38cd939d6150e0768ff9dbb96c",
+  "thresholds": {
+    "recall10": 0.85,
+    "ndcg10": 0.7,
+    "ndcgGain": 0.03,
+    "recallDrop": 0.02,
+    "localP95Ratio": 1.2
+  }
+}

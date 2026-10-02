@@ -6,6 +6,11 @@ export async function register() {
   const { applyPendingVaultMove } = await import("@/lib/vault/location");
   applyPendingVaultMove();
 
+  const { recoverVaultTransactions, cleanAtomicTemps } = await import("@/lib/vault/transaction-journal");
+  const recovered = recoverVaultTransactions();
+  if (recovered) console.warn(`[vault] 已恢复 ${recovered} 个中断的文件事务。`);
+  cleanAtomicTemps();
+
   const { markInterruptedAsFailed, findInterruptedJobs } = await import("@/lib/jobs/runner");
   const interrupted = findInterruptedJobs().filter(job => ["queued", "running"].includes(job.status));
   const count = markInterruptedAsFailed();
@@ -13,6 +18,8 @@ export async function register() {
   // 让 Finder / Obsidian 中直接修改的 Markdown 在几秒内重建索引并通知前端。
   const { startWatcher } = await import("@/lib/index/watcher");
   await startWatcher();
+  const { scheduleEmbeddingIndex } = await import("@/lib/index/embeddings");
+  scheduleEmbeddingIndex();
   const { recoverInterruptedIngests } = await import("@/lib/ingest/pipeline");
   recoverInterruptedIngests(interrupted.filter(job => job.kind === "ingest").map(job => job.id));
   const { startLintJob } = await import("@/lib/lint");

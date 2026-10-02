@@ -1,3 +1,4 @@
+import { loadCheckpoint } from "@/lib/ingest/checkpoint";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -410,6 +411,19 @@ describe("导入流水线 —— 提交入库", () => {
     expect(loadIngestDraft<IngestDraft>(jobId)).toBeTruthy();
   });
 
+  it("整页改写返回实际新增字符数", async () => {
+    const { createPage } = await import("@/lib/vault/service");
+    createPage({ type: "concept", title: "推荐算法", content: "旧正文。" });
+    const provider = new FakeProvider({ responses: [fakeAnalysis(), fakeDraft({ newPages: [], updatedPages: [{
+      title: "推荐算法", reason: "补充资料", proposedContent: "新的完整正文，包含补充证据。", appendContent: "", addAliases: [], addTags: [], citations: [],
+    }] })] });
+    const { jobId } = startIngest(ingestInput("sample.html", provider));
+    await waitForJob(jobId, "settled");
+    const draft = loadIngestDraft<IngestDraft>(jobId)!;
+    const result = await commitIngest({ jobId, draft: draft.draft });
+    expect(result.updatedPages[0].addedChars).toBeGreaterThan(0);
+  });
+
   it("用户在审阅时改过的内容被如实写入", async () => {
     const { jobId, draft } = await prepareDraft();
     const edited = {
@@ -673,7 +687,8 @@ describe("导入中断后的持久化续传", () => {
     const { jobId } = startIngest({ fileName: "长资料.md", buffer: bytes, provider: partial });
     expect((await waitForJob(jobId, "settled")).status).toBe("failed");
     const source = listSources()[0];
-    const checkpoint = JSON.parse(fs.readFileSync(path.join(vaultRoot(), '.weave', 'ingest-checkpoints', `${source.id}.json`), 'utf8'));
+    const checkpointMeta = JSON.parse(fs.readFileSync(path.join(vaultRoot(), '.weave', 'ingest-checkpoints', `${source.id}.json`), 'utf8'));
+    const checkpoint = loadCheckpoint(source.id, checkpointMeta.hash);
     expect(checkpoint.analyses).toHaveLength(1);
     expect(checkpoint.chunks.length).toBeGreaterThan(1);
     const rest = checkpoint.chunks.length - 1;
