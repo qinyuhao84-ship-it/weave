@@ -19,6 +19,8 @@
 
 本版原生菜单与下载交互沿用同一修复实现；发布前实际窗口记录见[桌面复验](desktop-quality-2026-10-03.md)。本版自动验收没有重新执行所有系统面板的人工交互。
 
+[GitHub macOS／Ubuntu 完整回归与历史扫描](https://github.com/qinyuhao84-ship-it/weave/actions/runs/37101264612)全部通过；[干净 GitHub runner 桌面构建](https://github.com/qinyuhao84-ship-it/weave/actions/runs/37101366870)完成固定锁文件安装、生产构建、Git／Swift 编译、DMG 打包与服务模式独立安装验收。两次检查对应运行代码提交 `afeb390`，后续提交只整理公开文档与证据。云端构建产物与本机发布包各有自己的构建指纹；Release 发布本文所验收的本机包。
+
 ## 源码与附件对应
 
 - 安装包：`Weave-0.2.1-macOS-arm64.dmg`，93,039,437 字节。
