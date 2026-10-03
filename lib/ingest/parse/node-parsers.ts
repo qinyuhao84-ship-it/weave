@@ -4,6 +4,8 @@ import { createDocument } from "@mixmark-io/domino";
 import { createTurndown, htmlToMarkdown } from "./turndown";
 import type { ParseInput, ParseResult } from "./types";
 
+let pdfEngine: Promise<void> | null = null;
+
 /**
  * Node 原生解析路径：快、零外部依赖、覆盖大部分常见格式。
  *
@@ -111,7 +113,10 @@ export function parseHtml(input: ParseInput): ParseResult {
  * 而不是假装解析得很好 —— 用户有权知道这份资料的后续 LLM 整合质量会打折。
  */
 export async function parsePdfFallback(input: ParseInput): Promise<ParseResult> {
-  const { extractText, getDocumentProxy } = await import("unpdf");
+  const { definePDFJSModule, extractText, getDocumentProxy } = await import("unpdf");
+  // 使用锁文件中的已修复引擎；同一进程只初始化一次，加载失败直接报告。
+  pdfEngine ??= definePDFJSModule(() => import("pdfjs-dist/legacy/build/pdf.mjs"));
+  await pdfEngine;
   const buffer = fs.readFileSync(input.absolutePath);
   // PDF.js 的 Node 文件读取器需要本机路径，不能用 file:// URL；中文字体
   // 的字符映射随应用一起分发，解析不依赖系统字体或网络。

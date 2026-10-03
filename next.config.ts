@@ -3,10 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   // unpdf 通过 import.meta 和动态 import 定位 PDF.js，保留 Node 原生加载。
-  serverExternalPackages: ["unpdf"],
+  serverExternalPackages: ["unpdf", "pdfjs-dist"],
   // PDF.js 运行时读取这些文件；显式追踪，确保独立安装后仍可离线解析中文。
   outputFileTracingIncludes: {
-    "/api/ingest": ["./node_modules/pdfjs-dist/package.json", "./node_modules/pdfjs-dist/cmaps/**/*", "./node_modules/pdfjs-dist/standard_fonts/**/*"],
+    "/api/ingest": ["./node_modules/pdfjs-dist/package.json", "./node_modules/pdfjs-dist/legacy/build/pdf*.mjs", "./node_modules/pdfjs-dist/cmaps/**/*", "./node_modules/pdfjs-dist/standard_fonts/**/*"],
   },
   async headers() {
     // srcdoc 自身限制网络；父页面策略同时禁止 iframe 自行导航到外部站点。

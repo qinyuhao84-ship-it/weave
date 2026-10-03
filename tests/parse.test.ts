@@ -91,6 +91,15 @@ describe("HTML 解析", () => {
 });
 
 describe("PDF 解析（Node 兜底路径）", () => {
+  it("实际文本提取使用已修复的 PDF.js 引擎", async () => {
+    resetDoclingCache();
+    const result = await parseDocument(input("sample.pdf"));
+    const { getResolvedPDFJS } = await import("unpdf");
+    const { version } = await getResolvedPDFJS();
+    expect(version).toBe("6.2.108");
+    expect(result.markdown).toContain("卢曼");
+  });
+
   it("在没有 docling 时回落到 unpdf 并如实警告", async () => {
     resetDoclingCache();
     const result = await parseDocument(input("sample.pdf"));
