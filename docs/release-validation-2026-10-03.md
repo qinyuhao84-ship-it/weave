@@ -19,6 +19,8 @@
 
 本版原生菜单与下载交互沿用同一修复实现；发布前实际窗口记录见[桌面复验](desktop-quality-2026-10-03.md)。本版自动验收没有重新执行所有系统面板的人工交互。
 
+同一运行代码提交的 GitHub 检查全部通过：[macOS／Ubuntu 工程与完整历史凭据检查](https://github.com/qinyuhao84-ship-it/weave/actions/runs/37102619854)，[独立 macOS 桌面构建与服务模式验收](https://github.com/qinyuhao84-ship-it/weave/actions/runs/37102621124)。云端桌面产物另行构建；本页 DMG 指纹对应本地原生验收附件。
+
 ## 源码与附件对应
 
 - 安装包：`Weave-0.2.2-macOS-arm64.dmg`，94,542,033 字节。
