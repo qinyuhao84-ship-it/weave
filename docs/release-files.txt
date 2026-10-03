@@ -245,6 +245,11 @@ docs/evidence/quality-2026-10-03/ui-acceptance.json
 docs/evidence/release-2026-10-03/checks.json
 docs/evidence/release-2026-10-03/native-acceptance.json
 docs/evidence/release-2026-10-03/service-acceptance.json
+docs/evidence/release-v0.2.2/checks.json
+docs/evidence/release-v0.2.2/dependency-audit-all.json
+docs/evidence/release-v0.2.2/dependency-audit-production.json
+docs/evidence/release-v0.2.2/native-acceptance.json
+docs/evidence/release-v0.2.2/service-acceptance.json
 docs/hardening-validation.md
 docs/interface-quality-2026-10-03.md
 docs/interface.md
@@ -255,6 +260,7 @@ docs/quality-audit-2026-10-03.md
 docs/release-audit.md
 docs/release-files.txt
 docs/release-validation-2026-10-03.md
+docs/release-validation-v0.2.1.md
 docs/releasing.md
 docs/retrieval-evaluation.md
 docs/screenshots/README.md

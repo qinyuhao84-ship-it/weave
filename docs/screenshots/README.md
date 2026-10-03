@@ -19,4 +19,4 @@
 
 ## 2026-10-03 发布前桌面复验
 
-[quality-native-wiki-2026-10-03.png](quality-native-wiki-2026-10-03.png)来自发布前独立安装副本，使用隔离合成资料。[quality-dmg-finder-2026-10-03.png](quality-dmg-finder-2026-10-03.png)展示同批安装布局，拍摄时间早于最终图标留白调整。二者对应内部版本号 0.2.0 的预览构建；当前 v0.2.1 安装与包指纹见[发布验收](../release-validation-2026-10-03.md)。
+[quality-native-wiki-2026-10-03.png](quality-native-wiki-2026-10-03.png)来自发布前独立安装副本，使用隔离合成资料。[quality-dmg-finder-2026-10-03.png](quality-dmg-finder-2026-10-03.png)展示同批安装布局，拍摄时间早于最终图标留白调整。二者对应内部版本号 0.2.0 的预览构建；当前 v0.2.2 安装与包指纹见[发布验收](../release-validation-2026-10-03.md)。

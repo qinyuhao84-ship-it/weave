@@ -23,7 +23,7 @@
 | 文件同步、持久化事务日志、业务提交标记与启动恢复，遇到外部编辑停止恢复写入 | [事务日志](../lib/vault/transaction-journal.ts)、[故障测试](../tests/vault-resilience.test.ts)、[历史可靠性验收](hardening-validation.md) | 文件系统与 SQLite 没有硬件层面的统一事务；无法覆盖所有断电点和设备损坏 |
 | 后端检查引用所属证据，并隔离不完整回答和重复词条 ID | [引用测试](../tests/citations.test.ts)、[失败边界测试](../tests/chat-failure-boundaries.test.ts)、[身份测试](../tests/index-identity.test.ts) | 引用编号有效不保证陈述被证据支持；语义支持率来自独立逐题复核 |
 | v0.2.0 冻结真实检索评测：200 道留出题、10,080 篇资料，`Recall@10` 98.68%、`nDCG@10` 0.8536 | [指标及原始汇总](evaluation/2026-10-02/metrics.md) | 相对开发预选纯向量基线排序高 4.19 个百分点，本地 P95 增加 9.97%；受限语料且相关性标注不完整 |
-| v0.2.0 冻结问答：78/80 正确、80/80 引用支持、20/20 受控拒答 | [逐题复核与限制](evaluation/2026-10-02/round-3/README.md) | 未做独立人工盲审；受控移除证据不代表自然缺证据、多轮或多跳；v0.2.1 未重新评测真实模型质量 |
+| v0.2.0 冻结问答：78/80 正确、80/80 引用支持、20/20 受控拒答 | [逐题复核与限制](evaluation/2026-10-02/round-3/README.md) | 未做独立人工盲审；受控移除证据不代表自然缺证据、多轮或多跳；v0.2.2 未重新评测真实模型质量 |
 | Cocoa / WKWebView、包内运行时、独立安装与恢复验证 | [桌面实现](../desktop/Main.swift)、[发布验收](release-validation-2026-10-03.md) | Apple Silicon，构建最低 macOS 13.5、实测 15.7.4；ad-hoc 临时签名，未进行 Apple 公证 |
 
 ## 使用取舍与尚未完善的部分
@@ -34,4 +34,4 @@
 - **规模与解析**：精确向量扫描随分段数量和维度增加成本，长问题也会增加本地计算。OCR 与 PPTX 需要另行配置 Docling，安装包未捆绑 Python 或 OCR 模型。
 - **质量覆盖**：真实评测范围有限，长文、多跳、自然缺证据、不同领域和商业产品比较尚未验证。部分工作区与流水线仍较大，增加功能时需要保持现有职责边界与回归覆盖。
 
-下载与使用见 [README](../README.md)，运行结构见 [架构](architecture.md)，当前工程回归见 [v0.2.1 验收](release-validation-2026-10-03.md)。
+下载与使用见 [README](../README.md)，运行结构见 [架构](architecture.md)，当前工程回归见 [v0.2.2 验收](release-validation-2026-10-03.md)。

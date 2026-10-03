@@ -1,0 +1,212 @@
+{
+  "version": "0.2.2",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "executionMode": "native-app",
+  "testedAt": "2026-10-03T06:17:27.014Z",
+  "dmg": {
+    "path": "Weave-0.2.2-macOS-arm64.dmg",
+    "bytes": 94542033,
+    "sha256": "40f0fa7278803070030f9d05a9ce2bb9003193d9d08e49833a4f4cb6e0cba438"
+  },
+  "nativeAppLaunched": true,
+  "isolation": "临时知识库与临时配置目录；启动进程使用 PATH=/usr/bin:/bin；未读取或修改日常知识库与模型凭据。",
+  "checks": [
+    {
+      "name": "DMG 校验",
+      "passed": true,
+      "detail": "hdiutil verify 退出码为 0"
+    },
+    {
+      "name": "构建清单存在",
+      "passed": true
+    },
+    {
+      "name": "清单标记 ad-hoc 预览构建",
+      "passed": true,
+      "detail": "preview-ad-hoc"
+    },
+    {
+      "name": "清单记录源代码指纹",
+      "passed": true
+    },
+    {
+      "name": "清单记录依赖清单",
+      "passed": true
+    },
+    {
+      "name": "清单记录逐文件包体指纹",
+      "passed": true
+    },
+    {
+      "name": "DMG 指纹与清单一致",
+      "passed": true
+    },
+    {
+      "name": "DMG 包含应用、安装引导和 Applications 快捷入口",
+      "passed": true
+    },
+    {
+      "name": "安装引导说明拖入 Applications 与完整备份",
+      "passed": true
+    },
+    {
+      "name": "应用已从只读 DMG 复制到独立安装目录",
+      "passed": true
+    },
+    {
+      "name": "安装包结构及依赖指纹与构建清单一致",
+      "passed": true
+    },
+    {
+      "name": "安装包不含环境文件、数据库或知识库数据",
+      "passed": true,
+      "detail": "3067 个文件已逐项扫描"
+    },
+    {
+      "name": "由 DMG 内原生 Cocoa 可执行文件启动服务",
+      "passed": true,
+      "detail": "<temporary-install>/织识.app/Contents/MacOS/Weave"
+    },
+    {
+      "name": "以最小初始 PATH 启动且实际服务映射包内 Node",
+      "passed": true,
+      "detail": "Contents/Resources/runtime/bin/node"
+    },
+    {
+      "name": "第二次启动激活已有窗口并退出自身",
+      "passed": true,
+      "detail": "{\"code\":0,\"signal\":null}"
+    },
+    {
+      "name": "重复启动没有创建第二个本地服务",
+      "passed": true,
+      "detail": "当前服务进程数 1"
+    },
+    {
+      "name": "模拟服务已配置且不使用真实凭据",
+      "passed": true
+    },
+    {
+      "name": "实际应用导入 Markdown 并完成审阅草稿",
+      "passed": true
+    },
+    {
+      "name": "Markdown 词条写入并完成 Git 备份",
+      "passed": true
+    },
+    {
+      "name": "安装包内 PDF 解析离线提取中文正文",
+      "passed": true,
+      "detail": "parser=unpdf; chars=148"
+    },
+    {
+      "name": "全文检索命中已导入 Markdown",
+      "passed": true
+    },
+    {
+      "name": "模拟问答成功且引用通过后端校验",
+      "passed": true,
+      "detail": "citations=1"
+    },
+    {
+      "name": "Git 工作区干净且现有知识文件仍在",
+      "passed": true
+    },
+    {
+      "name": "第一次退出后包进程与本地服务均已停止",
+      "passed": true,
+      "detail": "3 个已记录进程全部退出"
+    },
+    {
+      "name": "重启后词条、会话、回答和引用仍存在",
+      "passed": true
+    },
+    {
+      "name": "最终退出后全部应用进程停止",
+      "passed": true,
+      "detail": "3 个已记录进程全部退出"
+    },
+    {
+      "name": "完整备份保留 Markdown、原件、SQLite 与 Git 历史",
+      "passed": true,
+      "detail": "41 个文件逐项哈希相同"
+    },
+    {
+      "name": "卸载独立安装副本后知识库与完整备份仍保留",
+      "passed": true
+    },
+    {
+      "name": "从完整备份重新安装后原词条、会话与引用均可恢复",
+      "passed": true
+    },
+    {
+      "name": "仅清理验收新建的临时目录",
+      "passed": true
+    }
+  ],
+  "result": "passed",
+  "build": {
+    "signing": "preview-ad-hoc",
+    "sourceSha256": "e54cdcca06bf09e170ded6cfa8ddc9a6b6af39ce55f5dd1c6df28806c9dfe248",
+    "nextBuildId": "mMjAjdmh_BLai5E4ZQtOf",
+    "runtime": {
+      "node": "26.3.1",
+      "git": "2.56.0"
+    },
+    "dependencies": 388
+  },
+  "installedBundle": {
+    "fileCount": 3067,
+    "symlinkCount": 24,
+    "bytes": 235969862,
+    "sha256": "922c0149804c7efd5351478d9cf8d657d937b76b77ec3a73a72e2c42d378a4de"
+  },
+  "startup": {
+    "coldStartMs": 1334,
+    "restartMs": 1092,
+    "restoredInstallMs": 1095
+  },
+  "packageProcess": {
+    "pid": 92001,
+    "executable": "independent-install/Applications/织识.app/Contents/MacOS/Weave",
+    "servicePid": 92070,
+    "url": "http://127.0.0.1:49676"
+  },
+  "runtimeEvidence": {
+    "initialPath": "/usr/bin:/bin",
+    "serverNodeExecutable": "Contents/Resources/runtime/bin/node"
+  },
+  "pdf": {
+    "parser": "unpdf",
+    "extractedCharacters": 148,
+    "terms": [
+      "知识管理方法论",
+      "卢曼",
+      "LLM Wiki"
+    ]
+  },
+  "chat": {
+    "status": "done",
+    "citationCount": 1,
+    "sessionId": "01M406JGNMYHFP4ZAH1S85HC9Q"
+  },
+  "backup": {
+    "fileCount": 41,
+    "sha256": "c1767e8bf17c6652b305e062e41ea17b8533e02bda1c4fa0117f43278d34ae06",
+    "byteForByteMatchesVault": true,
+    "preservesExistingMarker": true,
+    "includes": [
+      "wiki",
+      "raw",
+      ".weave/weave.db",
+      ".git"
+    ]
+  },
+  "restore": {
+    "reinstalledFromDmg": true,
+    "restoredSearchAndSession": true,
+    "originalVaultPreservedAfterUninstall": true,
+    "backupSha256": "c1767e8bf17c6652b305e062e41ea17b8533e02bda1c4fa0117f43278d34ae06"
+  }
+}

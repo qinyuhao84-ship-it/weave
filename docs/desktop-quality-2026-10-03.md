@@ -1,6 +1,6 @@
 # macOS 桌面预览安装包复验（发布前历史记录）
 
-本文保留 v0.2.1 发布前、内部版本号仍为 0.2.0 的安装验收结果；当前安装包见 [v0.2.1 验收](release-validation-2026-10-03.md)。当时保留现有源码与版本号，使用 `dist/quality-2026-10-03/` 生成独立预览产物。没有 Developer ID Application 私钥，本次跳过正式签名与公证；包内清单会记录 `preview-ad-hoc`，GitHub 的包构建继续使用同样的无凭据模式。
+本文保留 v0.2.2 发布前、内部版本号仍为 0.2.0 的安装验收结果；当前安装包见 [v0.2.2 验收](release-validation-2026-10-03.md)。当时保留现有源码与版本号，使用 `dist/quality-2026-10-03/` 生成独立预览产物。没有 Developer ID Application 私钥，本次跳过正式签名与公证；包内清单会记录 `preview-ad-hoc`，GitHub 的包构建继续使用同样的无凭据模式。
 
 ## 可重复验收
 

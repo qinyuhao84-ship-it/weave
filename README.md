@@ -10,13 +10,13 @@
 
 ## 下载桌面应用
 
-[下载 macOS Apple Silicon 安装包](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.1/Weave-0.2.1-macOS-arm64.dmg) · [更新说明与校验和](https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.1) · [安装说明](docs/desktop.md)
+[下载 macOS Apple Silicon 安装包](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.2/Weave-0.2.2-macOS-arm64.dmg) · [更新说明与校验和](https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.2) · [安装说明](docs/desktop.md)
 
 打开 `.dmg`，将「织识」拖到「Applications」，再从应用程序打开。内置 Node 与本地备份所需的 Git，日常使用无需安装 Node、pnpm 或启动终端。此版为未经过 Apple 公证的桌面预览版，仅提供 Apple Silicon 包；实际验收环境为 macOS 15.7.4。模型仍需在应用设置中自行配置。
 
 ## 冻结真实评测（v0.2.0）
 
-以下结果来自 v0.2.0 冻结源码的中文真实资料评测。v0.2.1 完成独立工程回归，未重新运行真实模型质量评测。固定种子和数据版本的评测，独立留出集通过本阶段全部工程门槛：`Recall@10` **98.68%**、`nDCG@10` **0.8536**，比开发预选最强基线高 **4.19 个百分点**（95% 区间 1.85–6.63）。80 道有答案场景正确率 **97.5%**、引用支持 **100%**，20 道受控缺证据场景正确拒答 **100%**。本地 P95 相对原实现增加 9.97%，检索失败与降级均为 0/200，问答失败与降级均为 0/100。
+以下结果来自 v0.2.0 冻结源码的中文真实资料评测。v0.2.2 完成独立工程回归，未重新运行真实模型质量评测。固定种子和数据版本的评测，独立留出集通过本阶段全部工程门槛：`Recall@10` **98.68%**、`nDCG@10` **0.8536**，比开发预选最强基线高 **4.19 个百分点**（95% 区间 1.85–6.63）。80 道有答案场景正确率 **97.5%**、引用支持 **100%**，20 道受控缺证据场景正确拒答 **100%**。本地 P95 相对原实现增加 9.97%，检索失败与降级均为 0/200，问答失败与降级均为 0/100。
 
 最终留出检索 200 题、共享语料 10,080 篇；问答为另行冻结的 80+20 个场景。检索按公开人工标注自动计分，问答对照标准答案和实际原文证据逐题复核。
 
@@ -98,7 +98,7 @@ Markdown 是词条真源，可用 Obsidian 或文本编辑器打开。SQLite 还
 
 ### 安装桌面版
 
-1. [下载 macOS Apple Silicon 安装包](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.1/Weave-0.2.1-macOS-arm64.dmg)。
+1. [下载 macOS Apple Silicon 安装包](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.2/Weave-0.2.2-macOS-arm64.dmg)。
 2. 打开 `.dmg`，将「织识」拖入「Applications」，弹出磁盘映像。
 3. 从应用程序打开织识，在「设置 → 模型服务」配置自己的服务与型号。
 
@@ -191,7 +191,7 @@ pnpm start
 
 ## 工程与贡献
 
-采用 Next.js App Router、React、TypeScript、Drizzle 和 SQLite。项目介绍与技术要点见 [项目说明](docs/project-introduction.md)。架构与取舍见 [架构说明](docs/architecture.md)，复测方法见 [性能基准](docs/performance-audit.md)，当前交付结果见 [v0.2.1 验收](docs/release-validation-2026-10-03.md)，历史结果见 [首版验收](docs/validation.md)与[代码审计](docs/release-audit.md)。上线回归状态见 [GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)。
+采用 Next.js App Router、React、TypeScript、Drizzle 和 SQLite。项目介绍与技术要点见 [项目说明](docs/project-introduction.md)。架构与取舍见 [架构说明](docs/architecture.md)，复测方法见 [性能基准](docs/performance-audit.md)，当前交付结果见 [v0.2.2 验收](docs/release-validation-2026-10-03.md)，历史结果见 [首版验收](docs/validation.md)与[代码审计](docs/release-audit.md)。上线回归状态见 [GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)。
 
 ```bash
 pnpm lint
