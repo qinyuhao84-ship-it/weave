@@ -30,6 +30,8 @@
 
 [Release](https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.2)提供本标签源码、DMG、构建清单、验收日志归档、Git 对应源码与全部附件校验和。源码压缩包对应标签的完整 Git 文件；运行源码指纹与包内清单对应，文档修订不改变该运行指纹。
 
+六项附件均通过无需 GitHub 登录的公开地址重新下载，文件大小、SHA-256 与上传前本地记录逐项一致，`SHA256SUMS.txt` 和下载后 DMG 完整性检查通过。v0.2.0 的四项历史附件名称、大小与摘要保持原样。[公开下载机器记录](evidence/release-v0.2.2/public-download-verification.json)。本版源码标签为 `f0cf63d9909bc5902111e56417a8367407e0a767`；后续文档记录不改写标签或附件。
+
 ## 公开范围与凭据检查
 
 公开范围由 [release-files.txt](release-files.txt)逐项列出；真实环境、知识库、数据库、依赖、构建、测试产物和内部审计不进入 Git 提交。`.impeccable/` 为本机内部审查目录，已加入忽略规则；`.env.example` 仅含注释示例。

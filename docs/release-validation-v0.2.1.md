@@ -28,7 +28,7 @@
 - 运行源码 SHA-256：`dd61d7af9c649c4141cfef726796cbc340c5c26d095e2aa2aa35fd089a637565`，算法见 [sourceFingerprint](../scripts/desktop-package-utils.mjs)，包含运行代码、桌面资源、脚本、迁移与固定配置。
 - 签名：`preview-ad-hoc`，未公证；内置 Node 26.3.1、Git 2.56.0，构建清单记录 388 个生产依赖条目。
 
-该预发布版本未公开 Release；源码标签与本页机器证据保留，当前下载见 [README](../README.md)。源码压缩包对应标签的完整 Git 文件；运行源码指纹与包内清单对应，文档修订不改变该运行指纹。
+该预发布版本未公开 Release；保留 `v0.2.1` 源码标签与本页机器证据，本页安装包指纹属于当时的本地验收产物。当前公开附件见 [README](../README.md)。
 
 ## 公开范围与凭据检查
 

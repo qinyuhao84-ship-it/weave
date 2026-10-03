@@ -249,6 +249,7 @@ docs/evidence/release-v0.2.2/checks.json
 docs/evidence/release-v0.2.2/dependency-audit-all.json
 docs/evidence/release-v0.2.2/dependency-audit-production.json
 docs/evidence/release-v0.2.2/native-acceptance.json
+docs/evidence/release-v0.2.2/public-download-verification.json
 docs/evidence/release-v0.2.2/service-acceptance.json
 docs/hardening-validation.md
 docs/interface-quality-2026-10-03.md

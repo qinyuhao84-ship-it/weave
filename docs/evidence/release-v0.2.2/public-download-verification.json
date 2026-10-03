@@ -1,0 +1,41 @@
+{
+  "version": "0.2.2",
+  "release": "https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.2",
+  "commit": "f0cf63d9909bc5902111e56417a8367407e0a767",
+  "assets": [
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 467,
+      "sha256": "5338df11a1d0cdc4c5e725cb8d6054fcc08e34589629e29b2d62beaf3c35c41b"
+    },
+    {
+      "name": "Weave-0.2.2-macOS-arm64.build.json",
+      "bytes": 951967,
+      "sha256": "16a7be3ff48d497e98bb69c598cf8f51097f284e94e9d4273cb2d5e53999487d"
+    },
+    {
+      "name": "Weave-0.2.2-macOS-arm64.dmg",
+      "bytes": 94542033,
+      "sha256": "40f0fa7278803070030f9d05a9ce2bb9003193d9d08e49833a4f4cb6e0cba438"
+    },
+    {
+      "name": "Weave-0.2.2-source.tar.gz",
+      "bytes": 2994421,
+      "sha256": "200a41a9538feb5469b801d7107583675b2357428704245b92e2c904d9477a0c"
+    },
+    {
+      "name": "Weave-0.2.2-validation.tar.gz",
+      "bytes": 12569,
+      "sha256": "3359b940c91196cdeab65f98bfc295e6ffa878f32457732231432cc58b1e02ca"
+    },
+    {
+      "name": "git-2.56.0.tar.xz",
+      "bytes": 8489656,
+      "sha256": "26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3"
+    }
+  ],
+  "anonymousPublicDownloadsVerified": true,
+  "checksumsVerified": true,
+  "downloadedDmgVerified": true,
+  "v020AssetsUnchanged": true
+}
