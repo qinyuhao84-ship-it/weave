@@ -10,6 +10,10 @@
 
 此包为 **ad-hoc 签名的桌面预览版，尚未 Apple Developer ID 签名和公证**。下载后的首次启动可能被 macOS 阻止；请核对 Release 来源与 SHA-256，并依据系统「隐私与安全性」提示决定是否允许打开。不要关闭 Gatekeeper。未将本机无隔离标记的安装测试解释为互联网下载后的公证验证。
 
+![v0.2.2 的实际原生桌面窗口](screenshots/native-desktop.png)
+
+画面使用独立示例知识库，版本与拍摄来源见[截图说明](screenshots/README.md)。
+
 仅提供 Apple Silicon（M 系列）包，构建最低 macOS 13.5，当前实测环境为 macOS 15.7.4 / Apple M2。Intel、Windows、Linux 无此桌面安装包；其他系统版本尚未逐一验收。
 
 ## 升级、卸载与备份

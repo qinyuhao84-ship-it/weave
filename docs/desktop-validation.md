@@ -21,9 +21,9 @@
 - HTML 经系统保存面板下载，文件包含图解与来源引用；会话、引用和 HTML 产物在重启后仍可打开。
 - Command-Q 退出，原生应用、启动器和本地服务三个进程全部停止；从独立安装目录重新启动成功。
 
-此前锁屏未完成的窗口验收现已补完，没有发现需改动应用代码的问题。DMG 与公开发布的 SHA-256 保持一致，未替换发布附件。[机器验收记录](desktop-native-acceptance.json) · [原生截图](screenshots/native-desktop.png)。
+此前锁屏未完成的窗口验收现已补完，没有发现需改动应用代码的问题。DMG 与公开发布的 SHA-256 保持一致，未替换发布附件。[机器验收记录](desktop-native-acceptance.json) · [原生截图](screenshots/native-desktop-v0.2.0.png)。
 
-![安装后的原生织识窗口：引用问答与可交互 HTML](screenshots/native-desktop.png)
+![v0.2.0 安装后的原生织识窗口：引用问答与可交互 HTML](screenshots/native-desktop-v0.2.0.png)
 
 截图包含原生标题栏，来自实际 DMG 安装应用；合成知识与本地模拟模型只证明安装和交互链路，真实质量由独立冻结评测证明。
 

@@ -22,7 +22,7 @@
     "Command-Q stopped all three app processes",
     "restart preserved native edit, import, chat and HTML"
   ],
-  "screenshot": "screenshots/native-desktop.png",
+  "screenshot": "screenshots/native-desktop-v0.2.0.png",
   "limits": [
     "ad-hoc signature; no Developer ID or notarization",
     "only macOS 15.7.4 on Apple Silicon tested",

@@ -1,0 +1,55 @@
+{
+  "version": "0.2.2",
+  "capturedAt": "2026-10-03T07:02:20.059Z",
+  "sourceTagCommit": "f0cf63d9909bc5902111e56417a8367407e0a767",
+  "dmgSha256": "40f0fa7278803070030f9d05a9ce2bb9003193d9d08e49833a4f4cb6e0cba438",
+  "examplePages": 10,
+  "exampleLinks": 29,
+  "theme": "light",
+  "model": "deepseek-v4.1-flash",
+  "modelOutputs": "实际问答与导入草稿，未计入冻结评测",
+  "mockedRequests": false,
+  "editedPixels": false,
+  "screenshots": [
+    {
+      "file": "knowledge.png",
+      "width": 1280,
+      "height": 720,
+      "bytes": 224209,
+      "sha256": "d9f6899b4df949fccedb3d9971d46c6f0bbfbca380103717a2bfd1a050e7c328",
+      "surface": "In-app browser"
+    },
+    {
+      "file": "chat.png",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 222621,
+      "sha256": "96c98cb01de92dd0bac374d5ffa9af90aff794ebb1351c8b98034da17a22f7d0",
+      "surface": "Chrome headless"
+    },
+    {
+      "file": "review.png",
+      "width": 1280,
+      "height": 720,
+      "bytes": 366153,
+      "sha256": "d9652f688ee60edb3985562a328a9293ce5948b6c1d34fe43465a5460ee02e76",
+      "surface": "In-app browser"
+    },
+    {
+      "file": "graph.png",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 117960,
+      "sha256": "d505fec20d10fbb1f335bddafcefdf849e403724662d3f2754915c812ae099a3",
+      "surface": "Chrome headless"
+    },
+    {
+      "file": "native-desktop.png",
+      "width": 2400,
+      "height": 1656,
+      "bytes": 560242,
+      "sha256": "e3f861efc97e766cdd81b5a26e2309ff47cb427e68a94415020d37bf07e4d847",
+      "surface": "Cocoa / WKWebView"
+    }
+  ]
+}

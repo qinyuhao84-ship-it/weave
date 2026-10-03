@@ -265,9 +265,12 @@ docs/release-validation-v0.2.1.md
 docs/releasing.md
 docs/retrieval-evaluation.md
 docs/screenshots/README.md
+docs/screenshots/capture-v0.2.2.json
 docs/screenshots/chat.png
+docs/screenshots/example-notes.md
 docs/screenshots/graph.png
 docs/screenshots/knowledge.png
+docs/screenshots/native-desktop-v0.2.0.png
 docs/screenshots/native-desktop.png
 docs/screenshots/quality-dmg-finder-2026-10-03.png
 docs/screenshots/quality-native-wiki-2026-10-03.png
