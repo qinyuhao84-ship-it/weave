@@ -17,6 +17,9 @@ jobs:
       - run: pnpm build
       - run: pnpm package:mac
       - run: hdiutil verify dist/Weave-*-macOS-arm64.dmg
+      # GitHub runners verify the packaged service chain. The local acceptance command without
+      # --service-only additionally launches the Cocoa app and checks duplicate-instance handling.
+      - run: pnpm verify:desktop -- --service-only dist/Weave-*-macOS-arm64.dmg
       - uses: actions/upload-artifact@v5
         with:
           name: weave-macos-arm64

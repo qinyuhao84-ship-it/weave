@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { BookMarked } from "lucide-react";
+import { BookMarked, BookOpen, CircleHelp, AlertTriangle } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { Badge } from "@/components/ui";
 import { MarkdownRenderer } from "@/components/markdown/renderer";
@@ -10,47 +10,15 @@ import { WaitingStatus } from "./waiting-status";
 import { ArtifactCard, ArtifactPlaceholder } from "./artifact-card";
 import type { Citation, Message } from "./types";
 
-/**
- * 回答上方那一行小字。
- *
- * 存在的理由只有一个：**它必须始终在、且高度固定**。
- * 流式时它写「正在检索 / 正在生成」，完成后它写引用统计 —— 同一行、同一高度，
- * 所以正文的起始位置从等待到落定始终不动。这正是「生成回答时跳一下」的解法：
- * 不是把动画调快，而是让状态切换根本不改变布局。
- *
- * 用 h-5 钉死高度、truncate 保证不换行：换行会让高度重新变成变量，
- * 那就等于把刚修好的坑又挖回来。
- */
-function AnswerMeta({
-  working = false,
-  label,
-  parts,
-}: {
-  working?: boolean;
-  /** 流式状态下的那句话 */
-  label?: string;
-  /** 完成后的统计片段，用 · 连接 */
-  parts?: React.ReactNode[];
-}) {
-  return (
-    <div className="mb-2 flex h-5 items-center gap-1.5 text-[11.5px] text-muted-foreground">
-      {working ? (
-        <>
-          <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--ring)]" aria-hidden />
-          <span className="truncate">{label}</span>
-        </>
-      ) : (
-        <span className="flex min-w-0 items-center gap-1.5 truncate">
-          {(parts ?? []).map((part, index) => (
-            <React.Fragment key={index}>
-              {index > 0 && <span aria-hidden>·</span>}
-              {part}
-            </React.Fragment>
-          ))}
-        </span>
-      )}
-    </div>
-  );
+/** Compact answer provenance; the icon reflects the same verified status as the text. */
+function AnswerMeta({ parts, cited, warning }: { parts: React.ReactNode[]; cited: boolean; warning: boolean }) {
+  const Icon = warning ? AlertTriangle : cited ? BookOpen : CircleHelp;
+  return <div className="answer-meta mb-3 flex min-h-7 items-center">
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2.5 py-1 text-[11.5px] leading-4 text-muted-foreground">
+      <Icon size={12} className="shrink-0" strokeWidth={1.7} aria-hidden />
+      <span className="min-w-0 [overflow-wrap:anywhere]">{parts.map((part, index) => <React.Fragment key={index}>{index > 0 && <span className="mx-1.5" aria-hidden>·</span>}{part}</React.Fragment>)}</span>
+    </span>
+  </div>;
 }
 
 export const MessageBubble = React.memo(function MessageBubble({
@@ -129,9 +97,9 @@ export const MessageBubble = React.memo(function MessageBubble({
   }
 
   return (
-    <div className={cn("group", animate && "msg-in")}>
+    <div className={cn("answer-surface group rounded-[18px] border border-border/60 bg-card/40 p-4 sm:p-5", animate && "msg-in")}>
       {working && <WaitingStatus createdAt={message.createdAt} hasText={Boolean(message.content.trim())} />}
-      {!working && <AnswerMeta parts={metaParts} />}
+      {!working && <AnswerMeta parts={metaParts} cited={citations.length > 0} warning={Boolean(message.interrupted || message.runStatus === "failed" || quality?.hallucinationCount)} />}
 
       {message.content.trim() ? (
       <MarkdownRenderer
@@ -164,7 +132,7 @@ export const MessageBubble = React.memo(function MessageBubble({
 
       {/* 引用列表 */}
       {citations.length > 0 && (
-        <div className="mt-3 border-t border-border pt-3">
+        <div className="mt-4 pt-2">
           <div className="flex flex-wrap gap-1.5">
             {citations.map((citation) => (
               <button

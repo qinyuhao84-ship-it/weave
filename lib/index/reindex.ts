@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb, getSqlite } from "@/lib/db/client";
 import { pages, links, edges, redirects, indexMeta, reviewItems } from "@/lib/db/schema";
 import { scanAllPages, scanTombstones, type LoadedPage, type BrokenFile, type Tombstone } from "@/lib/vault/read";
@@ -28,6 +28,7 @@ export type ReindexReport = {
   broken: BrokenFile[];
   /** 归一化名字的冲突（两个词条抢同一个名字） */
   nameConflicts: Array<{ name: string; pageIds: string[] }>;
+  idConflicts: Array<{ pageId: string; relativePaths: string[] }>;
   durationMs: number;
 };
 
@@ -313,7 +314,8 @@ function rebuildFts(active: LoadedPage[]): void {
 /** 读取当前的 redirects 表为 Map */
 function loadRedirects(): Map<string, string> {
   const rows = getDb().select().from(redirects).all();
-  return new Map(rows.map((r) => [r.oldNormalized, r.newPageId]));
+  const activeIds = new Set(getDb().select({ id: pages.id }).from(pages).where(eq(pages.status, "active")).all().map(page => page.id));
+  return new Map(rows.filter(row => activeIds.has(row.newPageId)).map((r) => [r.oldNormalized, r.newPageId]));
 }
 
 /**
@@ -372,12 +374,33 @@ function reindexWithinTransaction(): ReindexReport {
   const db = getDb();
   const now = localISOString();
 
-  const { pages: loaded, broken } = scanAllPages();
+  const { pages: loaded, broken, idConflicts } = scanAllPages();
   const active = loaded.filter((p) => !p.data.deleted_at);
 
   // 1. 词条表：用 id 做 upsert，保证已删除的词条不会因为这次扫描而复活
   const existingIds = new Set(db.select({ id: pages.id }).from(pages).all().map((p) => p.id));
   const seenIds = new Set<string>();
+  const conflictedIds = new Set(idConflicts.map(conflict => conflict.pageId));
+
+  // 一个文件的 frontmatter ID 被修改后，旧 ID 行仍保留作历史记录；先释放它的
+  // active 路径所有权，避免唯一索引阻止新 ID 接管同一份 Markdown。
+  const incomingIdsByPath = new Map(active.map(page => [page.relativePath, page.data.id]));
+  const incomingPaths = [...incomingIdsByPath.keys()];
+  const ownershipBatchSize = 500;
+  for (let offset = 0; offset < incomingPaths.length; offset += ownershipBatchSize) {
+    const pathBatch = incomingPaths.slice(offset, offset + ownershipBatchSize);
+    const pathOwners = db.select({ id: pages.id, filePath: pages.filePath })
+      .from(pages)
+      .where(and(eq(pages.status, "active"), inArray(pages.filePath, pathBatch)))
+      .all();
+    const relinquishedIds = pathOwners
+      .filter(owner => incomingIdsByPath.get(owner.filePath) !== owner.id)
+      .map(owner => owner.id);
+    if (relinquishedIds.length > 0) {
+      db.update(pages).set({ status: "deleted", deletedAt: now, indexedAt: now })
+        .where(inArray(pages.id, relinquishedIds)).run();
+    }
+  }
 
   for (const page of active) {
     seenIds.add(page.data.id);
@@ -404,7 +427,12 @@ function reindexWithinTransaction(): ReindexReport {
   }
 
   // 2. 文件已从磁盘消失的词条：标记为删除（不是物理删除，保留墓碑）
-  const vanished = [...existingIds].filter((id) => !seenIds.has(id));
+  // 身份冲突不是删除：保留原行与归档关联，只使其退出所有证据与写入入口。
+  if (conflictedIds.size) {
+    db.update(pages).set({ status: "conflicted", indexedAt: now })
+      .where(inArray(pages.id, [...conflictedIds])).run();
+  }
+  const vanished = [...existingIds].filter((id) => !seenIds.has(id) && !conflictedIds.has(id));
   if (vanished.length > 0) {
     db.update(pages)
       .set({ status: "deleted", deletedAt: now, indexedAt: now })
@@ -505,6 +533,8 @@ function reindexWithinTransaction(): ReindexReport {
       set: { value: now, updatedAt: now },
     })
     .run();
+  db.insert(indexMeta).values({ key: "page_id_conflicts", value: JSON.stringify(idConflicts), updatedAt: now })
+    .onConflictDoUpdate({ target: indexMeta.key, set: { value: JSON.stringify(idConflicts), updatedAt: now } }).run();
 
   return {
     pages: active.length,
@@ -513,6 +543,7 @@ function reindexWithinTransaction(): ReindexReport {
     redirects: redirectCount,
     broken,
     nameConflicts: conflicts,
+    idConflicts,
     durationMs: Date.now() - startedAt,
   };
 }

@@ -2,7 +2,7 @@ import { createLightProvider } from "@/lib/llm";
 import { buildSummaryPrompt } from "@/lib/llm/prompts";
 import type { LlmProvider } from "@/lib/llm/types";
 import { estimateContextTokens, estimateMessagesContextTokens } from "./tokens";
-import { buildHistory, readSummary, writeSummary, type ChatHistory } from "./sessions";
+import { buildHistory, writeSummary, type ChatHistory } from "./sessions";
 
 /**
  * 上下文压缩。
@@ -211,7 +211,8 @@ export async function compressHistory(input: {
     return { status: "failed", reason: toReason(error), history: input.history };
   }
 
-  const existing = readSummary(input.sessionId);
+  // 与调用方过滤后的历史快照一致；不能重新读取旧版本已混入失败回答的摘要。
+  const existing = input.history.summary;
   if (provider.contextWindow) {
     const fixed = estimateMessagesContextTokens([{ content: buildSummaryPrompt({ previousSummary: existing?.content ?? null, transcript: "" }) }]);
     const available = Math.max(0, Math.floor(provider.contextWindow * 0.8) - fixed);

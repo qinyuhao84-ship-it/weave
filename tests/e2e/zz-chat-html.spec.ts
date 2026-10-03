@@ -18,7 +18,7 @@ test('HTML 问答：等待、选择记忆、隔离交互、全屏与下载', asy
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.goto('/chat');
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  const htmlButton = page.getByRole('button', { name: '生成 HTML', exact: true });
+  const htmlButton = page.getByRole('button', { name: '生成交互阅读页', exact: true });
   await expect(htmlButton).toBeEnabled();
   await expect(page.getByText('仅根据已入库资料回答')).toHaveCount(0);
   await htmlButton.hover(); await expect(page.getByRole('tooltip')).toBeVisible();
@@ -37,7 +37,9 @@ test('HTML 问答：等待、选择记忆、隔离交互、全屏与下载', asy
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('button', { name: 'audit-fast', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(effortButton).toContainText('思考 · 低');
+  await expect(effortButton).toContainText('思考 · 高');
+  await effortButton.click();
+  await effortPicker.getByRole('button', { name: '思考 · 低', exact: true }).click();
   await page.getByLabel('向知识库提问').fill('推荐算法 HTML_WAIT');
   await page.getByRole('button', { name: '开始提问', exact: true }).click();
   await expect(page).toHaveURL(/\/chat\?s=[0-9A-Z]+/);

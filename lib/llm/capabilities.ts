@@ -22,6 +22,22 @@ export function reasoningCapability(baseUrl: string, model: string, metadata?: M
     if (/^deepseek-v4/i.test(model)) return { efforts: ["default", "none", "low", "high", "max"], known: true };
     if (/^deepseek-chat$/i.test(model)) return { efforts: ["default"], known: true };
   }
+  // Exact documented families only; new or renamed models remain conservative.
+  if (host === "api.openai.com") {
+    const id = model.replace(/-\d{4}-\d{2}-\d{2}$/, "");
+    const official: Record<string, Effort[]> = {
+      "gpt-6-astra": ["low", "medium", "high", "xhigh", "max"],
+      "gpt-6.1-sol": ["low", "medium", "high", "xhigh", "max"],
+      "gpt-5.4": ["none", "low", "medium", "high", "xhigh"],
+      "gpt-5.4-mini": ["none", "low", "medium", "high", "xhigh"],
+      "gpt-5.2": ["none", "low", "medium", "high", "xhigh"],
+      "gpt-5.1": ["none", "low", "medium", "high"],
+      "gpt-5": ["minimal", "low", "medium", "high"],
+      "o3": ["low", "medium", "high"],
+      "o4-mini": ["low", "medium", "high"],
+    };
+    if (official[id]) return { efforts: ["default", ...official[id]], known: true };
+  }
   if (host === "api.openai.com" && /^(gpt-4o|gpt-4\.1|gpt-3\.5)/i.test(model)) return { efforts: ["default"], known: true };
   return { efforts: ["default"], known: false };
 }
@@ -62,3 +78,16 @@ export const EFFORT_LABELS: Record<Effort, string> = {
   default: "默认", none: "不思考", minimal: "极低", low: "低", medium: "中",
   high: "高", xhigh: "更高", ultra: "极高", max: "最高",
 };
+
+/** Only real thinking tiers belong in a picker; service-default/off are protocol states. */
+export function thinkingEfforts(capability: ReasoningCapability): Effort[] {
+  const order: Effort[] = ["minimal", "low", "medium", "high", "xhigh", "ultra", "max"];
+  return order.filter(effort => capability.efforts.includes(effort));
+}
+
+/** Preserve an explicit supported tier; otherwise choose the middle available tier. */
+export function preferredThinkingEffort(baseUrl: string, model: string, configured: Effort = "default", metadata?: ModelCapability): Effort {
+  const options = thinkingEfforts(reasoningCapability(baseUrl, model, metadata));
+  const canonical = canonicalReasoningEffort(baseUrl, model, configured, metadata);
+  return options.includes(canonical) ? canonical : options[Math.floor(options.length / 2)] ?? "default";
+}

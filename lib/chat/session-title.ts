@@ -6,6 +6,7 @@ import {
   getMessages,
   getSession,
   claimSessionTitleSummary,
+  isCompleteChatMessage,
 } from "./sessions";
 
 const TITLE_PROMPT = [
@@ -36,7 +37,7 @@ function cleanTitle(raw: string): string {
 
 function recentTranscript(sessionId: string): string {
   const messages = getMessages(sessionId)
-    .filter((message) => message.content.trim())
+    .filter((message) => message.content.trim() && isCompleteChatMessage(message))
     .slice(-8);
   let remaining = 3600;
   const selected: string[] = [];

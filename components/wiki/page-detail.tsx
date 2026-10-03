@@ -137,7 +137,8 @@ export function PageDetail({ pageId }: { pageId: string }) {
     [router],
   );
 
-  if (loading) {
+  // 后台刷新同一词条时保留操作面板，避免正在选择的目标和编辑状态被重置。
+  if (loading && (!data || data.id !== pageId)) {
     return (
       <>
         <div className="flex items-center justify-center py-32 text-muted-foreground">
@@ -307,7 +308,7 @@ export function PageDetail({ pageId }: { pageId: string }) {
               sha 都不显示。它们是实现细节，露出来只会让这一栏看起来像调试面板。
             */}
             <MetaRow label={t("wiki_page_detail.m016")} value={<TypeBadge type={data.type} />} />
-            <MetaRow label={t("wiki_page_detail.m017")} value={data.confidence} />
+            <MetaRow label={t("wiki_page_detail.m017")} value={t.has(`knowledgeConfidence.${data.confidence}`) ? t(`knowledgeConfidence.${data.confidence}`) : data.confidence} />
             <MetaRow label={t("wiki_page_detail.m018")} value={formatDate(data.created, locale)} />
             <MetaRow label={t("wiki_page_detail.m019")} value={formatDate(data.updated, locale)} />
           </MetaSection>

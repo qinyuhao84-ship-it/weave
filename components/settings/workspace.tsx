@@ -5,7 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Sparkles, Palette, Check, Database, FolderOpen } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Card, Input, Label, Hairline, Switch, Spinner, Button } from "@/components/ui";
+import { Card, Input, Label, Hairline, Button, RequestError, LoadingCards } from "@/components/ui";
 import { useApi, apiFetch } from "@/hooks/use-api";
 import { useTheme } from "@/hooks/use-theme";
 import { useAppData } from "@/components/app-provider";
@@ -45,10 +45,10 @@ type LintStatus = {
 };
 
 export function SettingsWorkspace() {
-  const { t, locale, setLocale } = useI18n();
-  const { theme, setTheme, focusMode, toggleFocusMode } = useTheme();
+  const { t, locale } = useI18n();
+  const { theme, setTheme } = useTheme();
   const { vault, bumpData, dataVersion } = useAppData();
-  const { data, loading, error } = useApi<SettingsData>("/api/settings");
+  const { data, loading, error, refresh } = useApi<SettingsData>("/api/settings");
   const { data: lintStatus } = useApi<LintStatus>("/api/lint", [dataVersion]);
   const [personality, setPersonality] = React.useState<Record<string, string>>({});
   const [saveError, setSaveError] = React.useState<string | null>(null);
@@ -183,20 +183,16 @@ export function SettingsWorkspace() {
     [personality, persist],
   );
 
-  if (loading) {
+  if (loading && !data && !error) {
     return (
-      <div className="flex items-center justify-center py-32 text-muted-foreground">
-        <Spinner size={18} />
-      </div>
+      <div className="mx-auto max-w-3xl px-4 py-8 md:px-6"><LoadingCards /></div>
     );
   }
 
   if (error || !data) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-20">
-        <Card className="p-4">
-          <p className="text-[13px] text-[var(--destructive)]">{error ?? t("settings_workspace.m007")}</p>
-        </Card>
+        <RequestError error={error ?? t("settings_workspace.m007")} onRetry={() => void refresh()} retrying={loading} />
       </div>
     );
   }
@@ -228,15 +224,6 @@ export function SettingsWorkspace() {
           </Card>
         )}
 
-        <Section icon={<Palette size={14} />} title={t("language.label")} description={t("language.hint")}>
-          <Card className="p-5">
-            <label htmlFor="weave-language" className="mb-1.5 block text-sm font-medium">{t("language.label")}</label>
-            <select id="weave-language" aria-label={t("language.label")} value={locale} onChange={event => setLocale(event.target.value === "en" ? "en" : "zh-CN")} className="min-h-11 w-full max-w-xs rounded-lg border border-input bg-background px-3 py-2 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]">
-              <option value="zh-CN">简体中文</option>
-              <option value="en">English</option>
-            </select>
-          </Card>
-        </Section>
         <ModelSection />
         <Hairline />
         <RetrievalSection />
@@ -248,7 +235,7 @@ export function SettingsWorkspace() {
         >
           <Card className="divide-y divide-[var(--border)]">
             <div className="p-5">
-              <Label hint={t("settings_workspace.m013")}>{t("settings_workspace.m014")}</Label>
+              <Label>{t("settings_workspace.m014")}</Label>
               <Input
                 value={personality.agentName ?? ""}
                 onChange={(e) => update("agentName", e.target.value)}
@@ -260,7 +247,7 @@ export function SettingsWorkspace() {
             </div>
             {Object.entries(presets).map(([key, preset]) => (
               <div key={key} className="p-5 first:pt-5 last:pb-5">
-                <Label hint={preset.options.find((o) => o.value === personality[key])?.hint}>
+                <Label>
                   {preset.label}
                 </Label>
                 <div className="flex flex-wrap gap-1.5" role="group" aria-label={preset.label}>
@@ -327,16 +314,6 @@ export function SettingsWorkspace() {
               </div>
             </div>
 
-            <Hairline />
-
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-[12.5px] font-medium text-foreground">{t("settings_workspace.m023")}</p>
-                <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                  {t("settings_workspace.m024")}</p>
-              </div>
-              <Switch checked={focusMode} onChange={toggleFocusMode} label={t("settings_workspace.m023")} />
-            </div>
           </Card>
         </Section>
 
@@ -344,7 +321,6 @@ export function SettingsWorkspace() {
         <Section
           icon={<Database size={14} />}
           title={t("settings_workspace.m025")}
-          description={t("settings_workspace.m026")}
         >
           <Card className="space-y-4 p-5">
             <div>
@@ -503,7 +479,6 @@ function DatabaseClearSection({ bumpData }: { bumpData: () => void }) {
     <Section
       icon={<Database size={14} />}
       title={t("settings_workspace.m052")}
-      description={t("settings_workspace.m053")}
     >
       <Card className="space-y-3 p-5">
         <div>

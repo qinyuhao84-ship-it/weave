@@ -38,7 +38,7 @@ it("模型元数据不支持的已保存档位不会进入请求", async () => {
   vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
     if (init.method !== "POST") return Response.json({ data: [{ id: "deepseek-flash", reasoning_efforts: ["low", "high"] }] });
     expect(JSON.parse(String(init.body))).not.toHaveProperty("reasoning_effort");
-    return Response.json({ choices: [{ message: { content: "OK" } }] });
+    return Response.json({ choices: [{ message: { content: "OK" }, finish_reason: "stop" }] });
   });
   const baseUrl = "http://localhost/metadata-test";
   await listProviderModels({ baseUrl, apiKey: "", headers: {} });

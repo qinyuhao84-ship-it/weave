@@ -5,7 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, Archive, RotateCcw, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Badge, Button, Card, EmptyState, Spinner } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, LoadingCards, RequestError } from "@/components/ui";
 import { useAppData } from "@/components/app-provider";
 import { apiFetch, useApi } from "@/hooks/use-api";
 import { formatDate } from "@/lib/utils";
@@ -57,14 +57,14 @@ export function TrashWorkspace() {
       <PageHeader
         title={t("trash_workspace.m009")}
         description={t("trash_workspace.m010")}
-        meta={<><Badge tone="neutral">{batches.length} {t("trash_workspace.m011")}</Badge><Badge tone="neutral">{pages.length} {t("trash_workspace.m012")}</Badge></>}
-        actions={<><Button size="sm" variant="danger" icon={<Trash2 size={13} />} loading={busyId === "all"} disabled={busyId !== null || !data || batches.length + pages.length === 0} onClick={() => void remove("all")}>{t("trash_workspace.m013")}</Button><Link href="/wiki" className="inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowLeft size={13} />{t("trash_workspace.m014")}</Link></>}
+        meta={data && <><Badge tone="neutral">{batches.length} {t("trash_workspace.m011")}</Badge><Badge tone="neutral">{pages.length} {t("trash_workspace.m012")}</Badge></>}
+        actions={<><Button size="sm" variant="danger" icon={<Trash2 size={13} />} loading={busyId === "all"} disabled={busyId !== null || !data || batches.length + pages.length === 0} onClick={() => void remove("all")}>{t("trash_workspace.m013")}</Button><Link href="/wiki" className="inline-flex h-11 items-center sm:h-7 gap-1.5 rounded-full px-3 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowLeft size={13} />{t("trash_workspace.m014")}</Link></>}
       />
       <div className="mx-auto max-w-5xl space-y-8 px-4 py-6 md:px-6 md:py-8">
         {actionError && <Card className="border-[color-mix(in_srgb,var(--destructive)_30%,transparent)] p-3.5"><p role="alert" className="text-[12px] text-[var(--destructive)]">{actionError}</p></Card>}
         {notice && <p role="status" className="text-[12px] text-muted-foreground">{notice}</p>}
-        {loading && !data ? <div className="flex justify-center py-20"><Spinner size={18} /></div> : error ? (
-          <Card className="p-4"><p role="alert" className="text-[12.5px] text-[var(--destructive)]">{error}</p></Card>
+        {loading && !data && !error ? <LoadingCards /> : error ? (
+          <RequestError error={error} onRetry={() => void refresh()} retrying={loading} />
         ) : (
           <>
             <section>

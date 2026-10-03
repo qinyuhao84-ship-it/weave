@@ -69,7 +69,9 @@ export function ReviewPanel({
 
       {/* 概览：一眼看清「这份资料是什么、会动到多少东西」 */}
       <div className="rounded-[16px] border border-border bg-card p-4">
+        <h3 className="mb-2 text-[13px] font-semibold">{t("draftReview.overview")}</h3>
         <p className="text-[13px] leading-relaxed text-foreground">{analysis.gist}</p>
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{t("draftReview.guidance")}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <Badge tone="neutral">{createdCount} {t("ingest_ingest_drawer.m073")}</Badge>
           {updates.length > 0 && <Badge tone="neutral">{updates.length} {t("ingest_ingest_drawer.m074")}</Badge>}

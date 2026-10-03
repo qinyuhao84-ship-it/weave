@@ -4,6 +4,8 @@ const analysis = {gist:'审计样本介绍推荐算法和协同过滤。',langua
 const draft = {sourceSummary:{title:'审计样本',content:'资料介绍 [[推荐算法]] 和 [[协同过滤]]。'},newPages:[{type:'concept',title:'推荐算法',summary:'预测用户偏好',content:'推荐算法用于预测用户偏好。\n\n关联方法是 [[协同过滤]]。',aliases:['推荐系统'],tags:['算法'],confidence:'high',citations:[{page:null,quote:'推荐算法用于预测用户偏好。'}]},{type:'concept',title:'协同过滤',summary:'推荐方法',content:'协同过滤分为基于用户与基于物品两类。',aliases:[],tags:['算法'],confidence:'high',citations:[{page:null,quote:'协同过滤分为基于用户与基于物品两类。'}]}],updatedPages:[],reviewItems:[]};
 http.createServer(async(req,res)=>{
   if(req.url==='/health'){res.end('ok');return;}
+  // 只模拟模型协议；PDF 生产回归必须落到真实内置解析器。
+  if(req.url==='/v1/convert/file'){res.writeHead(404);res.end('Docling is unavailable in this fixture');return;}
   if(req.url==='/models'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data:[{id:'audit-model',context_length:32768,reasoning_efforts:['low','medium','high']},{id:'audit-fast',context_length:16384,reasoning_efforts:['low','high']}]}));return;}
   const chunks=[];for await(const chunk of req)chunks.push(chunk);
   const body=JSON.parse(Buffer.concat(chunks).toString());

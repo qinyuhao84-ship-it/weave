@@ -84,7 +84,7 @@ export function IngestDrawer({ onCommitted }: { onCommitted?: () => void }) {
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {phase === "review" && <div className="px-5 pt-3 text-[12px] text-muted-foreground" role="status">
-            <span>{draftSaveStatus}</span>
+            <span>{t(`draftReview.${draftSaveStatus === "已保存" ? "saved" : draftSaveStatus === "正在保存" ? "saving" : "local"}`)}</span>
             {draftSaveError && <div className="mt-2 space-y-2"><p>{draftSaveError}</p><div className="flex flex-wrap gap-2">
               <Button size="sm" variant="secondary" onClick={() => void retryDraftSave().catch(() => undefined)}>{t("ingest_ingest_drawer.m005")}</Button>
               <Button size="sm" variant="ghost" onClick={() => void reloadSavedDraft()}>{t("ingest_ingest_drawer.m006")}</Button>

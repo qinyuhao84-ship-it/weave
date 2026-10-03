@@ -23,6 +23,8 @@ test('导入 → 人工审阅保存 → 问答 → 归档 → 清空与恢复', 
   await dialog.getByLabel('粘贴内容标题').fill('浏览器验收样本');
   await dialog.getByLabel('要导入的文字').fill('推荐算法用于预测用户偏好。\n\n协同过滤分为基于用户与基于物品两类。');
   await dialog.getByRole('button', { name: '加入队列', exact: true }).click();
+  await expect(dialog.getByText('草稿已保存，尚未加入知识库', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: '本次整理预览', exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: '推荐算法 概念 预测用户偏好', exact: true }).click();
   await dialog.getByLabel('词条标题', { exact: true }).fill('人工修订后的推荐算法');
   await dialog.getByRole('button', { name: '编辑', exact: true }).click();
@@ -47,6 +49,10 @@ test('导入 → 人工审阅保存 → 问答 → 归档 → 清空与恢复', 
   const sessionUrl = page.url();
   await expect(page.getByRole('button', { name: '1 推荐算法', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '归档为新词条', exact: true }).click();
+  await expect(page.getByText('推荐算法用于预测用户偏好。[[推荐算法]]', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '编辑正文', exact: true }).click();
+  await expect(page.getByLabel('词条正文预览', { exact: true })).toHaveValue(/\[\[推荐算法\]\]/);
+  await page.getByRole('button', { name: '查看阅读效果', exact: true }).click();
   await page.getByLabel('词条标题', { exact: true }).fill('交付验收问答');
   await page.getByRole('button', { name: '创建词条', exact: true }).click();
   await expect(page.getByText('已归档为词条', { exact: true })).toBeVisible();
@@ -63,6 +69,19 @@ test('导入 → 人工审阅保存 → 问答 → 归档 → 清空与恢复', 
   await page.goto('/wiki');
   await expect(page.getByRole('button', { name: /推荐算法 概念/ })).toBeVisible();
   await expect(page.getByRole('link', { name: '版本', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: /协同过滤 概念/ }).click();
+  await page.getByRole('button', { name: '删除', exact: true }).click();
+  const deletion = page.getByRole('dialog', { name: '删除「协同过滤」' });
+  await deletion.getByRole('radio', { name: /改指向另一个词条/ }).check();
+  await expect(deletion.getByRole('button', { name: '确认删除', exact: true })).toBeDisabled();
+  await deletion.getByLabel('选择要转到的知识').fill('推荐算法');
+  await deletion.getByRole('button', { name: '推荐算法 概念', exact: true }).click();
+  await expect(deletion.getByText('已选择：推荐算法', { exact: true })).toBeVisible();
+  await expect(deletion.getByRole('button', { name: '确认删除', exact: true })).toBeEnabled();
+  await deletion.getByLabel('选择要转到的知识').fill('zzmissingtarget9581');
+  await expect(deletion.getByText('没有找到相关知识，请换个名称搜索。', { exact: true })).toBeVisible();
+  await expect(deletion.getByRole('button', { name: '确认删除', exact: true })).toBeDisabled();
+  await deletion.getByRole('button', { name: '取消', exact: true }).click();
 });
 
 test('API boundary：拒绝外站请求与错误 JSON 类型', async ({ request }) => {

@@ -7,9 +7,12 @@ import { apiFetch } from "@/hooks/use-api";
 import { useModalFocus } from "@/hooks/use-modal-focus";
 import { cn, truncate } from "@/lib/utils";
 import type { Message } from "./types";
+import { MarkdownRenderer } from "@/components/markdown/renderer";
 
 type FilingTarget = { id: string; title: string; contentHash: string };
 type FilingPageOption = { pageId: string; title: string; type: string };
+// 预览用文字呈现关联名称，避免离开尚未保存的表单；正文仍保留原始链接。
+const previewWikilink = () => null;
 
 /** 把只在当前问答轮次有效的引用编号，落成词条之间可长期使用的双链。 */
 function answerForFiling(message: Message): string {
@@ -33,6 +36,7 @@ export function AnswerFilingDialog({ message: filingMessage, sessionId, onSaved,
   const [filingOptions, setFilingOptions] = React.useState<FilingPageOption[]>([]);
   const [filingTarget, setFilingTarget] = React.useState<FilingTarget | null>(null);
   const [filingLoading, setFilingLoading] = React.useState(false);
+  const [editingContent, setEditingContent] = React.useState(false);
   const [filingSaving, setFilingSaving] = React.useState(false);
   const [filingError, setFilingError] = React.useState<string | null>(null);
   const selectionRequest = React.useRef<AbortController | null>(null);
@@ -182,14 +186,17 @@ export function AnswerFilingDialog({ message: filingMessage, sessionId, onSaved,
 
               {(filingMode === "new" || filingTarget) && (
                 <div>
-                  <label className="mb-1.5 block text-[12px] font-medium text-foreground" htmlFor="filing-content">
-                    {filingMode === "new" ? t("chat_workspace.m075") : t("chat_workspace.m076")}
-                  </label>
+                  {editingContent
+                    ? <label className="mb-1.5 block text-[12px] font-medium text-foreground" htmlFor="filing-content">{filingMode === "new" ? t("chat_workspace.m075") : t("chat_workspace.m076")}</label>
+                    : <p className="mb-1.5 text-[12px] font-medium text-foreground">{filingMode === "new" ? t("chat_workspace.m075") : t("chat_workspace.m076")}</p>}
                   {filingMode === "existing" && (
                     <p className="mb-2 text-[11.5px] leading-relaxed text-muted-foreground">
                       {t("chat_workspace.m077")}</p>
                   )}
-                  <Textarea id="filing-content" value={filingContent} onChange={(event) => setFilingContent(event.target.value)} rows={18} />
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setEditingContent(value => !value)}>{t(editingContent ? "answerPreview.read" : "answerPreview.edit")}</Button>
+                  {editingContent
+                    ? <Textarea id="filing-content" value={filingContent} onChange={(event) => setFilingContent(event.target.value)} rows={18} />
+                    : <div id="filing-content" className="mt-2 rounded-xl border border-border bg-background p-4"><MarkdownRenderer content={filingContent} resolveWikilink={previewWikilink} brokenWikilinks="plain" /></div>}
                 </div>
               )}
 

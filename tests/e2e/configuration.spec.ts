@@ -1,3 +1,4 @@
+import { selectChoice } from './select-choice';
 import { test, expect } from '@playwright/test';
 
 test('新用户：无配置启动 → 本地模型 → 凭据编辑 → 切换与删除', async ({ page, request }) => {
@@ -7,6 +8,7 @@ test('新用户：无配置启动 → 本地模型 → 凭据编辑 → 切换�
   await expect(page.getByText('先配置你的模型', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: '去配置模型' }).click();
   await page.getByRole('button', { name: '添加模型服务', exact: true }).click();
+  await selectChoice(page, page.getByLabel('服务商', { exact: true }), 'openaiCompatible');
   await page.getByText('高级设置', { exact: true }).click();
   await page.getByLabel('服务名称', { exact: true }).fill('我的本地服务');
   await page.getByLabel('API 地址', { exact: true }).fill('http://127.0.0.1:3301');
@@ -37,6 +39,7 @@ test('新用户：无配置启动 → 本地模型 → 凭据编辑 → 切换�
   await expect(page.getByRole('button', { name: '编辑 修改后的服务', exact: true })).toBeVisible();
   expect((await (await request.get('/api/settings')).json()).data.settings.providers[0].hasApiKey).toBe(false);
   await page.getByRole('button', { name: '添加模型服务', exact: true }).click();
+  await selectChoice(page, page.getByLabel('服务商', { exact: true }), 'openaiCompatible');
   await page.getByText('高级设置', { exact: true }).click();
   await page.getByLabel('服务名称', { exact: true }).fill('第二个服务');
   await page.getByLabel('API 地址', { exact: true }).fill('http://127.0.0.1:3301');
@@ -68,19 +71,26 @@ test('供应商模板、模型列表与精简设置入口', async ({ page, reque
   await request.patch('/api/settings', { data: { providers: [], activeProviderId: '' } });
   await page.goto('/settings');
   await expect(page.getByRole('button', { name: '清空知识库', exact: true })).toBeVisible();
-  await expect(page.locator('summary')).toHaveCount(0);
+  await expect(page.getByText('如何获取 API Key？查看逐步教程与费用说明', { exact: true })).toBeVisible();
+  await page.getByText('如何获取 API Key？查看逐步教程与费用说明', { exact: true }).click();
+  await expect(page.getByRole('link', { name: '打开 API keys 页面', exact: true })).toHaveAttribute('href', 'https://platform.deepseek.com/api_keys');
+  await expect(page.getByText('示例回答约 0.02–0.04 元；按实际用量扣费。', { exact: false })).toHaveCount(0);
   await page.getByRole('button', { name: '添加模型服务', exact: true }).click();
+  await expect(page.getByLabel('服务商', { exact: true })).toHaveAttribute('data-value', 'deepseek');
+  await expect(page.getByLabel('模型名', { exact: true })).toHaveValue('deepseek-flash');
+  await expect(page.getByLabel('API Key', { exact: true })).toHaveAttribute('placeholder', '粘贴刚复制的 DeepSeek API Key');
   await expect(page.getByLabel('上下文窗口（token）', { exact: true })).toBeHidden();
   const select = page.getByLabel('服务商', { exact: true });
-  await expect(select.locator('option')).toHaveCount(7);
-  await select.selectOption('ollama');
+  await select.click();
+  await expect(page.getByRole('option')).toHaveCount(7);
+  await page.locator('[role=option][data-value="ollama"]').click();
   
   await page.getByText('高级设置', { exact: true }).click();
   await page.getByLabel('高级 API 地址', { exact: true }).fill('http://127.0.0.1:3301');
   await page.getByRole('button', { name: '读取可用模型', exact: true }).click();
-  await expect(page.locator('select[aria-label="模型名"]')).toBeVisible();
-  await page.getByLabel('模型名', { exact: true }).selectOption('audit-model');
-  await expect(page.getByLabel('模型名', { exact: true })).toHaveValue('audit-model');
+  await expect(page.getByRole('combobox', { name: '模型名', exact: true })).toBeVisible();
+  await selectChoice(page, page.getByLabel('模型名', { exact: true }), 'audit-model');
+  await expect(page.getByRole('combobox', { name: '模型名', exact: true })).toHaveAttribute('data-value', 'audit-model');
   
   await page.getByRole('button', { name: '保存模型配置', exact: true }).click();
   await page.getByRole('button', { name: '编辑 Ollama（本地）', exact: true }).click();

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { ulid } from "ulid";
 import { getDb } from "@/lib/db/client";
 import { chatSessions, chatMessages, chatSummaries, chatRuns, pages } from "@/lib/db/schema";
@@ -84,6 +84,8 @@ export type ChatSummaryView = {
   compressionCount: number;
   tokenCount: number;
   model: string | null;
+  /** legacy 摘要尚未证明已排除不完整回答；complete 摘要由过滤后的历史生成。 */
+  historyPolicy?: "legacy" | "complete";
   updatedAt: string;
 };
 
@@ -100,6 +102,18 @@ export type ChatHistory = {
   /** 被摘要覆盖、不再逐字发送的消息条数 */
   summarizedCount: number;
 };
+
+/** 不完整回答保留在会话中，但不得成为后续问答、摘要或标题的事实来源。 */
+export function isCompleteChatMessage(message: Pick<ChatMessageView, "role" | "interrupted" | "runStatus">): boolean {
+  return message.role === "user" || (!message.interrupted && (message.runStatus === null || message.runStatus === "done"));
+}
+
+function summaryIsUnsafe(summary: { coveredToMessageId: string; historyPolicy?: string }, messages: ChatMessageView[]): boolean {
+  if (summary.historyPolicy === "complete") return false;
+  const coveredAt = messages.findIndex(message => message.id === summary.coveredToMessageId);
+  // 旧摘要的水位线无法在当前消息里核实时，也不能证明它未收录失败正文。
+  return coveredAt < 0 || messages.slice(0, coveredAt + 1).some(message => !isCompleteChatMessage(message));
+}
 
 export function createSession(title = "新对话"): string {
   const id = ulid();
@@ -539,7 +553,8 @@ export function emptySessionTrash(): number {
 
 export function getMessages(sessionId: string): ChatMessageView[] {
   const db = getDb();
-  const activePages = new Set(db.select({ id: pages.id }).from(pages).where(eq(pages.status, "active")).all().map((page) => page.id));
+  // 身份冲突只是暂时隔离，不能显示为未归档并诱导覆盖原始关联。
+  const filedPages = new Set(db.select({ id: pages.id }).from(pages).where(inArray(pages.status, ["active", "conflicted"])).all().map((page) => page.id));
   const runByMessage = new Map(
     db.select().from(chatRuns).where(eq(chatRuns.sessionId, sessionId)).all()
       .map((run) => [run.assistantMessageId, run]),
@@ -556,7 +571,7 @@ export function getMessages(sessionId: string): ChatMessageView[] {
       content: row.content,
       citations: safeParse(row.citationsJson),
       // 文件版本撤销/删除之后保留原始归档关联，复原版本时还能恢复；失效页不阻止再归档。
-      filedAsPageId: row.filedAsPageId && activePages.has(row.filedAsPageId) ? row.filedAsPageId : null,
+      filedAsPageId: row.filedAsPageId && filedPages.has(row.filedAsPageId) ? row.filedAsPageId : null,
       promptTokens: row.promptTokens ?? null,
       droppedMessages: row.droppedMessages ?? 0,
       interrupted: row.interrupted === 1,
@@ -579,7 +594,7 @@ export function appendMessage(input: {
   promptTokens?: number;
   /** 该轮为塞进窗口而硬丢掉的历史消息条数（只有 assistant 消息有，通常为 0） */
   droppedMessages?: number;
-  /** 这轮回答被用户中途停掉了。只影响界面怎么标它，不影响它进不进历史 */
+  /** 这轮回答被用户中途停掉了。保留展示，但不进入后续模型历史。 */
   interrupted?: boolean;
 }): string {
   const id = ulid();
@@ -636,6 +651,7 @@ export function readSummary(sessionId: string): ChatSummaryView | null {
     compressionCount: row.compressionCount,
     tokenCount: row.tokenCount,
     model: row.model,
+    historyPolicy: row.historyPolicy as "legacy" | "complete",
     updatedAt: row.updatedAt,
   };
 }
@@ -666,7 +682,8 @@ export function writeSummary(input: {
   //
   // 拒绝回退是确定性的（不变式 5：能用程序算的绝不交给模型或时序），
   // 代价只是这一次压缩的结果被丢弃 —— 库里那份覆盖得更全，丢掉不损失信息。
-  if (existing && input.coveredMessageCount < existing.coveredMessageCount) return false;
+  if (existing && input.coveredMessageCount < existing.coveredMessageCount &&
+    !summaryIsUnsafe(existing, getMessages(input.sessionId))) return false;
 
   getDb()
     .insert(chatSummaries)
@@ -678,6 +695,7 @@ export function writeSummary(input: {
       compressionCount: input.compressionCount,
       tokenCount: input.tokenCount,
       model: input.model,
+      historyPolicy: "complete",
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     })
@@ -690,6 +708,7 @@ export function writeSummary(input: {
         compressionCount: input.compressionCount,
         tokenCount: input.tokenCount,
         model: input.model,
+        historyPolicy: "complete",
         updatedAt: now,
       },
     })
@@ -729,13 +748,16 @@ export function buildHistory(
   options: { excludeMessageId?: string; excludeMessageIds?: string[]; question?: string } = {},
 ): ChatHistory {
   const all = getMessages(sessionId);
-  const summary = readSummary(sessionId);
+  let summary = readSummary(sessionId);
+  // 旧版本可能已把半截回答压入摘要。保留原始记录，但不再将污染摘要发给模型；
+  // 下一次压缩会从完整历史生成新摘要，水位线也不丢消息。
+  if (summary && summaryIsUnsafe(summary, all)) summary = null;
 
   // 顺序很重要：**先做「哪些消息真的会进 prompt」这一次过滤，再按水位线切分**。
   // 反过来（先切、再过滤）会让 summarizedCount 把空内容的消息也算进去 ——
   // 那些消息从来没进过摘要的输入，报出去的数字却把用户的水位线往后推了一截，
   // 和同一块面板里的 coveredMessageCount 对不上。
-  let eligible = all.filter((message) => message.content.trim().length > 0);
+  let eligible = all.filter((message) => message.content.trim().length > 0 && isCompleteChatMessage(message));
 
   // 本轮的用户消息在调用方（answer 之前）就已经落库了，它不该再作为「历史」
   // 重复出现一次 —— 问题本身在最后那条 user 消息里已经写全了。
@@ -764,10 +786,9 @@ export function buildHistory(
       // 水位线之前、真正进过 prompt 的消息条数 —— 也就是这份摘要实际覆盖掉的量
       summarizedCount = mark + 1;
     }
-    // 水位线找不到对应的消息时（正常流程下不会发生：消息只随会话一起删）
-    // 保守地**保留全部消息**、摘要照用。最坏结果是内容重复一点，
-    // 而反过来假定「全都被摘要覆盖了」会静默丢掉用户刚说过的话 ——
-    // 那是不可接受的。下一轮压缩会重写水位线，状态自行恢复。
+    // 已验证为 complete 的摘要若水位线找不到对应消息（正常流程下不会发生：消息只随会话一起删），
+    // 保守地**保留全部消息**、摘要照用。最坏结果是内容重复一点，反过来假定「全都被摘要覆盖了」
+    // 会静默丢掉用户刚说过的话 —— 那是不可接受的。下一轮压缩会重写水位线，状态自行恢复。
   }
 
   return {

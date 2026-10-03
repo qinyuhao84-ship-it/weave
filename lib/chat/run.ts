@@ -15,6 +15,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { pages } from "@/lib/db/schema";
 import { basicHtml, saveArtifact } from "./artifacts";
+import { validateCitations } from "./citations";
 
 /** 服务端持有整轮问答；客户端断开 SSE 只会取消订阅，不会取消模型请求。 */
 export async function runChatRun(input: {
@@ -28,6 +29,7 @@ export async function runChatRun(input: {
   let shouldGenerateTitle = false;
 
   try {
+    controller.signal.throwIfAborted();
     if (!getDb().select({ id: pages.id }).from(pages).where(eq(pages.status, "active")).limit(1).get()) {
       const text = emptyKnowledgeBaseAnswer();
       const quality = {
@@ -125,10 +127,21 @@ export async function runChatRun(input: {
     });
     shouldGenerateTitle = !result.interrupted;
   } catch (error) {
-    const { message } = toUserMessage(error);
-    if (accumulated) saveChatRunProgress(run.id, accumulated);
-    finishChatRun(run.id, "failed", message);
-    publishChatRun(run.id, { type: "error", runId: run.id, message });
+    const cancelled = controller.signal.aborted;
+    const message = cancelled ? "这次回答已停止，生成的部分内容已保留。" : toUserMessage(error).message;
+    const failures: unknown[] = [];
+    // SQLite 故障可能同时打断主流程与收尾；逐项尝试，仍然通知订阅者结束等待。
+    if (accumulated) {
+      try { saveChatRunProgress(run.id, accumulated); } catch (failure) { failures.push(failure); }
+    }
+    try { finishChatRun(run.id, cancelled ? "cancelled" : "failed", cancelled ? null : message); }
+    catch (failure) { failures.push(failure); }
+    if (failures.length) console.error("[chat] 回答失败且部分状态未能保存，重启时将恢复终态：", new AggregateError([error, ...failures]));
+    if (cancelled && failures.length === 0) publishChatRun(run.id, {
+      type: "done", runId: run.id, sessionId: run.sessionId,
+      messageId: run.assistantMessageId, text: validateCitations(accumulated, []).text, citations: [], interrupted: true,
+    });
+    else publishChatRun(run.id, { type: "error", runId: run.id, message: failures.length ? `${message} 部分状态未能保存，请重启应用后检查。` : message });
   } finally {
     clearStream(run.sessionId, controller);
     if (shouldGenerateTitle) {
@@ -138,7 +151,8 @@ export async function runChatRun(input: {
         console.error("[chat] AI 会话名称生成失败，保留现有标题：", error);
       }
     } else {
-      resetPendingSessionTitleSummary(run.sessionId);
+      try { resetPendingSessionTitleSummary(run.sessionId); }
+      catch (error) { console.error("[chat] 未能重置会话标题状态，重启时将恢复：", error); }
     }
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ModelAccessHelp } from "./model-access-help";
 import { useI18n } from "@/components/i18n-provider";
 import { Button, Input, Label, Switch } from "@/components/ui";
 import { apiFetch, useApi } from "@/hooks/use-api";
@@ -45,11 +46,12 @@ export function RetrievalSection() {
     <div><h2 id="retrieval-title" className="text-[15px] font-semibold">{t("retrieval.title")}</h2>
       <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">{t("retrieval.description")}</p></div>
     {loadError && <div role="alert" className="text-[12px]"><p>{loadError}</p><Button size="sm" variant="ghost" onClick={() => void refresh()}>{t("retrieval.retry")}</Button></div>}
+    {!draft && <ModelAccessHelp service="siliconflow" />}
     {saved && !draft && <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
       <p className="text-[13px] font-medium">{t(saved.enabled ? "retrieval.enabled" : "retrieval.disabled")}</p>
       <p className="mt-1 break-all text-[12px] text-muted-foreground">{saved.embeddingModel} {saved.rerankModel ? `· ${saved.rerankModel}` : ""}</p>
       <p className="mt-2 text-[12px] text-muted-foreground">{t(saved.hasApiKey ? "retrieval.keySaved" : "retrieval.noKey")}</p>
-      {status && <p className="mt-2 text-[12px] text-muted-foreground" role="status">{t("retrieval.coverage", { v0: status.indexed, v1: status.total })}{status.jobId ? ` · ${t("retrieval.indexing")}` : ""}</p>}
+      {status?.jobId && <p className="mt-2 text-[12px] text-muted-foreground" role="status">{t("retrieval.indexing")}</p>}
       {status?.failed && <p role="alert" className="mt-2 text-[12px] text-[var(--warning)]">{t("retrieval.indexFailed")}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
         <Button size="sm" variant="secondary" disabled={busy} onClick={() => { setDraft({ ...saved, apiKey: "", clearApiKey: false }); setMessage(null); }}>{t("retrieval.edit")}</Button>
@@ -65,7 +67,7 @@ export function RetrievalSection() {
         <div><Label htmlFor="retrieval-url">{t("retrieval.url")}</Label><Input id="retrieval-url" type="url" required value={draft.baseUrl} onChange={event => change({ baseUrl: event.target.value })} /></div>
         <div><Label htmlFor="embedding-model">{t("retrieval.embedding")}</Label><Input id="embedding-model" required value={draft.embeddingModel} onChange={event => change({ embeddingModel: event.target.value })} /></div>
         <div><Label htmlFor="rerank-model">{t("retrieval.rerank")}</Label><Input id="rerank-model" value={draft.rerankModel} onChange={event => change({ rerankModel: event.target.value })} /><p className="mt-1 text-[11.5px] text-muted-foreground">{t("retrieval.rerankHint")}</p></div>
-        <div><Label htmlFor="retrieval-key">{t("retrieval.key")}</Label><Input id="retrieval-key" type="password" autoComplete="off" value={draft.apiKey} placeholder={t(draft.hasApiKey ? "retrieval.keepKey" : "retrieval.keyOptional")} onChange={event => change({ apiKey: event.target.value, clearApiKey: false })} /></div>
+        <div><Label htmlFor="retrieval-key">{t("retrieval.key")}</Label><Input id="retrieval-key" type="password" autoComplete="off" value={draft.apiKey} placeholder={t(draft.hasApiKey ? "retrieval.keepKey" : "retrieval.keyOptional")} onChange={event => change({ apiKey: event.target.value, clearApiKey: false })} /><div className="mt-2"><ModelAccessHelp service="siliconflow" /></div></div>
         {draft.hasApiKey && <div className="flex items-center justify-between gap-3"><span className="text-[12px]">{t("retrieval.clearKey")}</span><Switch checked={draft.clearApiKey} onChange={clearApiKey => change({ clearApiKey, apiKey: "" })} label={t("retrieval.clearKey")} /></div>}
         <div><Label htmlFor="embedding-chunk">{t("retrieval.chunk")}</Label><Input id="embedding-chunk" type="number" min={256} max={6000} required value={draft.chunkChars} onChange={event => change({ chunkChars: Number(event.target.value) })} /><p className="mt-1 text-[11.5px] text-muted-foreground">{t("retrieval.chunkHint")}</p></div>
         <div className="flex flex-wrap gap-2"><Button type="submit" size="sm" loading={busy}>{t("retrieval.save")}</Button><Button type="button" size="sm" variant="ghost" onClick={() => { setDraft(null); setMessage(null); }}>{t("retrieval.cancel")}</Button></div>

@@ -3,11 +3,12 @@ import { useI18n } from "@/components/i18n-provider";
 
 import * as React from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { ModelAccessHelp } from "./model-access-help";
 import { Button, Input, Select, Textarea, Switch } from "@/components/ui";
 import { apiFetch, useApi } from "@/hooks/use-api";
 import { useAppData } from "@/components/app-provider";
 import { PROVIDER_PRESETS, isPresetKey } from "@/lib/llm/presets";
-import { canonicalReasoningEffort, reasoningCapability, type ModelCapability } from "@/lib/llm/capabilities";
+import { preferredThinkingEffort, thinkingEfforts, reasoningCapability, type ModelCapability } from "@/lib/llm/capabilities";
 import type { PublicProvider, PublicSettings, ProviderOverrideField } from "@/lib/settings";
 
 // 凭据只保留在当前表单状态中，保存或取消后清除。
@@ -46,7 +47,7 @@ export function ModelSection() {
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
-  const [presetKey, setPresetKey] = React.useState("openaiCompatible");
+  const [presetKey, setPresetKey] = React.useState("deepseek");
   const [models, setModels] = React.useState<string[]>([]);
   const [modelDetails, setModelDetails] = React.useState<ModelCapability[]>([]);
   const [probing, setProbing] = React.useState<string | null>(null);
@@ -59,19 +60,20 @@ export function ModelSection() {
   const editing = providers.find(p => p.id === draft?.id);
   const locked = (field: ProviderOverrideField) => Boolean(editing?.overriddenFields.includes(field));
   const capability = reasoningCapability(draft?.baseUrl ?? "", draft?.model ?? "", modelDetails.find(model => model.id === draft?.model));
-  const effortOptions = capability.efforts;
+  const effortOptions = thinkingEfforts(capability);
+  const selectedEffort = preferredThinkingEffort(draft?.baseUrl ?? "", draft?.model ?? "", draft?.reasoningEffort as PublicProvider["reasoningEffort"], modelDetails.find(model => model.id === draft?.model));
   const change = (patch: Partial<Draft>) => { setDraft(previous => previous ? { ...previous, ...patch } : null); setError(null); if (patch.baseUrl !== undefined || patch.apiKey !== undefined || patch.headersText !== undefined || patch.clearApiKey !== undefined) { setModels([]); setModelDetails([]); probeGeneration.current++; setProbing(null); } };
   const selectPreset = (key: string) => {
     if (!isPresetKey(key)) return;
     setPresetKey(key);
     const preset = PROVIDER_PRESETS[key];
-    change({ label: preset.label, baseUrl: preset.baseUrl, model: "", apiKey: "", clearApiKey: Boolean(editing?.hasApiKey), contextWindow: "32768", lightModel: "", reasoningEffort: "default", supportsStrictSchema: false, headersText: key === "gemini" ? '{"x-goog-api-client":"weave/0.1.0"}' : "{}" });
+    change({ label: preset.label, baseUrl: preset.baseUrl, model: key === "deepseek" ? "deepseek-flash" : "", apiKey: "", clearApiKey: Boolean(editing?.hasApiKey), contextWindow: "32768", lightModel: "", reasoningEffort: "default", supportsStrictSchema: false, headersText: key === "gemini" ? '{"x-goog-api-client":"weave/0.1.0"}' : "{}" });
   };
   const edit = (provider?: PublicProvider) => {
     if (draft && !window.confirm(t("settings_model_section.m001"))) return;
     probeGeneration.current++; setProbing(null); setModels([]); setModelDetails([]);
-    setPresetKey(Object.entries(PROVIDER_PRESETS).find(([, preset]) => preset.baseUrl === provider?.baseUrl)?.[0] ?? "openaiCompatible");
-    setDraft(draftFor(provider)); setError(null); setNotice(null); setConfirmDelete(false);
+    setPresetKey(provider ? Object.entries(PROVIDER_PRESETS).find(([, preset]) => preset.baseUrl === provider.baseUrl)?.[0] ?? "openaiCompatible" : "deepseek");
+    setDraft(provider ? draftFor(provider) : { ...draftFor(), label: PROVIDER_PRESETS.deepseek.label, baseUrl: PROVIDER_PRESETS.deepseek.baseUrl, model: "deepseek-flash" }); setError(null); setNotice(null); setConfirmDelete(false);
   };
   const draftId = draft?.id;
   React.useEffect(() => {
@@ -101,7 +103,7 @@ export function ModelSection() {
       id: draft.id, label: draft.label || (isPresetKey(presetKey) ? PROVIDER_PRESETS[presetKey].label : t("settings_model_section.m004")), baseUrl: draft.baseUrl, model: draft.model,
       ...(locked("apiKey") ? {} : { apiKey: draft.apiKey, clearApiKey: draft.clearApiKey && !draft.apiKey }),
       contextWindow: Number(draft.contextWindow), lightModel: draft.lightModel,
-      reasoningEffort: canonicalReasoningEffort(draft.baseUrl, draft.model, draft.reasoningEffort as PublicProvider["reasoningEffort"]), temperature: Number(draft.temperature),
+      reasoningEffort: selectedEffort, temperature: Number(draft.temperature),
       supportsStrictSchema: draft.supportsStrictSchema,
       ...(headers && !locked("headers") ? { headers } : {}),
     };
@@ -125,7 +127,7 @@ export function ModelSection() {
           headers = parsed as Record<string, string>;
         }
         body = { test, provider: { id, ...(draft.model.trim() ? { model: draft.model.trim() } : {}), baseUrl: draft.baseUrl, apiKey: draft.apiKey, clearApiKey: draft.clearApiKey && !draft.apiKey,
-          reasoningEffort: draft.reasoningEffort, temperature: Number(draft.temperature), supportsStrictSchema: draft.supportsStrictSchema,
+          reasoningEffort: selectedEffort, temperature: Number(draft.temperature), supportsStrictSchema: draft.supportsStrictSchema,
           ...(headers ? { headers } : {}) } };
         // 环境覆盖的凭据由服务端读取，不回传浏览器。
         if (editing?.overriddenFields.length) body = { providerId: editing.id, test };
@@ -156,11 +158,11 @@ export function ModelSection() {
 
   return <section id="model-service" aria-labelledby="model-service-title">
     <div className="mb-4"><h2 id="model-service-title" className="text-[15px] font-semibold">{t("settings_model_section.m013")}</h2>
-      <p className="mt-1 text-[12.5px] text-muted-foreground">{t("settings_model_section.m014")}</p>
     </div>
     <div className="space-y-3">
       {!result && !loadError && <p className="text-[12.5px] text-muted-foreground">{t("settings_model_section.m015")}</p>}
       {providers.length === 0 && result && <p className="py-4 text-[13px] text-muted-foreground">{t("settings_model_section.m016")}</p>}
+      {!draft && <ModelAccessHelp service="deepseek" />}
       <ul className="space-y-2">
         {providers.map(provider => <li key={provider.id} className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-4 sm:px-5">
           <div className="min-w-0 flex-1"><p className="flex flex-wrap items-center gap-2 text-[14px] font-medium"><span className="break-words">{provider.label}</span>{provider.id === settings?.activeProviderId && <span className="inline-flex items-center gap-1.5 text-[11px] font-normal text-[var(--success)]"><span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />{t("settings_model_section.m017")}</span>}</p>
@@ -182,8 +184,10 @@ export function ModelSection() {
             <Select aria-label={t("settings_model_section.m031")} disabled={locked("baseUrl") || locked("apiKey") || locked("model")} value={presetKey} onChange={event => selectPreset(event.target.value)}>{Object.entries(PROVIDER_PRESETS).filter(([key]) => commonPresets.includes(key) || key === presetKey).map(([key, preset]) => <option key={key} value={key}>{presetLabel(key, preset.label)}</option>)}</Select>
 
           </Field>
-          <Field label="API Key" overridden={locked("apiKey")} hint={editing?.hasApiKey ? t("settings_model_section.m032") : t("settings_model_section.m033")}>
-            <Input aria-label="API Key" type="password" autoComplete="new-password" disabled={locked("apiKey")} value={draft.apiKey} onChange={e => change({ apiKey: e.target.value })} placeholder={draft.clearApiKey ? t("settings_model_section.m034") : editing?.hasApiKey ? t("settings_model_section.m035") : t("settings_model_section.m036")} />
+          <Field label="API Key" overridden={locked("apiKey")} hint={editing?.hasApiKey ? t("settings_model_section.m032") : t(presetKey === "deepseek" ? "modelAccess.deepseekKeyHint" : "settings_model_section.m033")}>
+            <Input aria-label="API Key" type="password" autoComplete="new-password" disabled={locked("apiKey")} value={draft.apiKey} onChange={e => change({ apiKey: e.target.value })} placeholder={draft.clearApiKey ? t("settings_model_section.m034") : editing?.hasApiKey ? t("settings_model_section.m035") : t(presetKey === "deepseek" ? "modelAccess.deepseekKeyPlaceholder" : "settings_model_section.m036")} />
+            {presetKey === "deepseek" && <ModelAccessHelp service="deepseek" />}
+            {presetKey === "siliconflow" && <ModelAccessHelp service="siliconflow" />}
           </Field>
           {presetKey === "openaiCompatible" && <Field label={t("settings_model_section.m037")}><Input aria-label={t("settings_model_section.m037")} type="url" required disabled={locked("baseUrl")} value={draft.baseUrl} onChange={e => change({ baseUrl: e.target.value })} placeholder="https://your-provider.example/v1" autoCapitalize="none" spellCheck={false} /></Field>}
           <Field label={t("settings_model_section.m013")} overridden={locked("model")}>
@@ -203,7 +207,7 @@ export function ModelSection() {
             <p className="text-xs text-muted-foreground">{t("settings_model_section.m055")}</p>
             <div className="grid gap-4 pt-3 sm:grid-cols-2">
               <Field label={t("settings_model_section.m056")} overridden={locked("lightModel")}><Input aria-label={t("settings_model_section.m057")} disabled={locked("lightModel")} value={draft.lightModel} onChange={e => change({ lightModel: e.target.value })} placeholder={t("settings_model_section.m058")} /></Field>
-              <Field label={t("settings_model_section.m059")} overridden={locked("reasoningEffort")}><Select aria-label={t("settings_model_section.m059")} disabled={locked("reasoningEffort")} value={canonicalReasoningEffort(draft.baseUrl, draft.model, draft.reasoningEffort as PublicProvider["reasoningEffort"])} onChange={e => change({ reasoningEffort: e.target.value })}>{!effortOptions.includes(canonicalReasoningEffort(draft.baseUrl, draft.model, draft.reasoningEffort as PublicProvider["reasoningEffort"])) && <option value={draft.reasoningEffort} disabled>{t("settings_model_section.m060")}{draft.reasoningEffort}</option>}{effortOptions.map(value => <option key={value} value={value}>{t("reasoning." + value)}</option>)}</Select></Field>
+              {effortOptions.length > 0 && <Field label={t("settings_model_section.m059")} overridden={locked("reasoningEffort")}><Select aria-label={t("settings_model_section.m059")} disabled={locked("reasoningEffort")} value={selectedEffort} onChange={e => change({ reasoningEffort: e.target.value })}>{effortOptions.map(value => <option key={value} value={value}>{t("reasoning." + value)}</option>)}</Select></Field>}
               <Field label={t("settings_model_section.m061")}><Input aria-label={t("settings_model_section.m061")} type="number" min={0} max={2} step={0.1} required value={draft.temperature} onChange={e => change({ temperature: e.target.value })} /></Field>
               <div className="flex items-center justify-between gap-3"><span className="text-[12px]">{t("settings_model_section.m062")}</span><Switch label={t("settings_model_section.m062")} checked={draft.supportsStrictSchema} onChange={value => change({ supportsStrictSchema: value })} /></div>
             </div>

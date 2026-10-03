@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Check, ChevronDown, Code2 } from "lucide-react";
 import { apiFetch } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
-import { canonicalReasoningEffort, reasoningCapability, type ModelCapability } from "@/lib/llm/capabilities";
+import { preferredThinkingEffort, thinkingEfforts, reasoningCapability, type ModelCapability } from "@/lib/llm/capabilities";
 import type { PublicProvider } from "@/lib/settings";
 import type { ChatConfig } from "@/lib/chat/config";
 
@@ -34,9 +34,11 @@ export function ChatControls({ value, providers, disabled, onChange }: {
   const selected = providers.find(provider => provider.id === value?.providerId);
   const selectedMetadata = lists[value?.providerId ?? ""]?.details?.find(model => model.id === value?.model);
   const capability = reasoningCapability(selected?.baseUrl ?? "", value?.model ?? "", selectedMetadata);
-  const effort = canonicalReasoningEffort(selected?.baseUrl ?? "", value?.model ?? "", value?.reasoningEffort ?? "default", selectedMetadata);
-  const shownEffort = effort === "default" && capability.defaultEffort ? capability.defaultEffort : effort;
-  const efforts = capability.defaultEffort ? capability.efforts.filter(effort => effort !== "default") : capability.efforts;
+  const shownEffort = preferredThinkingEffort(selected?.baseUrl ?? "", value?.model ?? "", value?.reasoningEffort ?? "default", selectedMetadata);
+  const efforts = thinkingEfforts(capability);
+  React.useEffect(() => {
+    if (value && (capability.known || Boolean(selected && loaded.current[selected.id])) && value.reasoningEffort !== shownEffort) onChange({ ...value, reasoningEffort: shownEffort });
+  }, [value, capability.known, shownEffort, onChange, selected]);
   const close = React.useCallback(() => { setOpen(null); (open === "effort" ? effortTrigger : trigger).current?.focus(); }, [open]);
 
   React.useEffect(() => {
@@ -100,9 +102,7 @@ export function ChatControls({ value, providers, disabled, onChange }: {
   const choose = (provider: PublicProvider, model: string) => {
     if (!value) return;
     const metadata = lists[provider.id]?.details?.find(entry => entry.id === model);
-    const supported = reasoningCapability(provider.baseUrl, model, metadata);
-    const current = canonicalReasoningEffort(provider.baseUrl, model, provider.id === value.providerId ? value.reasoningEffort : provider.reasoningEffort, metadata);
-    onChange({ ...value, providerId: provider.id, model, reasoningEffort: supported.efforts.includes(current) ? current : "default", contextWindow: metadata?.contextWindow ?? provider.contextWindow });
+    onChange({ ...value, providerId: provider.id, model, reasoningEffort: preferredThinkingEffort(provider.baseUrl, model, "default", metadata), contextWindow: metadata?.contextWindow ?? provider.contextWindow });
     close();
   };
 
@@ -117,7 +117,7 @@ export function ChatControls({ value, providers, disabled, onChange }: {
       <button ref={trigger} type="button" className="chat-composer-control max-w-[190px] gap-1" disabled={disabled || !value} aria-expanded={open === "model"} aria-controls="chat-model-picker" aria-label={t("chat_chat_controls.m004", {v0: value?.model ?? t("chat_chat_controls.m003")})} onKeyDown={event => openWithKeyboard(event, "model")} onClick={() => setOpen(previous => previous === "model" ? null : "model")}>
         <span className="truncate">{value?.model || t("chat_chat_controls.m005")}</span><ChevronDown size={12} className="shrink-0" aria-hidden />
       </button>
-      {open === "model" && <div ref={panel} id="chat-model-picker" role="group" aria-label={t("chat_chat_controls.m006")} onKeyDown={navigatePicker} style={position} className="chat-picker w-[min(320px,calc(100vw-32px))]">
+      {open === "model" && <div ref={panel} id="chat-model-picker" role="group" aria-label={t("chat_chat_controls.m006")} onKeyDown={navigatePicker} style={position} className="selection-popover chat-picker w-[min(320px,calc(100vw-32px))]">
         {providers.filter(provider => provider.baseUrl).map(provider => {
           const list = lists[provider.id];
           const models = [...new Set([provider.model, ...(value?.providerId === provider.id ? [value.model] : []), ...(list?.models ?? [])])].filter(Boolean);
@@ -130,14 +130,13 @@ export function ChatControls({ value, providers, disabled, onChange }: {
         <Link href="/settings#model-service" onClick={() => setOpen(null)} className="mt-1 flex min-h-10 items-center border-t border-border px-2 text-[12px] text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]">{t("chat_chat_controls.m009")}</Link>
       </div>}
     </div>
-    <div className="relative min-w-0">
+    {efforts.length > 0 && <div className="relative min-w-0">
       <button ref={effortTrigger} type="button" className="chat-composer-control gap-1" title={capability.known ? t("chat_chat_controls.m010") : t("chat_chat_controls.m011")} aria-label={t("chat_chat_controls.m012", {v0: t("reasoning." + shownEffort)})} aria-expanded={open === "effort"} aria-controls="chat-effort-picker" disabled={disabled || !value || (efforts.length === 1 && shownEffort === "default")} onKeyDown={event => openWithKeyboard(event, "effort")} onClick={() => setOpen(previous => previous === "effort" ? null : "effort")}>
         <span>{effortLabel(shownEffort)}</span><ChevronDown size={12} className="shrink-0" aria-hidden />
       </button>
-      {open === "effort" && <div ref={panel} id="chat-effort-picker" role="group" aria-label={t("chat_chat_controls.m013")} onKeyDown={navigatePicker} style={position} className="chat-picker w-[min(180px,calc(100vw-32px))]">
-        {!efforts.includes(shownEffort) && <button type="button" disabled aria-pressed className={PICKER_ITEM}>{effortLabel(shownEffort)}<Check size={13} className="shrink-0" aria-hidden /></button>}
+      {open === "effort" && <div ref={panel} id="chat-effort-picker" role="group" aria-label={t("chat_chat_controls.m013")} onKeyDown={navigatePicker} style={position} className="selection-popover chat-picker w-[min(180px,calc(100vw-32px))]">
         {efforts.map(effort => <button key={effort} type="button" className={PICKER_ITEM} aria-pressed={shownEffort === effort} onClick={() => { if (value) onChange({ ...value, reasoningEffort: effort }); close(); }}><span>{effortLabel(effort)}</span>{shownEffort === effort && <Check size={13} className="shrink-0" aria-hidden />}</button>)}
       </div>}
-    </div>
+    </div>}
   </div>;
 }

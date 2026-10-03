@@ -30,8 +30,7 @@ export async function POST(request: Request) {
         supportsStrictSchema: provider.supportsStrictSchema, timeoutMs: 30_000 });
       // 连接测试使用极短请求，验证所选模型的生成权限；不发送知识库内容。
       const result = await client.complete({ messages: [{ role: "user", content: "Reply OK." }], maxTokens: 128 });
-      // 推理模型可能把短测试预算用于思考；达到上限仍证明生成端点可用。
-      if (!result.text.trim() && !result.truncated) return fail("服务有响应，但没有返回文本。请检查模型是否支持文本生成。", 502);
+      if (!result.text.trim()) return fail("服务有响应，但没有返回文本。请检查模型是否支持文本生成。", 502);
       return { connected: true, model, elapsedMs: Date.now() - startedAt };
     }
     return listProviderModels(provider);

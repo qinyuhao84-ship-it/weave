@@ -215,7 +215,7 @@ export function Input({
   return (
     <input
       className={cn(
-        "h-11 sm:h-9 w-full rounded-md border border-[var(--input)] bg-card px-3 text-base sm:text-[13px]",
+        "h-11 sm:h-9 w-full rounded-[12px] border border-[var(--input)] bg-card px-3 text-base sm:text-[13px]",
         "placeholder:text-muted-foreground transition-colors duration-150",
         "focus:border-[var(--focus-ring)]",
         className,
@@ -232,7 +232,7 @@ export function Textarea({
   return (
     <textarea
       className={cn(
-        "w-full rounded-md border border-[var(--input)] bg-card px-3 py-2 text-base sm:text-[13px] leading-relaxed",
+        "w-full rounded-[12px] border border-[var(--input)] bg-card px-3 py-2 text-base sm:text-[13px] leading-relaxed",
         "placeholder:text-muted-foreground transition-colors duration-150",
         "focus:border-[var(--focus-ring)] resize-none",
         className,
@@ -242,25 +242,8 @@ export function Textarea({
   );
 }
 
-/** 下拉选择。原生 select 保持键盘可达性，只做样式覆盖。 */
-export function Select({
-  className,
-  children,
-  ...props
-}: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      className={cn(
-        "h-11 sm:h-9 w-full appearance-auto rounded-md border border-[var(--input)] bg-card px-3 pr-8 text-base sm:text-[13px]",
-        "transition-colors duration-150 focus:border-[var(--focus-ring)]",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-    </select>
-  );
-}
+export { Select } from "./select";
+export { RequestError, LoadingCards } from "./request-feedback";
 
 /* -------------------------------------------------------------- 分隔与标签 */
 
@@ -311,17 +294,13 @@ export function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative h-[22px] w-[38px] shrink-0 rounded-full border transition-colors duration-200",
-        checked ? "border-transparent bg-primary" : "border-[var(--input)] bg-[var(--muted)]",
+        "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] sm:h-[22px] sm:w-[38px] sm:rounded-full",
         disabled && "opacity-40",
       )}
     >
-      <span
-        className={cn(
-          "absolute top-[2px] h-[16px] w-[16px] rounded-full bg-card shadow-ambient transition-transform duration-200",
-          checked ? "translate-x-[19px]" : "translate-x-[2px]",
-        )}
-      />
+      <span aria-hidden className={cn("relative h-[22px] w-[38px] rounded-full border transition-colors duration-200", checked ? "border-transparent bg-primary" : "border-[var(--input)] bg-[var(--muted)]")}>
+        <span className={cn("absolute left-0 top-[2px] h-[16px] w-[16px] rounded-full bg-card shadow-ambient transition-transform duration-200", checked ? "translate-x-[19px]" : "translate-x-[2px]")} />
+      </span>
     </button>
   );
 }

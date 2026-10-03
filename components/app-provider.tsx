@@ -66,6 +66,9 @@ type AppDataValue = {
   bumpData: (scope?: DataScope) => void;
   /** 侧栏用的三份摘要数据，提到这里统一取，见下面注释。 */
   vault: VaultSummary | null;
+  vaultLoading: boolean;
+  vaultError: string | null;
+  refreshVault: () => Promise<void>;
   sessions: SessionSummary[];
   pendingReview: number;
   agentName: string;
@@ -117,7 +120,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   //
   // 这也兑现了 hooks/use-api.ts 里那句「将来真出现同 path 双消费者时再加去重」——
   // 与其加一层全局去重，不如让同一个数据只有一个所有者。
-  const { data: vault } = useApi<VaultSummary>("/api/vault", [versions.knowledge]);
+  const { data: vault, loading: vaultLoading, error: vaultError, refresh: refreshVault } = useApi<VaultSummary>("/api/vault", [versions.knowledge]);
   const { data: sessionData } = useApi<{ sessions: SessionSummary[] }>(
     "/api/chat/sessions",
     [versions.sessions, sessionRefresh],
@@ -156,11 +159,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       resolveWikilink,
       bumpData,
       vault: vault ?? null,
+      vaultLoading,
+      vaultError,
+      refreshVault,
       sessions: sessionData?.sessions ?? [],
       pendingReview: reviewData?.counts.pending ?? 0,
       agentName: identityData?.agentName ?? "织识",
     }),
-    [dataVersion, vault, sessionData, reviewData, identityData, resolveWikilink, bumpData],
+    [dataVersion, vault, vaultLoading, vaultError, refreshVault, sessionData, reviewData, identityData, resolveWikilink, bumpData],
   );
 
   return (

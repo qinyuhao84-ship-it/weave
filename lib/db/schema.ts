@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Markdown 与 raw/ 是知识内容的真源；SQLite 同时保存索引与不可从文件恢复的
@@ -71,7 +72,7 @@ export const pages = sqliteTable(
     frontmatterJson: text("frontmatter_json").notNull(),
     /** 标题与别名的归一化形式，用于链接解析时快速命中 */
     normalizedNames: text("normalized_names").notNull(),
-    /** active | deleted */
+    /** active | deleted | conflicted（多份 Markdown 使用同一 id） */
     status: text("status").notNull().default("active"),
     deletedAt: text("deleted_at"),
     /** 合并后指向的新词条 id */
@@ -81,7 +82,8 @@ export const pages = sqliteTable(
     indexedAt: text("indexed_at").notNull(),
   },
   (table) => [
-    uniqueIndex("idx_pages_file_path").on(table.filePath),
+    // 历史/冲突行保留原路径；只有当前活跃身份拥有该文件，不能让旧 id 占住新内容。
+    uniqueIndex("idx_pages_file_path").on(table.filePath).where(sql`${table.status} = 'active'`),
     // slug 刻意不做唯一约束：vault 是唯一真源，用户可能在 Obsidian 里手工
     // 造出两个同 slug 的文件。索引器必须能容忍，并把冲突送进审阅队列，
     // 而不是让整个索引崩掉。
@@ -340,6 +342,8 @@ export const chatSummaries = sqliteTable("chat_summaries", {
   tokenCount: integer("token_count").notNull().default(0),
   /** 生成摘要用的模型名，便于事后核查是哪次调用写坏的 */
   model: text("model"),
+  /** legacy 摘要可能混入半截回答；complete 表示仅使用完整助手历史生成。 */
+  historyPolicy: text("history_policy").notNull().default("legacy"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

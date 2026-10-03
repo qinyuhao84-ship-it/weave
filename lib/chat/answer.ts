@@ -1,7 +1,7 @@
 import { createProvider, createLightProvider } from "@/lib/llm";
 import { getSettings, getContextWindow } from "@/lib/settings";
 import { buildContextBlock, NO_ANSWER_PHRASE } from "@/lib/llm/prompts";
-import type { ChatMessage, LlmProvider } from "@/lib/llm/types";
+import { LlmError, type ChatMessage, type LlmProvider } from "@/lib/llm/types";
 import { retrieveHybrid, toContextChunks, type RetrievedPage } from "./retrieve";
 import {
   validateCitations, buildCitationViews, assessQuality,
@@ -270,6 +270,10 @@ export async function answer(options: AnswerOptions): Promise<AnswerResult> {
     else interrupted = true;
   }
   if (htmlStream) { const tail = htmlStream.finish(); raw += tail; if (tail) options.onDelta?.(tail); }
+  if (!interrupted && !streamFailure) {
+    if (truncated) streamFailure = new LlmError("回答达到模型的输出上限，内容尚未完成。已保留生成的部分内容，可以缩小问题范围后重试。", 502);
+    else if (!raw.trim() && !htmlStream?.html.trim()) streamFailure = new LlmError("模型没有返回回答正文。请重试或检查所选模型。", 502, true);
+  }
   timings.generatedMs = Date.now() - startedAt;
 
   // ---- ⑤ 后端校验引用 ----

@@ -58,19 +58,20 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
 export function useApi<T>(path: string | null, deps: unknown[] = []): ApiState<T> {
   const [data, setData] = React.useState<T | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
+  const [failure, setFailure] = React.useState<{ path: string; message: string } | null>(null);
   const [loading, setLoading] = React.useState(Boolean(path));
 
   // 每次请求领一个序号。只有序号仍然是最新的那次，结果才允许写进 state。
   const generation = React.useRef(0);
   const request = React.useRef<AbortController | null>(null);
+  const previousPath = React.useRef(path);
 
   const load = React.useCallback(async () => {
     const current = ++generation.current;
     request.current?.abort();
     if (!path) {
       setData(null);
-      setError(null);
+      setFailure(null);
       setLoading(false);
       return;
     }
@@ -81,16 +82,20 @@ export function useApi<T>(path: string | null, deps: unknown[] = []): ApiState<T
       const result = await apiFetch<T>(path, { signal: controller.signal });
       if (current !== generation.current) return;
       setData(result);
-      setError(null);
+      setFailure(null);
     } catch (err) {
       if (current !== generation.current) return;
-      setError(err instanceof Error ? err.message : String(err));
+      setFailure({ path, message: err instanceof Error ? err.message : String(err) });
     } finally {
       if (current === generation.current) setLoading(false);
     }
   }, [path]);
 
   React.useEffect(() => {
+    if (previousPath.current !== path) {
+      previousPath.current = path;
+      setFailure(null);
+    }
     void load();
     // path 变化或组件卸载时作废在途结果：序号一推，旧响应回来也写不进去。
     return () => {
@@ -102,7 +107,7 @@ export function useApi<T>(path: string | null, deps: unknown[] = []): ApiState<T
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 调用方提供刷新依赖；load 随 path 稳定更新。
   }, [load, ...deps]);
 
-  return { data, error, loading, refresh: load };
+  return { data, error: failure?.path === path ? failure.message : null, loading, refresh: load };
 }
 
 /** 提交类请求的状态管理 */

@@ -36,6 +36,7 @@ yarn-error.log*
 # 本机代理配置、开发工作树和包缓存
 /.claude/
 /.codex/
+/.impeccable/
 /.pnpm-store/
 
 # 浏览器验收产物

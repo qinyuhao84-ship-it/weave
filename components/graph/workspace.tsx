@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Network, Filter, X, Info } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { useAppData } from "@/components/app-provider";
-import { Badge, TypeBadge, Button, Card, Spinner, EmptyState, Hairline, Select } from "@/components/ui";
+import { Badge, TypeBadge, Button, Card, Spinner, EmptyState, Hairline, Select, RequestError } from "@/components/ui";
 import { useApi } from "@/hooks/use-api";
 import { useTheme } from "@/hooks/use-theme";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
@@ -94,7 +94,7 @@ function withAlpha(color: string, alpha: number): string {
  * 在系统切深浅色时也要重画。原来是写死的 #111111 与 rgba(17,17,17,…)，
  * 暗色下深色画在 #18181b 上，节点与边基本消失。
  */
-function useCanvasColors(resolved: "light" | "dark", focusMode: boolean) {
+function useCanvasColors(resolved: "light" | "dark") {
   return React.useMemo(() => {
     if (typeof window === "undefined") {
       return {
@@ -114,9 +114,9 @@ function useCanvasColors(resolved: "light" | "dark", focusMode: boolean) {
       accent: resolveVar(styles, "--ring", "#2563eb"),
       type,
     };
-    // resolved / focusMode 是 CSS 变量变化的失效信号，必须保留依赖。
+    // resolved 是 CSS 变量变化的失效信号，必须保留依赖。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolved, focusMode]);
+  }, [resolved]);
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -131,11 +131,11 @@ const TYPE_LABEL: Record<string, string> = {
  */
 export function GraphWorkspace() {
   const { t } = useI18n();
-  const { resolved, focusMode } = useTheme();
+  const { resolved } = useTheme();
   const reducedMotion = useReducedMotion();
-  const colors = useCanvasColors(resolved, focusMode);
+  const colors = useCanvasColors(resolved);
   const { dataVersion } = useAppData();
-  const { data, loading, error } = useApi<GraphData>("/api/graph", [dataVersion]);
+  const { data, loading, error, refresh } = useApi<GraphData>("/api/graph", [dataVersion]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [hiddenTypes, setHiddenTypes] = React.useState<Set<string>>(new Set());
   const graphRef = React.useRef<{
@@ -336,11 +336,7 @@ export function GraphWorkspace() {
           </div>
         )}
 
-        {error && !data && (
-          <Card className="p-4">
-            <p className="text-[13px] text-[var(--destructive)]">{error}</p>
-          </Card>
-        )}
+        {error && <RequestError error={error} onRetry={() => void refresh()} retrying={loading} className="mb-3 shrink-0" />}
 
         {data && data.nodes.length === 0 && (
           <Card className="flex flex-1 items-center justify-center">
@@ -516,7 +512,7 @@ export function GraphWorkspace() {
             <div className="min-h-0 space-y-2 overflow-y-auto lg:space-y-3">
               <div className="px-1">
                 <label htmlFor="graph-node" className="mb-1.5 block text-[12px] font-medium text-muted-foreground">{t("graph_workspace.m012")}</label>
-                <Select id="graph-node" value={selectedId ?? ""} onChange={event => selectNode(event.target.value || null)}>
+                <Select searchable id="graph-node" value={selectedId ?? ""} onChange={event => selectNode(event.target.value || null)}>
                   <option value="">{t("graph_workspace.m013")}</option>
                   {visible.nodes.map(node => <option key={node.id} value={node.id}>{node.title}</option>)}
                 </Select>

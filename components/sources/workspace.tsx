@@ -7,7 +7,7 @@ import { ArrowLeft, ExternalLink, FileText, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MarkdownRenderer } from "@/components/markdown/renderer";
 import { DocumentReader } from "@/components/documents/document-reader";
-import { Badge, Button, Card, Input, Spinner } from "@/components/ui";
+import { Badge, Button, Card, Input, LoadingCards, RequestError } from "@/components/ui";
 import { useAppData } from "@/components/app-provider";
 import { useIngest } from "@/components/ingest/ingest-provider";
 import { apiFetch, useApi } from "@/hooks/use-api";
@@ -60,8 +60,8 @@ export function SourcesWorkspace() {
         title={t("sources_workspace.m002")}
         maxWidth="5xl"
         description={t("sources_workspace.m003")}
-        meta={<Badge tone="neutral">{data?.total ?? 0} {t("sources_workspace.m004")}</Badge>}
-        actions={<Link href="/wiki" className="inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowLeft size={13} />{t("sources_workspace.m005")}</Link>}
+        meta={data && <Badge tone="neutral">{data.total} {t("sources_workspace.m004")}</Badge>}
+        actions={<Link href="/wiki" className="inline-flex h-11 items-center sm:h-7 gap-1.5 rounded-full px-3 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowLeft size={13} />{t("sources_workspace.m005")}</Link>}
       />
       <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -69,10 +69,10 @@ export function SourcesWorkspace() {
           <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={() => void refresh()}>{t("sources_workspace.m008")}</Button>
         </div>
         {actionError && <p role="alert" className="mb-3 text-[12px] text-[var(--destructive)]">{actionError}</p>}
-        {loading && !data ? (
-          <div className="flex justify-center py-20 text-muted-foreground"><Spinner size={18} /></div>
+        {loading && !data && !error ? (
+          <LoadingCards />
         ) : error ? (
-          <Card className="p-4"><p role="alert" className="text-[12.5px] text-[var(--destructive)]">{error}</p></Card>
+          <RequestError error={error} onRetry={() => void refresh()} retrying={loading} />
         ) : sources.length === 0 ? (
           <Card className="p-8 text-center">
             <FileText className="mx-auto mb-2 text-muted-foreground" size={24} strokeWidth={1.5} />
@@ -102,7 +102,7 @@ export function SourcesWorkspace() {
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <StatusBadge status={source.status} />
-                  <Link href={`/sources/${source.id}`} className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-muted"><ExternalLink size={12} />{t("sources_workspace.m015")}</Link>
+                  <Link href={`/sources/${source.id}`} className="inline-flex h-11 items-center sm:h-7 gap-1.5 rounded-full border border-border bg-card px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-muted"><ExternalLink size={12} />{t("sources_workspace.m015")}</Link>
                   <a href={`/api/sources/${source.id}/raw`} className="px-1 text-[11.5px] text-muted-foreground underline underline-offset-4 hover:text-foreground">{t("sources_workspace.m016")}</a>
                   <Button
                     variant="ghost"
@@ -130,10 +130,15 @@ export function SourcesWorkspace() {
 
 export function SourceDetailWorkspace({ sourceId }: { sourceId: string }) {
   const { t, locale } = useI18n();
-  const { data: source, loading, error } = useApi<SourceRecord>(`/api/sources/${sourceId}`);
-  const [markdown, setMarkdown] = React.useState<string | null>(null);
-  const [parsedError, setParsedError] = React.useState<string | null>(null);
-  const [parsedLoading, setParsedLoading] = React.useState(true);
+  const { data: sourceData, loading, error, refresh } = useApi<SourceRecord>(`/api/sources/${sourceId}`);
+  // useApi 保留旧响应以便同页刷新；详情必须核对归属，不能展示上一份资料。
+  const source = sourceData?.id === sourceId ? sourceData : null;
+  const [parsed, setParsed] = React.useState<{ sourceId: string; markdown: string | null; error: string | null; loading: boolean } | null>(null);
+  const [parsedAttempt, setParsedAttempt] = React.useState(0);
+  const currentParsed = parsed?.sourceId === sourceId ? parsed : null;
+  const markdown = currentParsed?.markdown ?? null;
+  const parsedError = currentParsed?.error ?? null;
+  const parsedLoading = !currentParsed || currentParsed.loading;
   const isPdf = Boolean(source?.originalName.toLowerCase().endsWith(".pdf"));
   const isHtml = Boolean(source && (/\.html?$/i.test(source.originalName) || source.mimeType === "text/html"));
   const [showParsed, setShowParsed] = React.useState(false);
@@ -141,9 +146,9 @@ export function SourceDetailWorkspace({ sourceId }: { sourceId: string }) {
 
   React.useEffect(() => {
     let cancelled = false;
-    setParsedLoading(true);
-    setParsedError(null);
-    void fetch(`/api/sources/${sourceId}/parsed`, { cache: "no-store" })
+    const controller = new AbortController();
+    setParsed({ sourceId, markdown: null, error: null, loading: true });
+    void fetch(`/api/sources/${sourceId}/parsed`, { cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(60_000)]) })
       .then(async (response) => {
         if (!response.ok) {
           const body = await response.json().catch(() => null) as { error?: string } | null;
@@ -151,11 +156,10 @@ export function SourceDetailWorkspace({ sourceId }: { sourceId: string }) {
         }
         return response.text();
       })
-      .then((text) => { if (!cancelled) setMarkdown(text); })
-      .catch((err) => { if (!cancelled) setParsedError(err instanceof Error ? err.message : t("sources_workspace.m024")); })
-      .finally(() => { if (!cancelled) setParsedLoading(false); });
-    return () => { cancelled = true; };
-  }, [sourceId, t]);
+      .then((text) => { if (!cancelled) setParsed({ sourceId, markdown: text, error: null, loading: false }); })
+      .catch((err) => { if (!cancelled) setParsed({ sourceId, markdown: null, error: err instanceof Error && err.name !== "TimeoutError" ? err.message : t("sources_workspace.m024"), loading: false }); });
+    return () => { cancelled = true; controller.abort(); };
+  }, [sourceId, parsedAttempt, t]);
 
   return (
     <>
@@ -164,11 +168,11 @@ export function SourceDetailWorkspace({ sourceId }: { sourceId: string }) {
         maxWidth="5xl"
         description={source?.originalName}
         meta={source && <><StatusBadge status={source.status} /><Badge tone="neutral">{formatBytes(source.byteSize)}</Badge>{source.pageCount ? <Badge tone="neutral">{source.pageCount} {t("sources_workspace.m021")}</Badge> : null}</>}
-        actions={<Link href="/sources" className="inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowLeft size={13} />{t("sources_workspace.m025")}</Link>}
+        actions={<Link href="/sources" className="inline-flex h-11 items-center sm:h-7 gap-1.5 rounded-full px-3 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowLeft size={13} />{t("sources_workspace.m025")}</Link>}
       />
       <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
-        {loading && !source ? <div className="flex justify-center py-20"><Spinner size={18} /></div> : error ? (
-          <Card className="p-4"><p role="alert" className="text-[12.5px] text-[var(--destructive)]">{error}</p></Card>
+        {loading && !source && !error ? <LoadingCards /> : error ? (
+          <RequestError error={error} onRetry={() => void refresh()} retrying={loading} />
         ) : source ? (
           <>
             {isHtml && <div role="group" aria-label={t("sources_workspace.m026")} className="mb-4 flex gap-1"><Button size="sm" variant={showParsed ? "ghost" : "secondary"} aria-pressed={!showParsed} onClick={() => setShowParsed(false)}>{t("sources_workspace.m027")}</Button><Button size="sm" variant={showParsed ? "secondary" : "ghost"} aria-pressed={showParsed} onClick={() => setShowParsed(true)}>{t("sources_workspace.m028")}</Button></div>}
@@ -178,8 +182,8 @@ export function SourceDetailWorkspace({ sourceId }: { sourceId: string }) {
                 <p className="mt-1 text-[11px] text-muted-foreground">{t("sources_workspace.m029")}{formatDate(source.importedAt, locale)}{source.parser ? t("sources_workspace.m030", {v0: source.parser}) : ""}</p>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
-                {isPdf && <a className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-muted" href={`/api/sources/${source.id}/raw?view=1`} target="_blank" rel="noreferrer"><ExternalLink size={12} />{t("sources_workspace.m031")}</a>}
-                <a className="inline-flex h-7 items-center rounded-full px-3 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" href={`/api/sources/${source.id}/raw`}>{t("sources_workspace.m016")}</a>
+                {isPdf && <a className="inline-flex h-11 items-center sm:h-7 gap-1.5 rounded-full border border-border bg-card px-3 text-[12px] font-medium text-foreground transition-colors hover:bg-muted" href={`/api/sources/${source.id}/raw?view=1`} target="_blank" rel="noreferrer"><ExternalLink size={12} />{t("sources_workspace.m031")}</a>}
+                <a className="inline-flex h-11 items-center sm:h-7 rounded-full px-3 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" href={`/api/sources/${source.id}/raw`}>{t("sources_workspace.m016")}</a>
               </div>
             </div>}
             {isHtml && !showParsed ? <DocumentReader name={source.originalName} mediaType="text/html" responseFormat="text" contentUrl={`/api/sources/${source.id}/raw?view=1`} downloadUrl={`/api/sources/${source.id}/raw`} previewClassName="h-[72vh] min-h-[420px] w-full border-0 bg-[#fcfbf9]" /> : isPdf ? (
@@ -187,13 +191,15 @@ export function SourceDetailWorkspace({ sourceId }: { sourceId: string }) {
                 <iframe title={t("sources_workspace.m033", {v0: source.originalName})} src={`/api/sources/${source.id}/raw?view=1`} className="h-[min(76vh,980px)] min-h-[420px] w-full bg-white" />
               </section>
             ) : parsedLoading ? (
-              <Card className="flex justify-center py-16"><Spinner size={18} /></Card>
+              <LoadingCards />
+            ) : parsedError ? (
+              <RequestError error={parsedError} onRetry={() => setParsedAttempt(attempt => attempt + 1)} />
             ) : markdown ? (
               <Card className="min-w-0 overflow-hidden px-5 py-6 md:px-8 md:py-8">
                 <MarkdownRenderer content={markdown} density="comfortable" className="mx-auto max-w-[72ch]" />
               </Card>
             ) : (
-              <Card className="p-4"><p className="text-[12px] text-muted-foreground">{parsedError ?? t("sources_workspace.m034")}</p></Card>
+              <Card className="p-4"><p className="text-[12px] text-muted-foreground">{t("sources_workspace.m034")}</p></Card>
             )}
           </>
         ) : null}

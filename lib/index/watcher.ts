@@ -1,7 +1,7 @@
 import chokidar, { type FSWatcher } from "chokidar";
 import path from "node:path";
 import fs from "node:fs";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { pages } from "@/lib/db/schema";
 import { sha256 } from "@/lib/vault/atomic";
@@ -59,7 +59,8 @@ function runReindex(changes: ExternalChange[]): void {
   try {
   changes = changes.filter(change => {
     if (!change.relativePath.startsWith("wiki/")) return true;
-    const indexed = getDb().select({ hash: pages.contentHash, status: pages.status }).from(pages).where(eq(pages.filePath, change.relativePath)).get();
+    const indexed = getDb().select({ hash: pages.contentHash, status: pages.status }).from(pages)
+      .where(and(eq(pages.filePath, change.relativePath), eq(pages.status, "active"))).get();
     const file = path.join(VAULT_ROOT, change.relativePath);
     if (!fs.existsSync(file)) return indexed?.status === "active";
     return !indexed || indexed.status !== "active" || indexed.hash !== sha256(fs.readFileSync(file));

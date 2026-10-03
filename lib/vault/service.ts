@@ -204,6 +204,9 @@ export type LoadedPageFile = {
 export function loadPageFile(pageId: string): LoadedPageFile {
   const row = getDb().select().from(pages).where(eq(pages.id, pageId)).get();
   if (!row) throw new PageNotFoundError(pageId);
+  if (row.status === "conflicted") {
+    throw new ConflictError("多份词条使用同一 id，已暂停读取和写入。请备份后为复制的词条设置唯一 id，再重建索引。", row.filePath);
+  }
 
   const raw = readFileIfExists(absolutePath(row.filePath));
   if (raw === null) {

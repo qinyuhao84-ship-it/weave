@@ -1,14 +1,14 @@
 import { getActiveProvider, getSettings } from "@/lib/settings";
 import { LlmError } from "@/lib/llm/types";
 import { OpenAiCompatibleProvider } from "@/lib/llm/provider";
-import { reasoningCapability, canonicalReasoningEffort, lightReasoningEffort } from "@/lib/llm/capabilities";
+import { reasoningCapability, canonicalReasoningEffort, preferredThinkingEffort, lightReasoningEffort } from "@/lib/llm/capabilities";
 import { cachedModelCapability } from "@/lib/llm/models";
 import { ChatConfigSchema, type ChatConfig } from "./config";
 
 export function defaultChatConfig(): ChatConfig | null {
   const active = getActiveProvider();
   if (!active?.baseUrl || !active.model) return null;
-  return { providerId: active.id, model: active.model, reasoningEffort: canonicalReasoningEffort(active.baseUrl, active.model, active.reasoningEffort, cachedModelCapability(active.baseUrl, active.model)), contextWindow: active.contextWindow, showMe: false };
+  return { providerId: active.id, model: active.model, reasoningEffort: preferredThinkingEffort(active.baseUrl, active.model, active.reasoningEffort, cachedModelCapability(active.baseUrl, active.model)), contextWindow: active.contextWindow, showMe: false };
 }
 
 export function resolveChatConfig(value?: unknown): ChatConfig {
@@ -18,8 +18,10 @@ export function resolveChatConfig(value?: unknown): ChatConfig {
   const metadata = cachedModelCapability(provider.baseUrl, config.model);
   config.reasoningEffort = canonicalReasoningEffort(provider.baseUrl, config.model, config.reasoningEffort, metadata);
   const capability = reasoningCapability(provider.baseUrl, config.model, metadata);
+  if (!capability.known) config.reasoningEffort = "default";
+  if (config.reasoningEffort === "default") config.reasoningEffort = preferredThinkingEffort(provider.baseUrl, config.model, config.reasoningEffort, metadata);
   if (capability.known && !capability.efforts.includes(config.reasoningEffort)) {
-    throw new LlmError("所选模型不支持这个推理强度，请选择服务默认或其他可用档位。", 400);
+    throw new LlmError("所选模型不支持这个推理强度，请重新选择可用档位。", 400);
   }
   return config;
 }

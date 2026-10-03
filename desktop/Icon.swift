@@ -2,6 +2,11 @@ import AppKit
 let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 1024, pixelsHigh: 1024, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
 NSGraphicsContext.saveGraphicsState(); NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
 NSGraphicsContext.current!.cgContext.clear(CGRect(x: 0, y: 0, width: 1024, height: 1024))
+// 与常规 Dock 图标保持相同的可见外轮廓，背景与编织标识一起居中缩放。
+let iconScale: CGFloat = 0.85
+let iconInset = 1024 * (1 - iconScale) / 2
+NSGraphicsContext.current!.cgContext.translateBy(x: iconInset, y: iconInset)
+NSGraphicsContext.current!.cgContext.scaleBy(x: iconScale, y: iconScale)
 NSColor(srgbRed: 0.12, green: 0.12, blue: 0.13, alpha: 1).setFill()
 NSBezierPath(roundedRect: NSRect(x: 32, y: 32, width: 960, height: 960), xRadius: 210, yRadius: 210).fill()
 NSColor(srgbRed: 0.96, green: 0.95, blue: 0.94, alpha: 1).setStroke()

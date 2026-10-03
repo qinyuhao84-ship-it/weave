@@ -202,8 +202,20 @@ export class OpenAiCompatibleProvider implements LlmProvider {
       throw new LlmError("模型返回了空的 choices");
     }
 
-    const text = choice.message?.content ?? "";
+    const text = typeof choice.message?.content === "string" ? choice.message.content : "";
     const finish = choice.finish_reason ?? "";
+
+    // HTTP 200 / a populated choices array does not prove the model completed its answer.
+    // Keep length as a structured-output retry signal; all other non-success endings fail.
+    if (finish !== "stop" && finish !== "length") {
+      if (finish === "content_filter") {
+        throw new LlmError("模型服务中止了这次回答，请调整问题后重试。", 502);
+      }
+      throw new LlmError("模型连接在回答完成前结束，请重试。", 502, true);
+    }
+    if (!text.trim()) {
+      throw new LlmError("模型没有返回回答正文。请重试或检查所选模型。", 502, true);
+    }
 
     return {
       text,
@@ -243,7 +255,8 @@ export class OpenAiCompatibleProvider implements LlmProvider {
       try {
         parsed = JSON.parse(chunk) as ChatCompletionChunk;
       } catch {
-        continue; // 半截的 JSON 分片，跳过
+        // parseSseStream 已按完整 SSE 事件切分，事件内的坏 JSON 不能静默丢弃。
+        throw new LlmError("模型返回了无效的流式数据，回答尚未完成。请重试。", 502, true);
       }
       const choice = parsed.choices?.[0];
 
@@ -252,7 +265,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
       if (reasoning) request.onReasoningDelta?.(reasoning);
 
       const delta = choice?.delta?.content;
-      if (delta) {
+      if (typeof delta === "string" && delta) {
         full += delta;
         yield delta;
       }
@@ -267,6 +280,17 @@ export class OpenAiCompatibleProvider implements LlmProvider {
         };
       }
     }
+
+    signal.throwIfAborted();
+    // HTTP 200 / 字节流 EOF 只证明连接结束；必须收到模型的完成原因才算完整回答。
+    // length 保留给结构化输出的精简重试，问答层会保存正文并标记失败。
+    if (finishReason !== "stop" && finishReason !== "length") {
+      const message = finishReason === "content_filter"
+        ? "模型服务中止了这次回答，已保留生成的部分内容。可以调整问题后重试。"
+        : "模型连接在回答完成前结束，已保留生成的部分内容。请重试。";
+      throw new LlmError(message, 502, true);
+    }
+    if (!full.trim()) throw new LlmError("模型没有返回回答正文。请重试或检查所选模型。", 502, true);
 
     return {
       text: full,

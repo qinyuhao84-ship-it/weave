@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { useAppData } from "@/components/app-provider";
 import { useIngest } from "@/components/ingest/ingest-provider";
 import {
-  Button, Badge, TypeBadge, Input, Card, EmptyState, Hairline, Spinner,
+  Button, Badge, TypeBadge, Input, Card, EmptyState, Hairline, RequestError, LoadingCards,
 } from "@/components/ui";
 import { apiFetch, useApi } from "@/hooks/use-api";
 import { cn, truncate } from "@/lib/utils";
@@ -251,11 +251,11 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
               <Card className="divide-y divide-[var(--border)]">
                 {visibleFullTextResults.map((hit) => (
                   <button key={hit.pageId} type="button" onClick={() => router.push(`/wiki/${hit.pageId}`)} className="block w-full px-4 py-3 text-left transition-colors hover:bg-[var(--muted)]">
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 items-start gap-2">
                       <TypeBadge type={hit.type} />
-                      <span className="text-[13px] font-medium text-foreground">{hit.title}</span>
+                      <span title={hit.title} className="min-w-0 line-clamp-3 text-[13px] font-medium text-foreground [overflow-wrap:anywhere]">{hit.title}</span>
                     </div>
-                    <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground" dangerouslySetInnerHTML={{ __html: hit.snippet }} />
+                    <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]" dangerouslySetInnerHTML={{ __html: hit.snippet }} />
                   </button>
                 ))}
               </Card>
@@ -265,17 +265,8 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
           </section>
         )}
 
-        {loading && (
-          <div className="flex items-center justify-center py-20 text-muted-foreground">
-            <Spinner size={18} />
-          </div>
-        )}
-
-        {error && (
-          <Card className="p-4">
-            <p className="text-[13px] text-[var(--destructive)]">{error}</p>
-          </Card>
-        )}
+        {loading && !error && <LoadingCards />}
+        {error && <RequestError error={error} onRetry={() => void refresh()} retrying={loading} />}
 
         {!loading && !error && data?.stats.pages === 0 && (
           <Card>
@@ -296,7 +287,7 @@ export function WikiWorkspace({ initialQuery = "" }: { initialQuery?: string }) 
           </Card>
         )}
 
-        {!loading && !error && data && data.stats.pages > 0 && data.total === 0 && (
+        {!loading && !error && data && data.stats.pages > 0 && data.total === 0 && !fullTextLoading && !fullTextError && visibleFullTextResults.length === 0 && (
           <Card className="px-4 py-8 text-center">
             <p className="text-[13px] text-muted-foreground">
               {query.trim() ? t("wiki_workspace.m027", {v0: query}) : t("wiki_workspace.m028")}

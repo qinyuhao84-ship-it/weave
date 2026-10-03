@@ -28,11 +28,10 @@ const THEME_SCRIPT = `
 (function () {
   try {
     var stored = localStorage.getItem("weave-theme") || "system";
-    var focus = localStorage.getItem("weave-theme-focus") === "1";
     var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     var dark = stored === "dark" || (stored === "system" && prefersDark);
     if (dark) document.documentElement.classList.add("dark");
-    if (focus) document.documentElement.setAttribute("data-theme", "focus");
+    document.documentElement.removeAttribute("data-theme");
     // 侧栏折叠态也要在首屏前定下来，否则会先画成展开再塌下去
     document.documentElement.setAttribute(
       "data-sidebar",

@@ -44,6 +44,16 @@ export function DeleteDialog({
 
   const [strategy, setStrategy] = React.useState<"keep_dangling" | "clean_refs" | "redirect">("keep_dangling");
   const [targetId, setTargetId] = React.useState("");
+  const [targetQuery, setTargetQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = React.useState("");
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => setSearchQuery(targetQuery.trim()), 200);
+    return () => window.clearTimeout(timer);
+  }, [targetQuery]);
+  const { data: targets, loading: searching, error: searchError, refresh: retrySearch } = useApi<{
+    results: Array<{ pageId: string; title: string; type: string }>;
+  }>(strategy === "redirect" && searchQuery ? `/api/search?q=${encodeURIComponent(searchQuery)}&limit=12` : null);
+  const matchingTargets = targets?.results.filter(page => page.pageId !== pageId) ?? [];
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -122,12 +132,23 @@ export function DeleteDialog({
           </div>
 
           {strategy === "redirect" && (
-            <Input
-              value={targetId}
-              onChange={(e) => setTargetId(e.target.value)}
-              placeholder={t("wiki_page_detail.m043")}
-              className="mt-2.5"
-            />
+            <div className="mt-2.5 space-y-2">
+              <Input
+                aria-label={t("knowledgeSelection.label")}
+                value={targetQuery}
+                onChange={(e) => { setTargetQuery(e.target.value); setTargetId(""); }}
+                placeholder={t("wiki_page_detail.m043")}
+              />
+              {targetQuery.trim() && (searching || searchQuery !== targetQuery.trim()) && <p role="status" className="text-[12px] text-muted-foreground">{t("knowledgeSelection.loading")}</p>}
+              {searchError && <div role="alert"><p className="text-[12px] text-[var(--destructive)]">{searchError}</p><Button size="sm" variant="ghost" onClick={() => void retrySearch()}>{t("knowledgeSelection.retry")}</Button></div>}
+              {!searching && !searchError && searchQuery && searchQuery === targetQuery.trim() && <div className="max-h-48 overflow-y-auto">
+                {matchingTargets.map(page => <button type="button" key={page.pageId} aria-pressed={targetId === page.pageId} onClick={() => setTargetId(page.pageId)} className="flex min-h-10 w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-[13px] hover:bg-muted aria-pressed:bg-muted focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]">
+                  <span className="min-w-0 break-words">{page.title}</span><TypeBadge type={page.type} />
+                </button>)}
+                {matchingTargets.length === 0 && <p className="text-[12px] text-muted-foreground">{t("knowledgeSelection.empty")}</p>}
+              </div>}
+              {targetId && <p role="status" className="text-[12px] text-muted-foreground">{t("knowledgeSelection.selected", { v0: matchingTargets.find(page => page.pageId === targetId)?.title ?? targetQuery })}</p>}
+            </div>
           )}
 
           {error && <p className="mt-3 text-[12px] text-[var(--destructive)]">{error}</p>}

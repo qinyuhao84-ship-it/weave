@@ -113,9 +113,23 @@ export function parseHtml(input: ParseInput): ParseResult {
 export async function parsePdfFallback(input: ParseInput): Promise<ParseResult> {
   const { extractText, getDocumentProxy } = await import("unpdf");
   const buffer = fs.readFileSync(input.absolutePath);
-  const pdf = await getDocumentProxy(new Uint8Array(buffer));
-
-  const { totalPages, text } = await extractText(pdf, { mergePages: false });
+  // PDF.js 的 Node 文件读取器需要本机路径，不能用 file:// URL；中文字体
+  // 的字符映射随应用一起分发，解析不依赖系统字体或网络。
+  // Next 和桌面启动器都以服务根目录为 cwd；这些资源由 outputFileTracingIncludes
+  // 明确复制到 node_modules。不要使用 require.resolve：Webpack 会将它改成模块 ID。
+  const pdfAssets = path.join(process.cwd(), "node_modules", "pdfjs-dist");
+  const pdf = await getDocumentProxy(new Uint8Array(buffer), {
+    cMapUrl: path.join(pdfAssets, "cmaps") + path.sep,
+    cMapPacked: true,
+    standardFontDataUrl: path.join(pdfAssets, "standard_fonts") + path.sep,
+  });
+  let extracted: Awaited<ReturnType<typeof extractText>>;
+  try {
+    extracted = await extractText(pdf, { mergePages: false });
+  } finally {
+    await pdf.loadingTask.destroy();
+  }
+  const { totalPages, text } = extracted;
   const pages = Array.isArray(text) ? text : [text];
 
   // 保留页边界，让后续的「引用定位到原文页码」仍然可用

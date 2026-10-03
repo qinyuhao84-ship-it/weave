@@ -4,6 +4,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import * as React from "react";
+import { RefreshCw } from "lucide-react";
 
 export type NavLeaf = {
   href: string;
@@ -96,21 +97,22 @@ export function NavItem({
  * 一年也用不上一次，摆在常驻的侧栏里只会让人以为需要经常点。
  * 这里只回答一个问题 —— 知识库现在正常吗。
  */
-export function VaultStatus({ pages, healthy }: { pages: number; healthy: boolean }) {
+export function VaultStatus({ pages, healthy, loading = false, error, onRetry }: { pages: number | null; healthy: boolean | null; loading?: boolean; error?: string | null; onRetry?: () => void }) {
   const { t } = useI18n();
+  const confirmed = !loading && !error && healthy !== null;
+  const label = loading ? t("vaultStatus.checking") : !confirmed ? t("vaultStatus.failed") : healthy ? t("layout_sidebar.m034") : t("layout_sidebar.m035");
   return (
     <div
-      title={healthy ? t("layout_sidebar.m032", {v0: pages}) : t("layout_sidebar.m033")}
-      className="flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[12.5px] text-muted-foreground"
+      title={error || (confirmed ? healthy ? t("layout_sidebar.m032", {v0: pages ?? 0}) : t("layout_sidebar.m033") : label)}
+      className="vault-status flex min-h-10 items-center gap-2.5 rounded-[14px] border border-border bg-card/60 px-3 py-2 text-[12px] text-muted-foreground"
     >
       <span
         className="h-1.5 w-1.5 shrink-0 rounded-full"
-        style={{ background: healthy ? "var(--success)" : "var(--warning)" }}
+        style={{ background: confirmed && healthy ? "var(--success)" : loading ? "var(--muted-foreground)" : "var(--warning)" }}
         aria-hidden
       />
-      <span className="sidebar-label truncate">{healthy ? t("layout_sidebar.m034") : t("layout_sidebar.m035")}</span>
-      <span className="sidebar-label ml-auto tabular-nums">{pages}</span>
+      <span role="status" className="sidebar-label truncate">{label}</span>
+      {error && onRetry ? <button type="button" onClick={onRetry} disabled={loading} aria-label={t("vaultStatus.retry")} className="sidebar-label ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full hover:bg-muted disabled:opacity-50"><RefreshCw size={13} aria-hidden /></button> : pages !== null && <span className="sidebar-label ml-auto rounded-full bg-muted px-2 py-0.5 text-[11px] tabular-nums">{pages}</span>}
     </div>
   );
 }
-

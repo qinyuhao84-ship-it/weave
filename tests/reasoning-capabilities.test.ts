@@ -26,3 +26,24 @@ it("Gemini 不同型号不会共用不受支持的档位", () => {
   expect(reasoningCapability("https://gateway.example/v1", "gemini-3.1-pro-preview").efforts).toEqual(["default", "low", "medium", "high"]);
   expect(reasoningCapability("https://gateway.example/v1", "gemini-3.8-flash").efforts).not.toContain("minimal");
 });
+
+it("思考菜单只列实际档位，新选择采用中间档，已选有效档位保留", async () => {
+  const { thinkingEfforts, preferredThinkingEffort } = await import("@/lib/llm/capabilities");
+  expect(thinkingEfforts(reasoningCapability("https://api.deepseek.com", "deepseek-flash"))).toEqual(["low", "high", "max"]);
+  expect(preferredThinkingEffort("https://api.deepseek.com", "deepseek-flash")).toBe("high");
+  expect(preferredThinkingEffort("https://api.deepseek.com", "deepseek-flash", "none")).toBe("high");
+  expect(preferredThinkingEffort("https://api.deepseek.com", "deepseek-flash", "max")).toBe("max");
+  expect(preferredThinkingEffort("https://gateway.example", "custom", "default", { id: "custom", reasoningEfforts: ["none", "low", "medium", "high"] })).toBe("medium");
+  expect(preferredThinkingEffort("https://gateway.example", "custom", "default", { id: "custom", reasoningEfforts: [] })).toBe("default");
+  expect(thinkingEfforts(reasoningCapability("https://gateway.example", "unknown"))).toEqual([]);
+});
+
+it("官方 OpenAI 型号使用各自的真实档位，元数据仍优先", async () => {
+  const { thinkingEfforts } = await import("@/lib/llm/capabilities");
+  const baseUrl = "https://api.openai.com/v1";
+  expect(thinkingEfforts(reasoningCapability(baseUrl, "gpt-5.1"))).toEqual(["low", "medium", "high"]);
+  expect(thinkingEfforts(reasoningCapability(baseUrl, "gpt-5.4"))).toEqual(["low", "medium", "high", "xhigh"]);
+  expect(thinkingEfforts(reasoningCapability(baseUrl, "gpt-6.1-sol"))).toEqual(["low", "medium", "high", "xhigh", "max"]);
+  expect(thinkingEfforts(reasoningCapability(baseUrl, "gpt-6.1-sol", { id: "gpt-6.1-sol", reasoningEfforts: ["low", "high"] }))).toEqual(["low", "high"]);
+  expect(thinkingEfforts(reasoningCapability(baseUrl, "gpt-future"))).toEqual([]);
+});

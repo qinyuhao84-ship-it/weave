@@ -144,8 +144,9 @@ it("HTML 中独有的引用也会校验，越界编号被剔除", async () => {
 it("模型不产出文档时降级；截断或停止时只保留未完成文件", async () => {
   const basic = await answer({ sessionId: createSession("基础"), question: "推荐算法", config, provider: new FakeProvider({ responses: ["回答内容。[ID:1]"] }) });
   expect(basic.artifacts[0].status).toBe("basic"); expect(createDocument(getArtifact(basic.artifacts[0].id)!.content).querySelector("details[open]")).toBeTruthy();
-  const cut = await answer({ sessionId: createSession("截断"), question: "推荐算法", config, provider: new FakeProvider({ responses: [{ text: `回答${HTML_START}<html>`, truncated: true }] }) });
-  expect(cut.artifacts[0].status).toBe("incomplete");
+  const cutSession = createSession("截断");
+  await expect(answer({ sessionId: cutSession, question: "推荐算法", config, provider: new FakeProvider({ responses: [{ text: `回答${HTML_START}<html>`, truncated: true }] }) })).rejects.toThrow("输出上限");
+  expect(getMessages(cutSession).at(-1)?.artifacts[0].status).toBe("incomplete");
   const controller = new AbortController();
   const fake = new FakeProvider();
   fake.stream = async function* () { yield `部分回答${HTML_START}<html>部分文件`; controller.abort(); throw new Error("cancel"); };
@@ -191,7 +192,7 @@ it("会话选择分别保存，任务冻结选择且全局配置不变", async (
 it("服务默认不发送推理参数，所选服务的密钥不会出现在会话响应里", async () => {
   vi.stubGlobal("fetch", async (_url: string, input: RequestInit) => {
     const body = JSON.parse(String(input.body)); expect(body.model).toBe("other-model"); expect(body).not.toHaveProperty("reasoning_effort");
-    return Response.json({ choices: [{ message: { content: "OK" } }] });
+    return Response.json({ choices: [{ message: { content: "OK" }, finish_reason: "stop" }] });
   });
   await chatProvider({ ...config, model: "other-model", reasoningEffort: "default" }).complete({ messages: [{ role: "user", content: "test" }] });
   const sessionId = createSession("配置接口");

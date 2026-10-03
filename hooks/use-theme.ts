@@ -5,11 +5,9 @@ import * as React from "react";
 export type Theme = "light" | "dark" | "system";
 
 const STORAGE_KEY = "weave-theme";
-const FOCUS_KEY = "weave-theme-focus";
 
 type ThemeState = {
   theme: Theme;
-  focusMode: boolean;
   /** 把「跟随系统」解析之后的结果也放进快照。
       没有它的话，选「跟随系统」的用户在系统切到深色时，界面不会跟着变 ——
       因为 theme 字段本身没变，订阅者收不到任何通知。这是默认选项，
@@ -21,8 +19,6 @@ type ThemeState = {
  * 主题管理。
  *
  * 深色模式是用户明确要求的 —— 知识库是长时间阅读场景，晚上看白底很伤眼。
- * 参考站有两套暗色：通用的 #111 底，以及一套深靛蓝的「专注模式」，
- * 后者更适合长文阅读与图谱界面。亮色下也有一套对应的专注配色（见 globals.css）。
  *
  * 状态放在**模块级**而不是组件里：主题开关会同时出现在导航栏底部与设置页，
  * 两个 useTheme 实例各自持有一份 state 就会互相不同步 —— 改了侧栏那个，
@@ -58,7 +54,7 @@ function writeStored(key: string, value: string): void {
     不能让它指向 state —— state 会被 hydrate() 整个替换掉，
     那样 getServerSnapshot 在 hydration 之后就会返回客户端值，
     与服务端渲染出的 HTML 不一致。 */
-const INITIAL: ThemeState = { theme: "system", focusMode: false, resolved: "light" };
+const INITIAL: ThemeState = { theme: "system", resolved: "light" };
 
 let state: ThemeState = INITIAL;
 let hydrated = false;
@@ -84,8 +80,7 @@ function resolve(next: Omit<ThemeState, "resolved">): ThemeState {
 function apply(next: ThemeState): void {
   const root = document.documentElement;
   root.classList.toggle("dark", next.resolved === "dark");
-  if (next.focusMode) root.setAttribute("data-theme", "focus");
-  else root.removeAttribute("data-theme");
+  root.removeAttribute("data-theme");
 }
 
 /** 挂载后才读 localStorage —— 模块顶层读会在服务端炸掉。 */
@@ -94,7 +89,6 @@ function hydrate(): void {
   hydrated = true;
   state = resolve({
     theme: readStored<Theme>(STORAGE_KEY, "system"),
-    focusMode: readStored<string>(FOCUS_KEY, "0") === "1",
   });
 }
 
@@ -145,17 +139,6 @@ export function setTheme(next: Theme): void {
   update({ theme: next });
 }
 
-export function setFocusMode(next: boolean): void {
-  writeStored(FOCUS_KEY, next ? "1" : "0");
-  update({ focusMode: next });
-}
-
-export function toggleFocusMode(): void {
-  // 副作用放在 setter 外面，而不是塞进 setState 的 updater ——
-  // React 在 StrictMode 下会把 updater 调用两次，副作用会跟着执行两次。
-  setFocusMode(!state.focusMode);
-}
-
 export function useTheme() {
   const snapshot = React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
@@ -163,8 +146,6 @@ export function useTheme() {
     theme: snapshot.theme,
     /** 实际生效的亮/暗（已解析「跟随系统」）。画布、图表这类读不到 CSS 的地方用它。 */
     resolved: snapshot.resolved,
-    focusMode: snapshot.focusMode,
     setTheme,
-    toggleFocusMode,
   };
 }

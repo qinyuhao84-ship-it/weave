@@ -16,7 +16,7 @@ it("删除旧网关后，历史会话使用当前服务且保留 HTML 偏好；�
   const run = beginChatRun(id, "旧问题", old);
   const config = getSession(id)!.config!;
   expect(config).toEqual({ providerId: "deepseek", model: "deepseek-flash", reasoningEffort: "default", contextWindow: 32768, showMe: true });
-  expect(resolveChatConfig(config)).toEqual(config);
+  expect(resolveChatConfig(config)).toEqual({ ...config, reasoningEffort: "high" });
   expect(getChatRun(run.id)?.config).toEqual(old);
   expect(JSON.parse(getDb().select().from(chatSessions).where(eq(chatSessions.id, id)).get()!.configJson!)).toEqual(old);
 });
@@ -39,4 +39,9 @@ it("空地址的旧服务回到当前服务；新会话采用当前默认", () =
 });
 it("显式提交不存在的服务仍拒绝，避免把错误选择静默发送给其他服务", () => {
   expect(() => resolveChatConfig(old)).toThrow("已移除");
+});
+
+it("未知型号的旧会话不继承未经证实的高思考参数", () => {
+  saveSettings({ providers: [{ ...provider(), model: 'unannounced-model', reasoningEffort: 'high' }], activeProviderId: 'deepseek' });
+  expect(resolveChatConfig({ ...old, providerId: 'deepseek', model: 'unannounced-model', reasoningEffort: 'high' }).reasoningEffort).toBe('default');
 });

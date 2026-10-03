@@ -9,7 +9,7 @@ import { apiFetch } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
 import {
   BookText,
-  History,
+  Search, ChevronDown,
   LoaderCircle,
   Menu,
   MessagesSquare,
@@ -28,7 +28,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 
 import { IngestIndicator } from "@/components/ingest/ingest-indicator";
-import { GroupLabel, NavItem, VaultStatus, type NavLeaf } from "./navigation-item";
+import { NavItem, VaultStatus, type NavLeaf } from "./navigation-item";
 
 /**
  * 左侧导航。
@@ -114,7 +114,7 @@ function SidebarBody({
   const params = useSearchParams();
   // 这三份数据由 AppDataProvider 统一取（外壳层只有一份实例），
   // 侧栏在这里只读 —— 桌面栏与移动端抽屉各挂一份也不会重复请求。
-  const { vault, sessions: allSessions, pendingReview, bumpData, agentName } = useAppData();
+  const { vault, vaultLoading, vaultError, refreshVault, sessions: allSessions, pendingReview, bumpData, agentName } = useAppData();
   const [sessionMenu, setSessionMenu] = React.useState<{
     id: string;
     title: string;
@@ -128,18 +128,9 @@ function SidebarBody({
   const [summarizingSessionId, setSummarizingSessionId] = React.useState<string | null>(null);
   const sessionMenuRef = React.useRef<HTMLDivElement>(null);
   const sessionMenuTriggerRef = React.useRef<HTMLElement | null>(null);
-  // 当前会话可能不在最近 8 条里（用旧书签打开一段很久没动的对话就会这样）。
-  // 那时「新对话」因为带 s 被判为不活跃、列表里那条又没渲染，侧栏一个高亮都没有 ——
-  // 所以把当前这条顶进来，而不是只改高亮：用户也需要在列表里看到自己在哪。
   const currentSessionId = params.get("s");
-  const sessions = React.useMemo(() => {
-    const recent = allSessions.slice(0, 8);
-    if (currentSessionId && !recent.some((s) => s.id === currentSessionId)) {
-      const current = allSessions.find((s) => s.id === currentSessionId);
-      if (current) return [current, ...recent.slice(0, 7)];
-    }
-    return recent;
-  }, [allSessions, currentSessionId]);
+  const sessions = allSessions;
+  const [recentOpen, setRecentOpen] = React.useState(true);
   const sessionMenuSession = sessionMenu
     ? allSessions.find((session) => session.id === sessionMenu.id) ?? null
     : null;
@@ -200,47 +191,51 @@ function SidebarBody({
   const primaryNav: NavLeaf[] = [
     { href: "/chat", label: t("layout_sidebar.m002"), icon: MessagesSquare },
     { href: "/wiki", label: t("layout_sidebar.m003"), icon: BookText },
-    { href: "/trash", label: t("layout_sidebar.m004"), icon: Trash2 },
     { href: "/wiki?view=graph", label: t("layout_sidebar.m005"), icon: Network },
     { href: "/review", label: t("layout_sidebar.m006"), icon: ShieldCheck, badge: pendingReview },
+    { href: "/trash", label: t("layout_sidebar.m004"), icon: Trash2 },
     { href: "/settings", label: t("layout_sidebar.m007"), icon: SettingsIcon },
   ];
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* 折叠按钮与导航图标共用固定位置，文字随栏宽淡出。 */}
+      {/* 品牌在左，折叠按钮靠右；折叠后只保留展开按钮。 */}
       <div className={cn("flex h-14 shrink-0 items-center gap-2 overflow-hidden", onClose ? "px-3" : "px-2")}>
+        <div className="sidebar-brand sidebar-label flex min-w-0 flex-1 items-center gap-1.5">
+          <WeaveMark className="h-5 w-5 text-foreground" />
+          <span className="truncate text-[14px] font-semibold tracking-[0.06em] text-foreground">{agentName}</span>
+        </div>
         {!onClose && <button
           type="button"
           onClick={toggleCollapsed}
           aria-label={collapsed ? t("layout_sidebar.m008") : t("layout_sidebar.m009")}
           aria-expanded={!collapsed}
           title={collapsed ? t("layout_sidebar.m008") : t("layout_sidebar.m009")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--muted)] hover:text-foreground"
+          className="sidebar-toggle ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--muted)] hover:text-foreground"
         >
           {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.8} /> : <PanelLeftClose size={16} strokeWidth={1.8} />}
         </button>}
-        <Link href="/wiki" aria-label={agentName} tabIndex={collapsed && !onClose ? -1 : undefined} className="sidebar-label flex min-w-0 flex-1 items-center gap-1.5">
-          <WeaveMark className="h-5 w-5 text-foreground" />
-          <span className="truncate text-[14px] font-semibold tracking-[0.06em] text-foreground">{agentName}</span>
-        </Link>
         {onClose && <button type="button" onClick={onClose} aria-label={t("layout_sidebar.m010")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[7px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--muted)] hover:text-foreground"><X size={15} strokeWidth={1.8} /></button>}
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
+      <nav className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-2 pb-2">
         {/* 「添加资料」不在这里：导入是知识库页的一个动作，已经在那里有入口，
             导航栏再放一个是同一个动作的第二个入口，只会让人犹豫该点哪个。 */}
-        <div className="space-y-0.5">
+        <div className="shrink-0 space-y-0.5">
           {primaryNav.map((item) => (
             <NavItem key={item.href} item={item} pathname={pathname} params={params} />
           ))}
         </div>
 
         {/* 最近对话 */}
-        {sessions.length > 0 && (
-          <>
-            <GroupLabel>{t("layout_sidebar.m011")}</GroupLabel>
-            <div className="space-y-0.5">
+        <section className={cn("flex min-h-0 flex-col pt-4", recentOpen && "flex-1")} aria-label={t("layout_sidebar.m011")}>
+          <div className="recent-heading mb-1 flex shrink-0 items-center gap-1">
+            <button type="button" onClick={() => setRecentOpen(open => !open)} aria-expanded={recentOpen} aria-controls="sidebar-recent-sessions" aria-label={t(recentOpen ? "sidebar.collapseRecent" : "sidebar.expandRecent")} className="recent-toggle flex min-h-9 min-w-0 flex-1 items-center gap-1.5 rounded-[10px] px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <span className="sidebar-label truncate">{t("layout_sidebar.m011")}</span><ChevronDown size={12} aria-hidden className={cn("recent-chevron shrink-0 transition-transform duration-200", !recentOpen && "-rotate-90")} />
+            </button>
+            <button type="button" className="recent-search flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" onClick={() => setShowSessions(true)} aria-label={t("sidebar.search")} title={t("sidebar.search")}><Search size={14} aria-hidden /></button>
+          </div>
+          {recentOpen && <div id="sidebar-recent-sessions" className="recent-sessions min-h-0 space-y-0.5 overflow-y-auto overscroll-contain">
               {sessions.map((session) => {
                 const active = pathname === "/chat" && params.get("s") === session.id;
                 return (
@@ -296,18 +291,17 @@ function SidebarBody({
                   </Link>
                 );
               })}
-            </div>
-          </>
-        )}
-        <button type="button" className="sidebar-item mt-2 flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-left text-[12.5px] text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setShowSessions(true)} aria-label={t("layout_sidebar.m016")}><History size={14} className="shrink-0" /><span className="sidebar-label">{t("layout_sidebar.m017")}</span></button>
+            </div>}
+        </section>
+
       </nav>
       {showSessions && <SessionListDialog onClose={() => { setShowSessions(false); onClose?.(); }} />}
 
       {/* 底部固定区 */}
-      <div className="sidebar-footer shrink-0 overflow-hidden border-t border-border p-2">
+      <div className="sidebar-footer shrink-0 overflow-hidden p-2">
         <IngestIndicator />
         <JobIndicators />
-        <VaultStatus pages={vault?.stats.pages ?? 0} healthy={vault?.indexHealthy ?? true} />
+        <VaultStatus pages={vault?.stats.pages ?? null} healthy={vault?.indexHealthy ?? null} loading={vaultLoading} error={vaultError} onRetry={() => void refreshVault()} />
       </div>
 
       {sessionMenu && createPortal(
@@ -315,7 +309,7 @@ function SidebarBody({
           ref={sessionMenuRef}
           role={renamingSession ? undefined : "menu"}
           aria-label={t("layout_sidebar.m018", {v0: sessionMenu.title})}
-          className="fixed z-[60] w-44 rounded-[10px] border border-border bg-popover p-1 shadow-dialog"
+          className="selection-popover fixed z-[60] w-44 p-1"
           style={{ left: sessionMenu.x, top: sessionMenu.y }}
         >
           {renamingSession ? (

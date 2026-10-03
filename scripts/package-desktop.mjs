@@ -3,8 +3,11 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { bundleInventory, sourceFingerprint, signingConfiguration, machOFiles } from './desktop-package-utils.mjs';
 if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('此安装包构建支持 macOS Apple Silicon。');
+const signing = signingConfiguration(process.env, process.env.WEAVE_MAC_SIGNING_IDENTITY ? execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'], { encoding: 'utf8' }) : '');
 const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+const sourceSha256 = sourceFingerprint(path.resolve('.'));
 const staging = path.resolve('.eval-cache/desktop-stage');
 const runtime = path.resolve('.eval-cache/desktop-runtime');
 fs.mkdirSync(runtime, { recursive: true });
@@ -40,6 +43,7 @@ fs.copyFileSync(path.join(runtime, 'node-v26.3.1-darwin-arm64/bin/node'), path.j
 fs.copyFileSync(path.join(gitSource, 'git'), path.join(resources, 'runtime/bin/git'));
 fs.chmodSync(path.join(resources, 'runtime/bin/git'), 0o755);
 fs.copyFileSync('desktop/launcher.mjs', path.join(resources, 'launcher.mjs'));
+fs.copyFileSync('desktop/使用说明.html', path.join(resources, '使用说明.html'));
 const licenses = path.join(resources, 'licenses'); fs.mkdirSync(licenses);
 for (const [source, name] of [['LICENSE', 'Weave-LICENSE.txt'], ['NOTICE.md', 'Weave-NOTICE.md'], [path.join(runtime, 'node-v26.3.1-darwin-arm64/LICENSE'), 'Node-LICENSE.txt'], [path.join(gitSource, 'COPYING'), 'Git-COPYING.txt']]) fs.copyFileSync(source, path.join(licenses, name));
 const thirdParty = JSON.parse(execFileSync('pnpm', ['licenses', 'list', '--prod', '--json'], { encoding: 'utf8' }));
@@ -63,6 +67,9 @@ function scrub(directory) {
   }
 }
 scrub(resources);
+// Next 的服务清单不需要构建机器的绝对路径。
+const requiredFiles = path.join(resources, 'server/.next/required-server-files.json');
+if (fs.existsSync(requiredFiles)) fs.writeFileSync(requiredFiles, fs.readFileSync(requiredFiles, 'utf8').replaceAll(JSON.stringify(path.resolve('.')), JSON.stringify('.')));
 fs.writeFileSync(path.join(contents, 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleName</key><string>织识</string><key>CFBundleDisplayName</key><string>织识</string><key>CFBundleIconFile</key><string>AppIcon</string><key>CFBundleIdentifier</key><string>org.weave.desktop</string><key>CFBundleExecutable</key><string>Weave</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleShortVersionString</key><string>${version}</string><key>CFBundleVersion</key><string>${version}</string><key>LSMinimumSystemVersion</key><string>13.5</string><key>NSHighResolutionCapable</key><true/><key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict><key>NSDocumentsFolderUsageDescription</key><string>用于保存和读取您的织识知识库。</string></dict></plist>`);
 execFileSync('xcrun', ['swiftc', '-O', '-target', 'arm64-apple-macos13.5', 'desktop/Main.swift', '-o', path.join(contents, 'MacOS/Weave')], { stdio: 'inherit' });
 const iconset = path.join(gitTemporary, 'Weave.iconset'); fs.mkdirSync(iconset);
@@ -78,13 +85,43 @@ function verifyLinks(directory) {
   }
 }
 verifyLinks(app);
-execFileSync('codesign', ['--force', '--deep', '--sign', '-', app], { stdio: 'inherit' });
+bundleInventory(app);
+if (signing.identity) {
+  // 按内部到外部签名；Node 只取得 Apple Silicon V8 必需的 JIT 权限。
+  for (const executable of machOFiles(app)) {
+    const arguments_ = ['--force', '--sign', signing.identity, '--options', 'runtime', '--timestamp'];
+    if (executable === path.join(resources, 'runtime/bin/node')) arguments_.push('--entitlements', 'desktop/Node.entitlements.plist');
+    execFileSync('codesign', [...arguments_, executable], { stdio: 'inherit' });
+  }
+  execFileSync('codesign', ['--force', '--sign', signing.identity, '--options', 'runtime', '--timestamp', app], { stdio: 'inherit' });
+  const guidance = path.join(resources, '使用说明.html');
+  // 说明在签名之前写入；下方重新封装签名以覆盖更新后的资源。
+  fs.writeFileSync(guidance, fs.readFileSync(guidance, 'utf8').replace('预览包使用 ad-hoc 签名，尚未 Apple 公证。', signing.profile ? '本包使用 Developer ID 签名；公证状态以随包构建清单为准。' : '本包使用 Developer ID 签名，尚未 Apple 公证。'));
+  execFileSync('codesign', ['--force', '--sign', signing.identity, '--options', 'runtime', '--timestamp', app], { stdio: 'inherit' });
+} else execFileSync('codesign', ['--force', '--deep', '--sign', '-', app], { stdio: 'inherit' });
 execFileSync('codesign', ['--verify', '--deep', '--strict', app], { stdio: 'inherit' });
 fs.symlinkSync('/Applications', path.join(staging, 'Applications'));
-const output = path.resolve('dist'); fs.mkdirSync(output, { recursive: true });
+fs.copyFileSync(path.join(resources, '使用说明.html'), path.join(staging, '安装与备份说明.html'));
+// 预生成的纯布局模板不包含机器路径；CI 无需 Finder 自动化或额外 Python 依赖。
+fs.copyFileSync('desktop/InstallLayout.store', path.join(staging, '.DS_Store'));
+const output = path.resolve(process.env.WEAVE_DESKTOP_OUTPUT_DIR || 'dist'); fs.mkdirSync(output, { recursive: true });
 const dmg = path.join(output, `Weave-${version}-macOS-arm64.dmg`); fs.rmSync(dmg, { force: true });
 execFileSync('hdiutil', ['create', '-volname', `织识 ${version}`, '-srcfolder', staging, '-ov', '-format', 'UDZO', dmg], { stdio: 'inherit' });
+if (signing.identity) execFileSync('codesign', ['--force', '--sign', signing.identity, '--timestamp', dmg], { stdio: 'inherit' });
+if (signing.profile) {
+  const notarization = JSON.parse(execFileSync('xcrun', ['notarytool', 'submit', dmg, '--keychain-profile', signing.profile, '--wait', '--timeout', '20m', '--output-format', 'json'], { encoding: 'utf8', timeout: 1_260_000 }));
+  if (notarization.status !== 'Accepted') throw new Error(`Apple 公证未通过（${notarization.status || '未知状态'}），不会声明可正式分发。`);
+  execFileSync('xcrun', ['stapler', 'staple', dmg], { stdio: 'inherit' });
+  execFileSync('xcrun', ['stapler', 'validate', dmg], { stdio: 'inherit' });
+  execFileSync('spctl', ['--assess', '--type', 'execute', '--verbose=2', app], { stdio: 'inherit' });
+  signing.status = 'developer-id-notarized';
+}
+execFileSync('hdiutil', ['verify', dmg], { stdio: 'inherit' });
 fs.copyFileSync(gitArchive, path.join(output, 'git-2.56.0.tar.xz'));
-fs.writeFileSync(path.join(output, 'SHA256SUMS.txt'), [dmg, path.join(output, 'git-2.56.0.tar.xz')].map(file => `${crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}  ${path.basename(file)}`).join('\n') + '\n');
-console.log(`已生成 ${dmg}；使用 ad-hoc 签名，未进行 Apple 公证。`);
+const manifest = path.join(output, `Weave-${version}-macOS-arm64.build.json`);
+const inventory = bundleInventory(app);
+const dependencies = licenseManifest.map(({ name, versions, license }) => ({ name, versions, license })).sort((a, b) => `${a.name}@${a.versions.join(',')}`.localeCompare(`${b.name}@${b.versions.join(',')}`));
+fs.writeFileSync(manifest, JSON.stringify({ version, platform: 'darwin', architecture: 'arm64', minimumMacOS: '13.5', builtAt: new Date().toISOString(), sourceSha256, nextBuildId: fs.readFileSync(path.join(resources, 'server/.next/BUILD_ID'), 'utf8').trim(), signing: signing.status, notarized: signing.status === 'developer-id-notarized', bundle: inventory, dependencies, dmg: { bytes: fs.statSync(dmg).size, sha256: crypto.createHash('sha256').update(fs.readFileSync(dmg)).digest('hex') }, runtime: { node: '26.3.1', git: '2.56.0' } }, null, 2) + '\n');
+fs.writeFileSync(path.join(output, 'SHA256SUMS.txt'), [dmg, manifest, path.join(output, 'git-2.56.0.tar.xz')].map(file => `${crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}  ${path.basename(file)}`).join('\n') + '\n');
+console.log(`已生成 ${dmg}；签名状态：${signing.status}。构建清单：${path.basename(manifest)}`);
 } finally { fs.rmSync(gitTemporary, { recursive: true, force: true }); }

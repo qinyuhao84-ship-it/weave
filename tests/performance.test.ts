@@ -124,7 +124,7 @@ it("主模型的 high 不会变成未知轻量模型不支持的 low", async () 
   const bodies: Record<string, unknown>[] = [];
   vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
     bodies.push(JSON.parse(String(init?.body)));
-    return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }));
+    return new Response(JSON.stringify({ choices: [{ message: { content: "ok" }, finish_reason: "stop" }] }));
   });
   const first = createLightProvider();
   expect(first.contextWindow).toBe(32768);
@@ -137,7 +137,7 @@ it("OpenAI 推理请求省略不兼容温度并使用 completion 输出预算", 
   let body: Record<string, unknown> = {};
   vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
     body = JSON.parse(String(init?.body));
-    return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }));
+    return new Response(JSON.stringify({ choices: [{ message: { content: "ok" }, finish_reason: "stop" }] }));
   });
   const provider = new OpenAiCompatibleProvider({ baseUrl: "https://api.openai.com/v1", apiKey: "", model: "gpt-5.5", defaultReasoningEffort: "low" });
   await provider.complete({ messages: [], temperature: .3, maxTokens: 1024 });

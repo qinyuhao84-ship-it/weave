@@ -111,6 +111,15 @@ describe("PDF 解析（Node 兜底路径）", () => {
     expect(result.pageCount).toBe(2);
   });
 
+  it("离线提取中文正文，不能把缺少字符映射误报为扫描件", async () => {
+    resetDoclingCache();
+    const result = await parseDocument(input("sample.pdf"));
+    expect(result.markdown).toContain("知识管理方法论");
+    expect(result.markdown).toContain("卢曼的卡片盒笔记法");
+    expect(result.markdown).toContain("知识会累积，而不是每次重新检索");
+    expect(result.warnings.join(" ")).not.toContain("几乎没有可提取的文字");
+  });
+
   it("保留页码标记，供引用精确定位使用", async () => {
     resetDoclingCache();
     const result = await parseDocument(input("sample.pdf"));

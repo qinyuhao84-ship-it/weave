@@ -181,6 +181,7 @@
   --sidebar-w: 60px;
 }
 .sidebar-collapsible { transition: width 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+:root[data-sidebar="collapsed"] .sidebar-collapsible .sidebar-brand { display: none; }
 .sidebar-collapsible .sidebar-label { white-space: nowrap; transition: opacity 140ms ease-out; }
 .sidebar-collapsible .sidebar-item { height: 36px; white-space: nowrap; overflow: hidden; }
 .sidebar-collapsible .sidebar-session { height: 32px; }
@@ -219,35 +220,6 @@
 .weave-arrival path:nth-child(4) { animation-delay: 180ms; }
 @media (prefers-reduced-motion: reduce) {
   .sidebar-collapsible, .sidebar-collapsible .sidebar-label { transition: none !important; }
-}
-
-/* 深靛蓝「专注模式」—— 长文阅读与图谱界面可用 */
-.dark[data-theme="focus"] {
-  --background: #0a0a12;
-  --foreground: #ffffff;
-  --card: #13131f;
-  --popover: #1a1a2a;
-  --border: #ffffff14;
-  --muted: #ffffff0f;
-  --muted-foreground: #ffffffb3;
-  --secondary: #ffffff0f;
-  --accent: #ffffff0f;
-}
-
-/* 亮色「专注模式」。
-   原来的选择器是 .dark[data-theme="focus"]，于是亮色下打开这个开关毫无反应。
-   补一套亮色的：把纸压深一档，模拟台灯调暗。
-   暖调不变，灰阶仍然是黑叠 alpha，不是实色灰。
-   用 :not(.dark) 把特异性拉到高于暗色那条，避免两条规则同分靠顺序决胜。 */
-:root:not(.dark)[data-theme="focus"] {
-  --background: #f6f4f1;
-  --card: #fcfbf9;
-  --popover: #fcfbf9;
-  --muted: #1111110d;
-  --secondary: #1111110d;
-  --accent: #1111110d;
-  --border: #1111111a;
-  --muted-foreground: #111111ad;
 }
 
 /* ------------------------------------------------------------------ 主题映射 */
@@ -850,4 +822,54 @@
   .citation-ref:hover { background: color-mix(in srgb, var(--ring) 20%, transparent); }
   .citation-ref[data-pending] { color: var(--muted-foreground); background: var(--muted); cursor: default; }
   .citation-ref[role="button"] { cursor: pointer; }
+}
+
+/* Shared surfaces: quieter borders, a consistent popup, and restrained response motion. */
+.selection-popover {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 12px 36px #00000012, 0 2px 6px #00000008;
+  animation: selection-in 160ms cubic-bezier(.16, 1, .3, 1);
+}
+.select-popup {
+  z-index: 100;
+  width: var(--popover-anchor-width);
+  max-width: calc(100vw - 24px);
+  max-height: min(360px, var(--popover-available-height));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+}
+.select-viewport { max-height: 280px; overflow-y: auto; overscroll-behavior: contain; }
+.selection-option {
+  display: flex; min-height: 38px; align-items: center; gap: 12px;
+  padding: 8px 10px; border-radius: 10px; font-size: 13px;
+  overflow-wrap: anywhere; cursor: default; outline: none;
+}
+.selection-option[data-active-item], .selection-option[aria-selected="true"] { background: var(--muted); }
+.selection-option[aria-disabled="true"] { opacity: .4; }
+.selection-option[data-active-item] { box-shadow: inset 0 0 0 1px var(--input); }
+.chat-picker { border-radius: 16px; }
+:root[data-sidebar="collapsed"] .sidebar-collapsible .sidebar-toggle { margin-left: 0; }
+:root[data-sidebar="collapsed"] .sidebar-collapsible .recent-heading { flex-direction: column; gap: 0; }
+:root[data-sidebar="collapsed"] .sidebar-collapsible .recent-toggle { width: 36px; flex: none; padding: 0; justify-content: center; }
+:root[data-sidebar="collapsed"] .sidebar-collapsible .recent-toggle .sidebar-label { display: none; }
+:root[data-sidebar="collapsed"] .sidebar-collapsible .recent-search { align-self: flex-start; }
+:root[data-sidebar="collapsed"] .sidebar-collapsible .vault-status { border-color: transparent; padding-left: 10px; padding-right: 0; background: transparent; }
+.recent-sessions { scrollbar-width: thin; animation: selection-in 180ms ease-out; }
+.chat-context-panel { animation: selection-in 180ms cubic-bezier(.16, 1, .3, 1); }
+.chat-composer { box-shadow: 0 2px 8px #00000003; }
+.chat-surface { box-shadow: 0 2px 8px #00000002; }
+.answer-meta { transition: opacity 180ms ease-out; }
+@keyframes selection-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 640px) {
+  .selection-option { min-height: 44px; font-size: 14px; }
+  .chat-workspace { padding: 0; }
+  .chat-surface { border-radius: 0; border: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .selection-popover, .recent-sessions, .chat-context-panel { animation: none; }
+  .answer-meta, .recent-chevron { transition: none; }
 }

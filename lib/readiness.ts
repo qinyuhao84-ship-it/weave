@@ -7,6 +7,7 @@ import { getActiveProvider, isLlmConfigured } from "@/lib/settings";
 import { checkDocling } from "@/lib/ingest/parse/docling";
 import { listProviderModels } from "@/lib/llm/models";
 import { LlmError } from "@/lib/llm/types";
+import { getSqlite } from "@/lib/db/client";
 
 export type ReadinessCheck = { name: string; status: "ok" | "warning" | "error"; detail: string };
 export async function checkReadiness(probeModel = false): Promise<ReadinessCheck[]> {
@@ -18,6 +19,11 @@ export async function checkReadiness(probeModel = false): Promise<ReadinessCheck
     fs.unlinkSync(probe);
     checks.push({ name: "知识库权限", status: "ok", detail: "当前目录可以创建和删除文件。" });
   } catch { checks.push({ name: "知识库权限", status: "error", detail: "无法写入知识库，请检查目录权限、剩余空间与 WEAVE_VAULT 配置。" }); }
+  try {
+    const row = getSqlite().prepare("SELECT value FROM index_meta WHERE key = 'page_id_conflicts'").get() as { value: string } | undefined;
+    const conflicts = row ? JSON.parse(row.value) as Array<{ relativePaths: string[] }> : [];
+    if (conflicts.length) checks.push({ name: "词条身份", status: "error", detail: `发现 ${conflicts.length} 组重复词条 id，相关文件已暂停检索和写入：${conflicts.flatMap(conflict => conflict.relativePaths).slice(0, 4).join("、")}。请备份后修正重复 id，再重建索引。` });
+  } catch { checks.push({ name: "词条身份", status: "warning", detail: "无法确认词条身份索引。请检查本机日志并重新检查。" }); }
   try {
     execFileSync("git", ["--version"], { timeout: 5000, stdio: "ignore" });
     checks.push({ name: "本地备份", status: "ok", detail: "Git 可用。" });

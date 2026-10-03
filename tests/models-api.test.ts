@@ -60,8 +60,8 @@ it('连接测试调用所选模型的生成接口，沿用隐藏密钥且不保�
   expect((await response.json()).data).toMatchObject({ connected: true, model: 'model-a' });
   expect(getSettings().providers[0].model).toBe('model-a');
 });
-it('推理模型耗尽短测试预算时仍判定连接可用', async () => {
-  vi.stubGlobal('fetch', async () => Response.json({ choices: [{ message: { content: '', reasoning_content: 'Thinking' }, finish_reason: 'length' }] }));
+it('推理模型耗尽短测试预算但已返回正文时仍判定连接可用', async () => {
+  vi.stubGlobal('fetch', async () => Response.json({ choices: [{ message: { content: 'OK', reasoning_content: 'Thinking' }, finish_reason: 'length' }] }));
   const response = await POST(request({ providerId: 'fixture', test: true }));
   expect(response.status).toBe(200);
   expect((await response.json()).data).toMatchObject({ connected: true, model: 'model-a' });
@@ -72,7 +72,7 @@ it('连接测试使用保存/草稿的温度与思考档位，草稿不写回', 
   const bodies: Record<string, unknown>[] = [];
   vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
     bodies.push(JSON.parse(String(init.body)));
-    return Response.json({ choices: [{ message: { content: 'OK' } }] });
+    return Response.json({ choices: [{ message: { content: 'OK' }, finish_reason: 'stop' }] });
   });
   expect((await POST(request({ providerId: 'fixture', test: true }))).status).toBe(200);
   expect((await POST(request({ provider: { id: 'fixture', baseUrl: saved.baseUrl, model: 'deepseek-flash', reasoningEffort: 'high', temperature: 0.9 }, test: true }))).status).toBe(200);

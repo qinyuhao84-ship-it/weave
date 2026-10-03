@@ -120,7 +120,7 @@ describe("请求超时与格式降级的边界", () => {
     const bodies: Record<string, unknown>[] = [];
     vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body)); bodies.push(body);
-      return body.response_format ? new Response('{"error":"response_format unsupported"}', { status: 400 }) : new Response('{"choices":[{"message":{"content":"{}"}}]}');
+      return body.response_format ? new Response('{"error":"response_format unsupported"}', { status: 400 }) : new Response('{"choices":[{"message":{"content":"{}"},"finish_reason":"stop"}]}');
     });
     try {
       const provider = new OpenAiCompatibleProvider({ baseUrl: 'http://localhost/', apiKey: '', model: 'm', supportsStrictSchema: true });
@@ -130,5 +130,36 @@ describe("请求超时与格式降级的边界", () => {
       expect(bodies).toHaveLength(4);
       expect(bodies[2]).not.toHaveProperty('response_format'); expect(bodies[3]).not.toHaveProperty('response_format');
     } finally { vi.unstubAllGlobals(); }
+  });
+});
+
+describe("非流式生成必须有完整、非空的回答", () => {
+  async function complete(choice: Record<string, unknown>) {
+    vi.stubGlobal("fetch", async () => Response.json({ choices: [choice] }));
+    const { OpenAiCompatibleProvider } = await import("@/lib/llm/provider");
+    try {
+      return await new OpenAiCompatibleProvider({ baseUrl: "http://localhost", apiKey: "", model: "m" })
+        .complete({ messages: [{ role: "user", content: "测试" }] });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  }
+
+  it.each([
+    ["content_filter", { message: { content: "被拒答的片段" }, finish_reason: "content_filter" }, /服务中止/],
+    ["缺少结束原因", { message: { content: "看起来完整的正文" } }, /完成前结束/],
+    ["未知结束原因", { message: { content: "看起来完整的正文" }, finish_reason: "tool_calls" }, /完成前结束/],
+  ])("拒绝 %s", async (_name, choice, message) => {
+    await expect(complete(choice)).rejects.toMatchObject({ status: 502, message: expect.stringMatching(message) });
+  });
+
+  it.each(["stop", "length"])("%s 终态的空正文失败", async finishReason => {
+    await expect(complete({ message: { content: "  " }, finish_reason: finishReason }))
+      .rejects.toMatchObject({ status: 502, message: /没有返回回答正文/ });
+  });
+
+  it("length 终态保留非空文本并交给结构化调用方重试", async () => {
+    await expect(complete({ message: { content: '{"partial":' }, finish_reason: "length" }))
+      .resolves.toMatchObject({ text: '{"partial":', truncated: true });
   });
 });

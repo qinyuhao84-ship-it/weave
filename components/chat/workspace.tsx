@@ -5,7 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Send, Plus, Trash2, BookMarked, X, Quote, AlertTriangle, CircleStop,
+  Send, Trash2, BookMarked, X, Quote, AlertTriangle, CircleStop,
 } from "lucide-react";
 import { useAppData } from "@/components/app-provider";
 import { useIngest } from "@/components/ingest/ingest-provider";
@@ -621,10 +621,10 @@ export function ChatWorkspace() {
   return (
     <>
       {/* 移动端要让开顶部导航条（h-12），桌面端侧栏占满高度，主区就是满屏 */}
-      <div className="flex h-[calc(100dvh-3rem)] md:h-dvh">
+      <div className="chat-workspace flex h-[calc(100dvh-3rem)] p-2 md:h-dvh md:p-3">
         {/* 主对话区 */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border px-4">
+        <div className="chat-surface flex min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-border bg-card/50">
+          <div className="chat-header flex h-12 shrink-0 items-center justify-between gap-3 px-4">
             <span className="truncate text-[12.5px] text-muted-foreground">{sessionTitle}</span>
             <div className="flex shrink-0 items-center gap-1">
               {activeSessionId && context && context.maxTokens > 0 && (
@@ -656,22 +656,14 @@ export function ChatWorkspace() {
                   <Trash2 size={13} strokeWidth={1.8} />
                 </button>
               )}
-              {activeSessionId && (
-                <button
-                  type="button"
-                  onClick={handleNewSession}
-                  className="flex h-7 items-center gap-1 rounded-full px-2 text-[12px] text-muted-foreground transition-colors hover:bg-[var(--muted)] hover:text-foreground"
-                >
-                  <Plus size={13} strokeWidth={1.8} />
-                  {t("chat_workspace.m001")}</button>
-              )}
+
             </div>
           </div>
 
           {/* 上下文占用明细。点开才出现，因为它是「想深究时才有用」的信息 ——
               常驻会把头部那一行挤满，而平时没人需要看五个分项。 */}
           {activeSessionId && context && showContext && (
-            <div className="shrink-0 border-b border-border bg-[var(--muted)] px-4 py-2 text-[11.5px] leading-relaxed text-muted-foreground">
+            <div className="chat-context-panel mx-4 mb-2 shrink-0 rounded-[14px] border border-border bg-muted/50 px-3 py-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
               <div className="mx-auto max-w-3xl md:px-2">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <span className="text-foreground" data-numeric>
@@ -682,7 +674,7 @@ export function ChatWorkspace() {
                     {context.measured ? t("chat_workspace.m014") : t("chat_workspace.m015")}
                   </span>
                 </div>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
                   <span>{t("chat_workspace.m016")}{formatTokenCount(context.breakdown.system)}</span>
                   {context.breakdown.summary > 0 && (
                     <span>{t("chat_workspace.m017")}{formatTokenCount(context.breakdown.summary)}</span>
@@ -691,15 +683,14 @@ export function ChatWorkspace() {
                   <span>{t("chat_workspace.m019")}{formatTokenCount(context.breakdown.context)}</span>
                   <span>{t("chat_workspace.m020")}{formatTokenCount(context.breakdown.question)}</span>
                 </div>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                  <span>{t("chat_workspace.m021")}{context.historyMessages} {t("chat_workspace.m022")}</span>
+                {(context.summarizedMessages > 0 || context.compressionCount > 0 || context.droppedMessages > 0) && <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                   {context.summarizedMessages > 0 && <span>{t("chat_workspace.m023")}{context.summarizedMessages} {t("chat_workspace.m022")}</span>}
                   {context.compressionCount > 0 && <span>{t("chat_workspace.m024")}{context.compressionCount} {t("chat_workspace.m025")}</span>}
                   {/* 硬丢弃的条数取自落库的实测记录，所以刷新页面后仍然在。
                       下面那段文字只在刚发生截断的那一轮出现 —— 少了这一行，
                       刷新一次「丢了 3 条对话」就消失了，而顶部百分比照样好看。 */}
                   {context.droppedMessages > 0 && <span>{t("chat_workspace.m026")}{context.droppedMessages} {t("chat_workspace.m022")}</span>}
-                </div>
+                </div>}
                 {!context.measured && context.breakdown.context === 0 && (
                   <p className="mt-1">
                     {t("chat_workspace.m027")}</p>
@@ -797,7 +788,7 @@ export function ChatWorkspace() {
               </div>
 
               {error && (
-                <div className="mt-4 rounded-[12px] border border-[color-mix(in_srgb,var(--destructive)_30%,transparent)] bg-[color-mix(in_srgb,var(--destructive)_7%,transparent)] p-3.5 text-[12.5px] text-foreground">
+                <div role="alert" className="mt-4 rounded-[12px] border border-[color-mix(in_srgb,var(--destructive)_30%,transparent)] bg-[color-mix(in_srgb,var(--destructive)_7%,transparent)] p-3.5 text-[12.5px] text-foreground">
                   {error}
                 </div>
               )}
@@ -805,7 +796,7 @@ export function ChatWorkspace() {
           </div>
 
           {/* 输入区 */}
-          <div className={cn("shrink-0", hasConversation && "border-t border-border")}>
+          <div className="shrink-0 pt-2">
             <div className="mx-auto max-w-3xl px-4 pb-3.5 md:px-6">
               {/* 焦点反馈给整条输入框（描边加深），不在里面的 textarea 上再套一圈。
                   浏览器对文本输入框的 :focus-visible 是「只要聚焦就命中」，所以鼠标点进来
@@ -814,14 +805,15 @@ export function ChatWorkspace() {
               <AiWorkingFrame
                 working={busy}
                 tone="answer"
-                className="border border-border bg-card transition-colors focus-within:border-[color-mix(in_srgb,var(--foreground)_32%,transparent)]"
+                className="chat-composer border border-border bg-card transition-colors focus-within:border-[color-mix(in_srgb,var(--foreground)_32%,transparent)]"
               >
                 <div className="p-2.5">
                   <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      // IME 结束时 compositionend 可能先于 keydown，229 仍表示候选确认。
+                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) {
                         e.preventDefault();
                         void handleSend();
                       }
@@ -861,11 +853,7 @@ export function ChatWorkspace() {
                 </div>
               </AiWorkingFrame>
             </div>
-            {!hasConversation && (
-              <p className="mx-auto mt-3 flex max-w-3xl items-baseline justify-center gap-1.5 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-[11.5px] text-muted-foreground md:px-6">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)]" aria-hidden />
-                {t("chat_workspace.m044")}</p>
-            )}
+
           </div>
 
           {/* 空状态时把输入框顶到视觉中间。用一个占位块而不是给输入框换位置 ——

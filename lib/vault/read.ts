@@ -25,6 +25,8 @@ export type ScanResult = {
   pages: LoadedPage[];
   /** 解析失败的文件 —— 不能让一个坏文件阻断整个索引 */
   broken: BrokenFile[];
+  /** 复制 Markdown 时可能保留同一 id；所有歧义文件都退出索引，原文件保持不变。 */
+  idConflicts: Array<{ pageId: string; relativePaths: string[] }>;
 };
 
 /** 递归列出 wiki/ 下所有 .md 文件（vault 相对路径，字典序） */
@@ -95,7 +97,21 @@ export function scanAllPages(): ScanResult {
     }
   }
 
-  return { pages, broken };
+  const byId = new Map<string, LoadedPage[]>();
+  for (const page of pages) {
+    const group = byId.get(page.data.id) ?? [];
+    group.push(page);
+    byId.set(page.data.id, group);
+  }
+  const idConflicts = [...byId].filter(([, group]) => group.length > 1)
+    .map(([pageId, group]) => ({ pageId, relativePaths: group.map(page => page.relativePath) }));
+  const conflicted = new Set(idConflicts.map(conflict => conflict.pageId));
+  for (const page of pages) if (conflicted.has(page.data.id)) broken.push({
+    relativePath: page.relativePath,
+    absolutePath: page.absolutePath,
+    error: "多份词条使用同一 id，已暂停这些文件的检索和写入。请备份后为复制的词条设置唯一 id，再重建索引。",
+  });
+  return { pages: pages.filter(page => !conflicted.has(page.data.id)), broken, idConflicts };
 }
 
 /* ---------------------------------------------------------------- 墓碑 */

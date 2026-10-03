@@ -44,7 +44,7 @@ test('主要界面：桌面与窄屏、亮色与深色、键盘和溢出检查',
         await page.goto('/chat');
         const sidebar = page.locator('aside.sidebar-collapsible');
         const sessionCount = (await (await request.get('/api/chat/sessions')).json()).data.sessions.length;
-        await expect(sidebar.locator('nav a[href^="/chat?s="]')).toHaveCount(Math.min(sessionCount, 8));
+        await expect(sidebar.locator('nav a[href^="/chat?s="]')).toHaveCount(sessionCount);
         const coordinates = () => page.evaluate(() => Array.from(document.querySelectorAll('.sidebar-collapsible nav .sidebar-item')).map(item => {
           const rect = item.querySelector('svg')!.getBoundingClientRect();
           return { x: rect.x, y: rect.y };
@@ -54,18 +54,22 @@ test('主要界面：桌面与窄屏、亮色与深色、键盘和溢出检查',
         await expect(sidebar).toHaveCSS('transition-duration', '0.22s');
         const toggle = page.getByRole('button', { name: '收起导航', exact: true });
         const toggleBefore = await toggle.boundingBox();
+        const brand = await sidebar.locator('.sidebar-brand').boundingBox();
+        expect(brand && toggleBefore && brand.x + brand.width <= toggleBefore.x).toBeTruthy();
         await toggle.click();
         await expect(sidebar).toHaveCSS('width', '60px');
         await waitForVisualSettling(page);
         const after = await coordinates();
         expect(after).toHaveLength(before.length);
-        after.forEach((point, index) => {
+        after.slice(0, 6).forEach((point, index) => {
           expect(Math.abs(point.x - before[index].x)).toBeLessThan(1);
           expect(Math.abs(point.y - before[index].y)).toBeLessThan(1);
         });
         const expand = page.getByRole('button', { name: '展开导航', exact: true });
         const toggleAfter = await expand.boundingBox();
-        expect(toggleAfter?.x).toBe(toggleBefore?.x);
+        expect(toggleBefore && toggleAfter).toBeTruthy();
+        const icon = await sidebar.locator('nav .sidebar-item svg').first().boundingBox();
+        expect(Math.abs(toggleAfter!.x + toggleAfter!.width / 2 - icon!.x - icon!.width / 2)).toBeLessThan(1);
         expect(toggleAfter?.y).toBe(toggleBefore?.y);
         await page.screenshot({ path: `test-results/sidebar-collapsed-${theme}.png`, fullPage: true });
         await page.reload();

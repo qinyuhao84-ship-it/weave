@@ -1,3 +1,4 @@
+import { selectChoice } from './select-choice';
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { waitForVisualSettling, waitForCanvasSettling } from './visual-settling';
@@ -72,7 +73,7 @@ test('图谱可从键盘选择节点、查看关系并打开词条', async ({ pa
   const picker = page.getByLabel('选择词条查看关联');
   await picker.focus();
   await expect(picker).toBeFocused();
-  await picker.selectOption(graph.nodes[0].id);
+  await selectChoice(page, picker, graph.nodes[0].id);
   await expect(page.getByText('影响范围', { exact: true })).toBeVisible();
   await waitForVisualSettling(page);
   expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
@@ -123,7 +124,7 @@ test('图谱筛选：五种词条类型同时出现时，窄主区仍可操作',
     await expect(page.getByRole('button', { name: '复位视图', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const picker = page.getByLabel('选择词条查看关联');
-    await picker.selectOption('node-0');
+    await selectChoice(page, picker, 'node-0');
     await expect(page.getByText('影响范围', { exact: true })).toBeVisible();
     await waitForCanvasSettling(page);
     await page.screenshot({ path: `test-results/craft-graph-${width}.png`, fullPage: true });
