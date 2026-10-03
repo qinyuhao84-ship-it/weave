@@ -1,0 +1,48 @@
+{
+  "version": "0.2.1",
+  "runtimeCommit": "afeb3900fce2a49a412062f839c94d64e01aaa4d",
+  "sourceSha256": "dd61d7af9c649c4141cfef726796cbc340c5c26d095e2aa2aa35fd089a637565",
+  "environment": {
+    "os": "macOS 15.7.4",
+    "cpu": "Apple M2",
+    "node": "26.3.1",
+    "pnpm": "11.7.0",
+    "browser": "Chrome isolated headless"
+  },
+  "testFiles": 53,
+  "tests": 813,
+  "browserTests": 37,
+  "checks": [
+    {
+      "name": "lint",
+      "result": "passed",
+      "logFile": "lint.log",
+      "logSha256": "9a3b5e3d1f1a610d5ae0a74706013d726a4b3524684caa6aebe9760ae6237c06"
+    },
+    {
+      "name": "build",
+      "result": "passed",
+      "logFile": "build.log",
+      "logSha256": "b07291c78eb9dcac5fc635ba9f6c5e45f52bb24274ef26503df859f07a47d863"
+    },
+    {
+      "name": "typecheck",
+      "result": "passed",
+      "logFile": "typecheck.log",
+      "logSha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "name": "test",
+      "result": "passed",
+      "logFile": "test.log",
+      "logSha256": "4a26edc537b07b4fd212ccf596f7be48dfd7ec85162c6ea66c20431880f94a10"
+    },
+    {
+      "name": "e2e",
+      "result": "passed",
+      "logFile": "e2e.log",
+      "logSha256": "539c8cbee50e8ba9ea58914bdbfbab0b3d7b1d4369f9c856b5a0f3c94f09863d"
+    }
+  ],
+  "realModelEvaluation": "not rerun; v0.2.0 frozen evidence retained"
+}

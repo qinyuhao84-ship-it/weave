@@ -16,3 +16,7 @@
 ## 安装包原生窗口
 
 [native-desktop.png](native-desktop.png) 于 2026-10-02 从实际 DMG 复制安装后的 Cocoa / WKWebView 窗口直接截图，保留原生标题栏，未拼接或修改像素。测试使用独立临时知识库、合成资料与本地模拟模型，展示引用问答和交互式 HTML，不作为真实模型质量证据。原生文件面板、导入/下载和重启验收见 [桌面验收](../desktop-validation.md)。
+
+## 2026-10-03 发布前桌面复验
+
+[quality-native-wiki-2026-10-03.png](quality-native-wiki-2026-10-03.png)来自发布前独立安装副本，使用隔离合成资料。[quality-dmg-finder-2026-10-03.png](quality-dmg-finder-2026-10-03.png)展示同批安装布局，拍摄时间早于最终图标留白调整。二者对应内部版本号 0.2.0 的预览构建；当前 v0.2.1 安装与包指纹见[发布验收](../release-validation-2026-10-03.md)。

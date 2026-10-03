@@ -1,0 +1,30 @@
+{
+  "dmgSha256": "b185ee2cc265fb8af0888928a14fddcc3cc67829bedc9ec33195f3f6a0b1a40b",
+  "icon": {
+    "canvas": 1024,
+    "weaveVisible": [
+      816,
+      816
+    ],
+    "weaveInset": [
+      104,
+      104
+    ],
+    "bilibiliVisible": [
+      818,
+      819
+    ],
+    "bilibiliInset": [
+      103,
+      103
+    ],
+    "thresholdAlpha": 0.5,
+    "inspectedInstalledIcns": true
+  },
+  "nativeQuit": {
+    "cmdQ": true,
+    "appAndLauncherStopped": true,
+    "servicePort54222Closed": true
+  },
+  "screenshot": "docs/screenshots/quality-native-wiki-2026-10-03.png"
+}

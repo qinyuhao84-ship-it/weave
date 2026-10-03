@@ -14,7 +14,7 @@
 | 正文片段定位 | 0.16 / 0.25 ms | 0.17 / 0.21 ms |
 | 长文相关词条上下文 | 26.30 / 27.32 ms | 73.83 / 76.88 ms |
 
-完整原始结果见 [300 词条 JSON](benchmarks/performance-300.json) 与 [1,000 词条 JSON](benchmarks/performance-1000.json)。这些结果只描述当前实现，不与公开仓库未包含的旧实现作提速对比。
+完整原始结果见 [300 词条 JSON](benchmarks/performance-300.json) 与 [1,000 词条 JSON](benchmarks/performance-1000.json)。这些结果只描述当时实现，不与公开仓库未包含的旧实现作提速对比。
 
 ## 2026-10-02 混合检索复测
 
@@ -22,9 +22,9 @@
 
 | 测项 | 300 词条中位数 / P95 | 1,000 词条中位数 / P95 |
 | --- | --- | --- |
-| 当前普通文字检索 | 3.63 / 3.91 ms | 3.88 / 4.49 ms |
-| 当前长问题文字检索 | 74.43 / 75.84 ms | 245.67 / 265.03 ms |
-| 当前本地混合检索（无真实网络／重排） | 26.91 / 57.84 ms | 43.95 / 92.50 ms |
+| 2026-10-02 普通文字检索 | 3.63 / 3.91 ms | 3.88 / 4.49 ms |
+| 2026-10-02 长问题文字检索 | 74.43 / 75.84 ms | 245.67 / 265.03 ms |
+| 2026-10-02 本地混合检索（无真实网络／重排） | 26.91 / 57.84 ms | 43.95 / 92.50 ms |
 
 原始结果：[300 词条](benchmarks/hybrid-300.json)、[1,000 词条](benchmarks/hybrid-1000.json)。真实嵌入和重排的网络等待另计；该表不能作为完整问答延迟、检索质量或线上 SLA。硬件负载未标准化，P95 的少量样本仍会受调度影响。精确向量扫描成本随分段数量与维度增长，当前没有引入近似向量索引。
 
@@ -33,6 +33,10 @@ WEAVE_PERF_PAGES=300 WEAVE_PERF_HYBRID=1 pnpm exec tsx scripts/performance-bench
 WEAVE_PERF_PAGES=1000 WEAVE_PERF_HYBRID=1 pnpm exec tsx scripts/performance-benchmark.mts /tmp/weave-hybrid-1000.json
 ```
 
+## 2026-10-03 文字检索复测
+
+同一合成语料定义，macOS 15.7.4／Apple M2／Node 26.3.1，1,000 页，每页 11,500 字符；常规接口各 12 次，文档上下文 5 次。文字检索中位数／P95 为 4.32／8.24 ms，50 页目录为 4.35／4.98 ms，长查询为 242.93／252.97 ms，文档上下文为 77.65／78.55 ms。见[原始记录](benchmarks/performance-2026-10-03-1000.json)。这些小样本记录描述本机合成负载，不用于归因提速或证明真实回答质量。
+
 ## 复现
 
 ```bash
@@ -40,7 +44,7 @@ pnpm exec tsx scripts/performance-benchmark.mts /tmp/weave-performance.json
 WEAVE_PERF_PAGES=1000 pnpm exec tsx scripts/performance-benchmark.mts /tmp/weave-performance-1000.json
 ```
 
-脚本在临时目录生成合成 Markdown 和 SQLite，自动清理。JSON 记录时间、运行环境、规模、样本数、中位数与 P95，可在自己的机器复测。分页目录和完整目录返回内容不同，不能当作等功能的直接测速对比。短词兜底、大库与极端长问题仍有成本。
+脚本在临时目录生成合成 Markdown 和 SQLite，自动清理。JSON 记录时间、运行环境、规模、样本数、中位数与 P95，可在自己的机器复测。分页目录和完整目录返回内容不同，不能当作等功能的直接测速对比。短词备用方式、大库与极端长问题仍有成本。
 
 模型等待与本地计算应分别测量。真实模型质量需要人工标注和语义核对；引用编号合法不等于所有结论被证据支持。已建立固定版本的 MIRACL 中文检索集及 CMRC2018 问答复核集，见 [真实评测与复现](retrieval-evaluation.md) 和 [完整执行记录](evaluation/2026-10-02/README.md)。该受限语料评测不代表行业平均，也不根据少量抽查自动降低用户选择的思考强度。
 

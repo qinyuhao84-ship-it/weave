@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-02T21:54:18.329Z",
+  "node": "v26.3.1",
+  "platform": "darwin",
+  "arch": "arm64",
+  "pageCount": 1000,
+  "bodyCharacters": 11500,
+  "documentCharacters": 172548,
+  "seedMs": 992.75,
+  "extractedTerms": 74,
+  "results": [
+    {
+      "name": "catalog",
+      "samples": 12,
+      "medianMs": 42.62,
+      "p95Ms": 45.46
+    },
+    {
+      "name": "catalog-page-50",
+      "samples": 12,
+      "medianMs": 4.35,
+      "p95Ms": 4.98
+    },
+    {
+      "name": "wikilink-table",
+      "samples": 12,
+      "medianMs": 3.1,
+      "p95Ms": 4.41
+    },
+    {
+      "name": "retrieve",
+      "samples": 12,
+      "medianMs": 4.32,
+      "p95Ms": 8.24
+    },
+    {
+      "name": "long-query",
+      "samples": 12,
+      "medianMs": 242.93,
+      "p95Ms": 252.97
+    },
+    {
+      "name": "excerpt",
+      "samples": 12,
+      "medianMs": 0.19,
+      "p95Ms": 0.31
+    },
+    {
+      "name": "document-context",
+      "samples": 5,
+      "medianMs": 77.65,
+      "p95Ms": 78.55
+    }
+  ]
+}
