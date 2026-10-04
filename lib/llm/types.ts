@@ -53,6 +53,8 @@ export type CompletionRequest = {
   model?: string;
   /** 覆盖默认请求头（例如网关要求的会话标识） */
   headers?: Record<string, string>;
+  /** 会话标识；OpenCode Go 会将它用于 x-opencode-session。 */
+  sessionId?: string;
   /** 思考强度。仅在端点支持时发送；不支持时在设置中选择不发送参数。 */
   reasoningEffort?: ReasoningEffort;
   /**

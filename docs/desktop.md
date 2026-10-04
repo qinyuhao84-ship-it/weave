@@ -1,6 +1,6 @@
 # macOS 桌面应用
 
-[下载 v0.2.2 Apple Silicon DMG](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.2/Weave-0.2.2-macOS-arm64.dmg) · [更新与 SHA-256](https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.2)
+[下载 v0.2.3 Apple Silicon DMG](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.3/Weave-0.2.3-macOS-arm64.dmg) · [更新与 SHA-256](https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.3)
 
 ## 安装与首次使用
 
@@ -30,14 +30,14 @@
 pnpm install --frozen-lockfile
 pnpm build
 pnpm package:mac
-hdiutil verify dist/Weave-0.2.2-macOS-arm64.dmg
+hdiutil verify dist/Weave-0.2.3-macOS-arm64.dmg
 ```
 
 安装包构建默认写入 `dist/`；为避免覆盖既有 Release 文件，可指定独立输出目录。实际 DMG 验收会只读挂载映像、复制到临时安装目录，并以临时知识库完成导入、检索、模拟问答、重启与完整备份：
 
 ```bash
 WEAVE_DESKTOP_OUTPUT_DIR=dist/quality-2026-10-03 pnpm package:mac
-pnpm verify:desktop -- dist/quality-2026-10-03/Weave-0.2.2-macOS-arm64.dmg
+pnpm verify:desktop -- dist/quality-2026-10-03/Weave-0.2.3-macOS-arm64.dmg
 ```
 
 完整模式会启动实际 Cocoa 应用并检查重复启动是否复用现有实例。GitHub workflow 使用 `--service-only`，只验收包内 Node、standalone 服务和数据流程，不把无窗口 runner 的结果算作原生窗口验收。验收会在 DMG 旁写入机器记录；未设置 Developer ID 时清单明确标记为 ad-hoc 预览包。
@@ -46,4 +46,4 @@ pnpm verify:desktop -- dist/quality-2026-10-03/Weave-0.2.2-macOS-arm64.dmg
 
 脚本删除 standalone 可能复制的环境文件、SQLite 和本地缓存，检查所有依赖软链接都留在包内，执行签名完整性检查，再生成 DMG。`WEAVE_DESKTOP_TEST_ROOT` 只用于隔离安装验收，不改变日常配置。手动 GitHub Actions 工作流可重新构建安装包，不调用真实模型。
 
-[当前安装与版本验收](release-validation-2026-10-03.md) · [v0.2.0 历史验收](desktop-validation.md) · [真实质量评测](evaluation/2026-10-02/README.md)
+[当前安装与版本验收](release-validation-2026-10-05.md) · [v0.2.0 历史验收](desktop-validation.md) · [真实质量评测](evaluation/2026-10-02/README.md)

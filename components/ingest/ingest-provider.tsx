@@ -5,7 +5,9 @@ import * as React from "react";
 import { apiFetch } from "@/hooks/use-api";
 import { type ChangePlanView } from "@/components/review/plan-confirm-panel";
 import { computeProgress, estimateStageFraction } from "@/lib/jobs/types";
-import { useReviewAutosave } from "./use-review-autosave";
+import { useReviewAutosave, type RecoverableReviewDraft } from "./use-review-autosave";
+import { useAiReview } from "./use-ai-review";
+import { normalizeSourceSummary } from "@/lib/ingest/normalize-draft";
 
 /**
  * 导入任务的状态宿主。
@@ -46,6 +48,8 @@ type IngestValue = {
   draft: IngestDraft | null;
   draftSaveStatus: string;
   draftSaveError: string | null;
+  recoverableDrafts: RecoverableReviewDraft[];
+  recoverLocalDraft: (key: string) => void;
   retryDraftSave: () => Promise<void>;
   reloadSavedDraft: () => Promise<void>;
   /** 这份草稿是「之前那次导入」留下的，不是刚刚上传的 */
@@ -53,6 +57,10 @@ type IngestValue = {
   skipped: Set<string>;
   decisions: Map<number, ReviewDecisionDraft>;
   committing: boolean;
+  aiReviewBusy: boolean;
+  aiReviewProgress: number;
+  startAiReview: () => Promise<void>;
+  stopAiReview: () => Promise<void>;
   commitProgress: number;
   result: CommitResult | null;
 
@@ -147,7 +155,7 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
 
 
 
-  const { restore: restoreReview, flush: flushReview, forget: forgetReview, getRevision: getReviewRevision, status: draftSaveStatus, error: draftSaveError } = useReviewAutosave(phase === "review", jobId, draft, skipped, decisions);
+  const { restore: restoreReview, flush: flushReview, forget: forgetReview, getRevision: getReviewRevision, status: draftSaveStatus, error: draftSaveError, recoverableDrafts, recoverLocalDraft: recoverLocalReviewDraft } = useReviewAutosave(phase === "review", jobId, draft, skipped, decisions);
   /**
    * 提交之后接着跑的那批回答。
    *
@@ -166,6 +174,9 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
 
   const queueUploadRef = React.useRef(false);
   const queueStartRef = React.useRef(false);
+  const phaseRef = React.useRef(phase);
+  const jobIdRef = React.useRef(jobId);
+  React.useLayoutEffect(() => { phaseRef.current = phase; jobIdRef.current = jobId; }, [phase, jobId]);
   const queuedCount = queueItems.filter((item) => item.status === "queued" || item.status === "failed" || item.status === "paused").length;
 
   const appendLog = React.useCallback((entry: LogEntry) => {
@@ -187,6 +198,8 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
    * 重置一切属于「上一次导入」的状态，只保留这次任务自己的信息。
    */
   const adoptJob = React.useCallback((id: string, name: string | null) => {
+    jobIdRef.current = id;
+    phaseRef.current = "running";
     setJobId(id);
     setFileName(name);
     setDraft(null);
@@ -215,32 +228,33 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
     async (id: string, ignoreLocal = false) => {
       try {
         const job = await apiFetch<{ draft: IngestDraft | null }>(`/api/jobs/${id}`);
+        if (jobIdRef.current !== id) return;
         if (job.draft) {
           // Persisted drafts can predate relatedTitles; normalize them at the API boundary
           // so every consumer can treat the field as an array.
           const loadedDraft = {
             ...job.draft,
-            draft: {
+            draft: normalizeSourceSummary({
               ...job.draft.draft,
               reviewItems: job.draft.draft.reviewItems.map((item) => ({
                 ...item,
                 relatedTitles: item.relatedTitles ?? [],
               })),
-            },
+            }),
           };
           const restored = restoreReview(loadedDraft, ignoreLocal);
-          setDraft({ ...loadedDraft, draft: restored.draft });
+          setDraft({ ...loadedDraft, draft: normalizeSourceSummary(restored.draft) });
           setSkipped(new Set(restored.reviewState.skippedTitles));
           setDecisions(new Map(restored.reviewState.decisions));
           setFileName(loadedDraft.source.originalName);
+          setError(null);
           setPhase("review");
         } else {
-          setError(uiMessage("ingest_ingest_provider.m002"));
-          setPhase("idle");
+          throw new Error(uiMessage("ingest_ingest_provider.m002"));
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
-        setPhase("idle");
+        throw err;
       }
     },
     [restoreReview, setDraft, setSkipped, setDecisions, setFileName, setPhase, setError],
@@ -248,12 +262,28 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
 
   /* -------------------------------------------------- 后台任务：SSE + 轮询兜底 */
 
+  const aiReview = useAiReview({ ingestId: phase === "review" ? jobId : null, savedJobId: draft?.aiReviewJobId, flush: flushReview, revision: getReviewRevision, reload: loadDraft, onError: setError });
+
+  const recoverLocalDraft = React.useCallback((key: string) => {
+    try {
+      const restored = recoverLocalReviewDraft(key);
+      setDraft((current) => current ? { ...current, draft: normalizeSourceSummary(restored.draft) } : current);
+      setSkipped(new Set(restored.reviewState.skippedTitles));
+      setDecisions(new Map(restored.reviewState.decisions));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [recoverLocalReviewDraft, setDraft, setSkipped, setDecisions, setError]);
+
   React.useEffect(() => {
     if (!jobId || phase !== "running") return;
 
     const source = new EventSource(`/api/jobs/${jobId}/stream`);
     let finished = false;
     let disposed = false;
+    let lastEventAt = Date.now();
+    let pollTimer: ReturnType<typeof setTimeout>;
     const pollAbort = new AbortController();
 
     const settle = async (status: string, jobError: string | null) => {
@@ -265,7 +295,14 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
         setProgress(computeProgress("reviewing", 1));
         setStage("reviewing");
         setStageLabel(uiMessage("ingest_ingest_provider.m003"));
-        await loadDraft(jobId);
+        try { await loadDraft(jobId); }
+        catch {
+          if (!disposed) {
+            finished = false;
+            lastEventAt = 0;
+            pollTimer = setTimeout(() => void poll(), 2000);
+          }
+        }
       } else if (status === "failed") {
         setJobId(null);
         setError(previous => jobError ?? previous ?? uiMessage("ingest_ingest_provider.m004"));
@@ -294,6 +331,7 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
     };
 
     source.onmessage = (event) => {
+      lastEventAt = Date.now();
       let payload: JobEvent;
       try {
         payload = JSON.parse(event.data) as JobEvent;
@@ -329,40 +367,37 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // SSE 断线（服务重启、网络抖动）时降级为轮询 —— 任务其实还在跑
+    // 原生浏览器可能保留连接却停止传递事件；没有新事件时核对持久化状态。
     source.onerror = () => {
       source.close();
-      if (finished) return;
-      void (async () => {
-        while (!disposed && !finished) {
-          await new Promise((r) => setTimeout(r, 1000));
-          if (finished || disposed) return;
-          try {
-            const job = await apiFetch<JobView>(`/api/jobs/${jobId}`, { signal: pollAbort.signal });
-            if (disposed) return;
-            setProgress(job.progress);
-            setStage(job.stage);
-            setStageLabel(job.stageLabel);
-            setMessage(job.message);
-            if (["awaiting_review", "failed", "cancelled", "done"].includes(job.status)) {
-              await settle(job.status, job.error);
-              return;
-            }
-          } catch {
-            // 网络还没恢复，继续轮询
-          }
-        }
-      })();
+      lastEventAt = 0;
     };
+    const poll = async () => {
+      if (disposed || finished) return;
+      if (Date.now() - lastEventAt >= 5000) {
+        try {
+          const job = await apiFetch<JobView>(`/api/jobs/${jobId}`, { signal: pollAbort.signal });
+          if (disposed || finished) return;
+          setProgress(job.progress);
+          setStage(job.stage);
+          setStageLabel(job.stageLabel);
+          setMessage(job.message);
+          if (["awaiting_review", "failed", "cancelled", "done"].includes(job.status)) {
+            await settle(job.status, job.error);
+            return;
+          }
+        } catch {
+          // 保留当前视图，下一轮继续核对；关闭面板宿主时取消请求。
+        }
+      }
+      if (!disposed && !finished) pollTimer = setTimeout(() => void poll(), 2000);
+    };
+    pollTimer = setTimeout(() => void poll(), 2000);
 
-    return () => { disposed = true; pollAbort.abort(); source.close(); };
+    return () => { disposed = true; clearTimeout(pollTimer); pollAbort.abort(); source.close(); };
   }, [jobId, phase, appendLog, loadDraft, refreshQueue, setProgress, setStage, setStageLabel, setJobId, setError, setPhase, setNotice, setDuplicate, setMessage]);
 
   /* ------------------------------------------- 把没跑完的任务认回来（含刷新后） */
-
-  const phaseRef = React.useRef(phase);
-  const jobIdRef = React.useRef(jobId);
-  React.useLayoutEffect(() => { phaseRef.current = phase; jobIdRef.current = jobId; }, [phase, jobId]);
 
   /**
    * 认领一个还没结束的导入任务。
@@ -374,13 +409,17 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
    * 只在「手上没有任务」时才认领，绝不打断正在跑的那一个。
    */
   const recoverActiveJob = React.useCallback(async () => {
-    if (jobIdRef.current !== null || phaseRef.current === "running" || phaseRef.current === "review") {
+    const hasActiveJob = () => jobIdRef.current !== null || phaseRef.current === "running" || phaseRef.current === "review";
+    if (hasActiveJob()) {
       return;
     }
     try {
       const data = await apiFetch<{ jobs: JobView[] }>("/api/jobs?active=1&kind=ingest");
+      if (hasActiveJob()) return;
       const job = data.jobs[0];
       if (!job) return;
+      jobIdRef.current = job.id;
+      phaseRef.current = "running";
       setJobId(job.id);
       setFileName(job.payload?.fileName ?? null);
       setProgress(job.progress);
@@ -655,7 +694,7 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
 
   const answer = React.useCallback(
     (index: number, value: string, choiceId: string | null) =>
-      patchDecision(index, { answer: value, choiceId }),
+      patchDecision(index, { answer: value, choiceId, note: "" }),
     [patchDecision],
   );
 
@@ -665,6 +704,7 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
 
   const commit = React.useCallback(async () => {
     if (!draft || !jobId) throw new Error(uiMessage("ingest_ingest_provider.m014"));
+    if (aiReview.busy) throw new Error("AI 正在判断，请完成后再确认写入。");
 
     setCommitting(true);
     setError(null);
@@ -690,6 +730,7 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({
           draft: edited,
           reviewRevision: getReviewRevision(),
+          overrides: { skippedTitles: [...skipped] },
           // 当场裁决过的随草稿一起落库；只回答了没裁决的落成 answered，
           // 提交之后**接着**由同一个任务链交给模型处理；什么都没做的留 pending
           // 进体检队列 —— 三条路都要通，用户可能在这里就看得明白，也可能想攒着。
@@ -727,7 +768,7 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
       clearInterval(timer);
       setCommitting(false);
     }
-  }, [draft, jobId, flushReview, getReviewRevision, decisions, refreshQueue, forgetReview, skipped, setCommitting, setError, setCommitProgress, setResult, setPhase, setJobId, setBatchJobId, setBatchProgress, setBatchStage]);
+  }, [draft, jobId, aiReview.busy, flushReview, getReviewRevision, decisions, refreshQueue, forgetReview, skipped, setCommitting, setError, setCommitProgress, setResult, setPhase, setJobId, setBatchJobId, setBatchProgress, setBatchStage]);
 
   /**
    * 停止这次导入。
@@ -782,7 +823,18 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo<IngestValue>(
     () => ({
       open,
-      openDrawer: () => setOpen(true),
+      openDrawer: () => {
+        if (phase === "done" || phase === "duplicate") {
+          setPhase("idle");
+          setJobId(null);
+          setFileName(null);
+          setResult(null);
+          setDuplicate(null);
+          setDraft(null);
+          setError(null);
+        }
+        setOpen(true);
+      },
       closeDrawer: () => setOpen(false),
       phase,
       fileName,
@@ -797,12 +849,18 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
       draft,
       draftSaveStatus,
       draftSaveError,
+      recoverableDrafts,
+      recoverLocalDraft,
       retryDraftSave: flushReview,
-      reloadSavedDraft: async () => { if (jobId) await loadDraft(jobId, true); },
+      reloadSavedDraft: async () => { if (jobId) await loadDraft(jobId, true).catch(() => undefined); },
       recovered,
       skipped,
       decisions,
       committing,
+      aiReviewBusy: aiReview.busy,
+      aiReviewProgress: aiReview.progress,
+      startAiReview: aiReview.start,
+      stopAiReview: aiReview.stop,
       commitProgress,
       result,
       stopping,
@@ -833,7 +891,7 @@ export function IngestProvider({ children }: { children: React.ReactNode }) {
       cancelBatchPlan,
       dismissError: () => setError(null),
     }),
-    [open, phase, fileName, progress, stage, stageLabel, message, startedAt, logs, error, duplicate, draft, draftSaveStatus, draftSaveError, flushReview, loadDraft, jobId, recovered, skipped, decisions, committing, commitProgress, result, stopping, notice, stop, start, queueFiles, queuedCount, queueItems, queueUploading, removeQueueItem, continueQueue, adoptExistingJob, toggleSkip, removePage, decide, answer, updateDraft, commit, discard, batchJobId, batchStage, batchProgress, batchPlan, batchBusy, applyBatchPlan, cancelBatchPlan, setOpen, setNotice, setError],
+    [open, phase, fileName, progress, stage, stageLabel, message, startedAt, logs, error, duplicate, draft, draftSaveStatus, draftSaveError, recoverableDrafts, recoverLocalDraft, flushReview, loadDraft, jobId, recovered, skipped, decisions, committing, aiReview.busy, aiReview.progress, aiReview.start, aiReview.stop, commitProgress, result, stopping, notice, stop, start, queueFiles, queuedCount, queueItems, queueUploading, removeQueueItem, continueQueue, adoptExistingJob, toggleSkip, removePage, decide, answer, updateDraft, commit, discard, batchJobId, batchStage, batchProgress, batchPlan, batchBusy, applyBatchPlan, cancelBatchPlan, setOpen, setNotice, setError, setPhase, setJobId, setFileName, setResult, setDuplicate, setDraft],
   );
 
   return <IngestContext.Provider value={value}>{children}</IngestContext.Provider>;

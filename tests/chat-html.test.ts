@@ -1,9 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { createDocument } from "@mixmark-io/domino";
-import { HtmlAnswerStream, HTML_START, HTML_END, getArtifact, previewHtml, formatHtmlCitations, saveArtifact } from "@/lib/chat/artifacts";
-import { answer } from "@/lib/chat/answer";
-import { FakeProvider } from "@/lib/llm/fake";
+import { HtmlAnswerStream, HTML_START, HTML_END, getArtifact, previewHtml, prepareHtml, formatHtmlCitations, saveArtifact, updateArtifact } from "@/lib/chat/artifacts";
 import { dropAllIndexTables } from "@/lib/db/client";
 import { appendMessage, createSession, beginChatRun, getMessages, getChatRun, getSession, saveSessionConfig, trashSession, restoreSession, permanentlyDeleteSession, buildHistory, saveChatRunProgress, markInterruptedChatRunsFailed } from "@/lib/chat/sessions";
 import { resolveChatConfig, chatProvider } from "@/lib/chat/config-server";
@@ -22,6 +20,15 @@ import type { CitationView } from "@/lib/chat/citations";
 const config: ChatConfig = { providerId: "a", model: "model-a", reasoningEffort: "low", contextWindow: 32768, showMe: true };
 const document = '<!DOCTYPE html><html lang="zh-CN"><head><title>图解</title><style>p { white-space: pre; }</style></head><body><h1>推荐算法</h1><p>预测偏好。[ID:1]</p><button onclick="this.textContent=\'完成\'">展开</button><script>const code = "a  b [ID:999]";</script></body></html>';
 const citation = (index: number): CitationView => ({ index, pageId: `page-${index}`, pageTitle: `来源 ${index}`, pagePath: `source-${index}.md`, pageType: "concept", sourcePage: null, sourceDoc: null, excerpt: "来源片段", sourceRefs: [] });
+
+it("页面沿用原引用编号，删去未使用资料后保留较大编号和范围引用", () => {
+  const chunks = [9, 10].map(index => ({ index, pageTitle: `来源 ${index}`, pagePath: `source-${index}.md`, pageType: "concept", sourcePage: null, sourceDoc: null, content: "来源片段" }));
+  const html = prepareHtml('<!DOCTYPE html><html><body><p>[ID:9-10]</p><span data-citation="10"></span></body></html>', chunks, [citation(9), citation(10)]);
+  const dom = createDocument(html);
+  expect(dom.querySelector("p")?.textContent).toContain("9");
+  expect(dom.querySelector("p")?.textContent).toContain("10");
+  expect(dom.querySelector('[data-citation="10"]')?.textContent).toBe("10");
+});
 
 it("流式模型失败后保留后端校验的正文和引用，不重新落库幻觉标记", async () => {
   const provider = configServer.chatProvider(config);
@@ -122,36 +129,22 @@ describe("HTML 流分离", () => {
   });
 });
 
-it("单次调用产出正文和文件，HTML 不进入后续对话历史，引用不会改写脚本", async () => {
-  const sessionId = createSession("文档验收");
-  const provider = new FakeProvider({ responses: [`简短回答。[ID:1]\n${HTML_START}${document}${HTML_END}`] });
-  const result = await answer({ sessionId, question: "推荐算法", config, provider });
-  expect(provider.calls).toHaveLength(1); expect(result.text).not.toContain("<html"); expect(result.artifacts[0].status).toBe("ready");
-  const file = getArtifact(result.artifacts[0].id)!;
-  expect(file.content).toContain('a  b [ID:999]'); expect(result.quality.hallucinationCount).toBe(0);
+it("页面生成期间只返回状态，完成后能预览，文字和历史保持完整", async () => {
+  const sessionId = createSession("独立页面");
+  const messageId = appendMessage({ sessionId, role: "assistant", content: "预测偏好。[ID:1]", citations: { list: [citation(1)] } });
+  const artifact = saveArtifact({ messageId, content: "", status: "pending" });
+  const params = { params: Promise.resolve({ id: artifact.id }) };
+  const pending = await download(new Request(`http://localhost/api/chat/artifacts/${artifact.id}`), params);
+  expect((await pending.json()).data.status).toBe("pending");
+  for (const query of ["?preview=1", "?download=1"]) {
+    expect((await download(new Request(`http://localhost/api/chat/artifacts/${artifact.id}${query}`), params)).status).toBe(409);
+  }
+  updateArtifact(artifact.id, document, "ready");
+  const ready = await download(new Request(`http://localhost/api/chat/artifacts/${artifact.id}?preview=1`), params);
+  expect(ready.status).toBe(200);
+  expect(ready.headers.get("Content-Security-Policy")).toContain("sandbox allow-scripts;");
+  expect(getMessages(sessionId)[0].content).toBe("预测偏好。[ID:1]");
   expect(buildHistory(sessionId).messages.map(message => message.content).join("")).not.toContain("<script>");
-  expect(getMessages(sessionId)[0].artifacts).toEqual(result.artifacts);
-  expect(result.timings.firstTextMs).toBeDefined(); expect(result.timings.savedMs).toBeGreaterThanOrEqual(result.timings.firstTextMs!);
-});
-
-it("HTML 中独有的引用也会校验，越界编号被剔除", async () => {
-  const result = await answer({ sessionId: createSession("独立引用"), question: "推荐算法", config, provider: new FakeProvider({ responses: [`见图解。${HTML_START}${document.replace("[ID:1]", '<sup data-citation="1"></sup><sup data-citation="999"></sup>')}${HTML_END}`] }) });
-  expect(result.citations).toHaveLength(1); expect(result.quality.hallucinationCount).toBe(1);
-  const html = createDocument(getArtifact(result.artifacts[0].id)!.content);
-  expect(html.querySelector('[data-citation="999"]')?.textContent).toBe("");
-});
-
-it("模型不产出文档时降级；截断或停止时只保留未完成文件", async () => {
-  const basic = await answer({ sessionId: createSession("基础"), question: "推荐算法", config, provider: new FakeProvider({ responses: ["回答内容。[ID:1]"] }) });
-  expect(basic.artifacts[0].status).toBe("basic"); expect(createDocument(getArtifact(basic.artifacts[0].id)!.content).querySelector("details[open]")).toBeTruthy();
-  const cutSession = createSession("截断");
-  await expect(answer({ sessionId: cutSession, question: "推荐算法", config, provider: new FakeProvider({ responses: [{ text: `回答${HTML_START}<html>`, truncated: true }] }) })).rejects.toThrow("输出上限");
-  expect(getMessages(cutSession).at(-1)?.artifacts[0].status).toBe("incomplete");
-  const controller = new AbortController();
-  const fake = new FakeProvider();
-  fake.stream = async function* () { yield `部分回答${HTML_START}<html>部分文件`; controller.abort(); throw new Error("cancel"); };
-  const stopped = await answer({ sessionId: createSession("停止"), question: "推荐算法", config, provider: fake, signal: controller.signal });
-  expect(stopped.interrupted).toBe(true); expect(stopped.artifacts[0].status).toBe("incomplete");
 });
 
 it("预览限制外部资源、表单和导航，仍保留内联交互", () => {
@@ -160,16 +153,6 @@ it("预览限制外部资源、表单和导航，仍保留内联交互", () => {
   expect(dom.head.firstChild?.nodeName).toBe("META"); expect(html).toContain("connect-src 'none'");
   expect(dom.querySelector("iframe,base,script[src],meta[http-equiv=refresh]")).toBeFalsy();
   expect(dom.querySelector("a")?.hasAttribute("href")).toBe(false); expect(dom.querySelector('a[href="#part"]')).not.toBeNull(); expect(html).toContain("const x=1;");
-});
-
-it("模型连接中断后，部分正文与未完成文件仍可下载", async () => {
-  const sessionId = createSession("连接中断");
-  const provider = new FakeProvider();
-  provider.stream = async function* () { yield `部分回答${HTML_START}<html><body>部分文件`; throw new Error("连接中断"); };
-  await expect(answer({ sessionId, question: "推荐算法", config, provider })).rejects.toThrow("连接中断");
-  const message = getMessages(sessionId).at(-1)!;
-  expect(message.content).toBe("部分回答"); expect(message.artifacts[0].status).toBe("incomplete");
-  expect(getArtifact(message.artifacts[0].id)?.content).toContain("部分文件");
 });
 
 it("附件下载与内容一致，随会话回收、恢复和永久删除", async () => {

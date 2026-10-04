@@ -167,8 +167,9 @@ export const MessageBubble = React.memo(function MessageBubble({
         ) : (
           <button
             type="button"
+            disabled={working || !message.content.trim()}
             onClick={() => onFile(message.id)}
-            className="flex items-center gap-1 text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
+            className="flex items-center gap-1 text-[11.5px] text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
           >
             <BookMarked size={11} />
             {t("chat_workspace.m093")}</button>

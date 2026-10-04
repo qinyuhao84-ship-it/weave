@@ -37,7 +37,7 @@ export function SourcesWorkspace() {
   const deferredQuery = React.useDeferredValue(query);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [actionError, setActionError] = React.useState<string | null>(null);
-  const { data, loading, error, refresh } = useApi<SourceList>(`/api/sources?limit=20&offset=${pageIndex * 20}&q=${encodeURIComponent(deferredQuery)}`, [dataVersion]);
+  const { data, loading, error, refresh } = useApi<SourceList>(`/api/sources?limit=20&offset=${pageIndex * 20}&q=${encodeURIComponent(deferredQuery)}`, [dataVersion, ingestPhase]);
   const sources = data?.sources ?? [];
 
   const reprocess = async (source: SourceRecord) => {
@@ -130,7 +130,9 @@ export function SourcesWorkspace() {
 
 export function SourceDetailWorkspace({ sourceId }: { sourceId: string }) {
   const { t, locale } = useI18n();
-  const { data: sourceData, loading, error, refresh } = useApi<SourceRecord>(`/api/sources/${sourceId}`);
+  const { dataVersion } = useAppData();
+  const { phase: ingestPhase } = useIngest();
+  const { data: sourceData, loading, error, refresh } = useApi<SourceRecord>(`/api/sources/${sourceId}`, [dataVersion, ingestPhase]);
   // useApi 保留旧响应以便同页刷新；详情必须核对归属，不能展示上一份资料。
   const source = sourceData?.id === sourceId ? sourceData : null;
   const [parsed, setParsed] = React.useState<{ sourceId: string; markdown: string | null; error: string | null; loading: boolean } | null>(null);

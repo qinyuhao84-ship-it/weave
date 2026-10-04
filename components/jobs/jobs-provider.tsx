@@ -36,7 +36,7 @@ export type ActiveJob = {
   stageLabel: string;
   progress: number;
   message: string | null;
-  payload: { title?: string; mode?: string; itemIds?: string[]; fileName?: string; itemId?: string; mechanicalOnly?: boolean } | null;
+  payload: { title?: string; sessionId?: string; ingestId?: string; mode?: string; itemIds?: string[]; fileName?: string; itemId?: string; mechanicalOnly?: boolean } | null;
   createdAt: string;
 };
 

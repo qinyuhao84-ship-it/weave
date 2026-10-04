@@ -17,7 +17,7 @@ import { compressHistory } from "./compress";
 import type { ChatProgress } from "./progress";
 import type { ChatConfig, ChatTimings, ChatArtifact } from "./config";
 import { chatProvider } from "./config-server";
-import { HtmlAnswerStream, SHOW_ME_PROMPT, basicHtml, prepareHtml, saveArtifact, htmlCitationReport } from "./artifacts";
+import { queueAnswerArtifact } from "./artifact-generation";
 
 /**
  * 问答流程。
@@ -130,7 +130,7 @@ export async function answer(options: AnswerOptions): Promise<AnswerResult> {
   // ---- ② 组装 ----
   // 系统提示词从 context.ts 拿，别在这儿再拼一遍 —— 会话占用与空库占用走的是
   // 同一个函数，三处只留一份实现
-  const systemPrompt = chatSystemPrompt(settings) + (options.config?.showMe ? SHOW_ME_PROMPT : "");
+  const systemPrompt = chatSystemPrompt(settings);
 
   let history = buildHistory(options.sessionId, {
     ...(options.questionMessageId ? { excludeMessageId: options.questionMessageId } : {}),
@@ -232,11 +232,11 @@ export async function answer(options: AnswerOptions): Promise<AnswerResult> {
   let interrupted = false;
   let streamFailure: unknown;
   let truncated = false;
-  const htmlStream = options.config?.showMe ? new HtmlAnswerStream() : null;
   timings.requestedMs = Date.now() - startedAt;
 
   const iterator = provider.stream({
     messages: assembled.messages as ChatMessage[],
+    sessionId: options.sessionId,
     onReasoningDelta: () => {
       if (timings.firstReasoningMs === undefined) { timings.firstReasoningMs = Date.now() - startedAt; options.onTimings?.({ ...timings }); }
     },
@@ -248,7 +248,7 @@ export async function answer(options: AnswerOptions): Promise<AnswerResult> {
     let step = await iterator.next();
     while (!step.done) {
       if (timings.firstTextMs === undefined) { timings.firstTextMs = Date.now() - startedAt; options.onTimings?.({ ...timings }); }
-      const delta = htmlStream ? htmlStream.push(step.value) : step.value;
+      const delta = step.value;
       raw += delta;
       if (delta) options.onDelta?.(delta);
       step = await iterator.next();
@@ -269,21 +269,15 @@ export async function answer(options: AnswerOptions): Promise<AnswerResult> {
     if (!options.signal?.aborted) streamFailure = error;
     else interrupted = true;
   }
-  if (htmlStream) { const tail = htmlStream.finish(); raw += tail; if (tail) options.onDelta?.(tail); }
   if (!interrupted && !streamFailure) {
     if (truncated) streamFailure = new LlmError("回答达到模型的输出上限，内容尚未完成。已保留生成的部分内容，可以缩小问题范围后重试。", 502);
-    else if (!raw.trim() && !htmlStream?.html.trim()) streamFailure = new LlmError("模型没有返回回答正文。请重试或检查所选模型。", 502, true);
+    else if (!raw.trim()) streamFailure = new LlmError("模型没有返回回答正文。请重试或检查所选模型。", 502, true);
   }
   timings.generatedMs = Date.now() - startedAt;
 
   // ---- ⑤ 后端校验引用 ----
   progress({ stage: "validating", label: interrupted ? "已停止生成 · 校验已有内容的引用" : "生成完成 · 正在校验引用和保存回答" });
   const report = validateCitations(raw, chunks);
-  if (htmlStream?.html) {
-    const htmlReport = htmlCitationReport(htmlStream.html, chunks);
-    report.usedIndices = [...new Set([...report.usedIndices, ...htmlReport.usedIndices])].sort((a, b) => a - b);
-    report.hallucinatedIndices = [...new Set([...report.hallucinatedIndices, ...htmlReport.hallucinatedIndices])];
-  }
   const citations = buildCitationViews(
     report.usedIndices,
     chunks,
@@ -332,18 +326,13 @@ export async function answer(options: AnswerOptions): Promise<AnswerResult> {
     : appendMessage({ sessionId: options.sessionId, role: "assistant", ...messageData });
 
   const artifacts: ChatArtifact[] = [];
-  if (htmlStream) {
-    const completeDocument = htmlStream.complete && !truncated && !interrupted && !streamFailure;
-    const validDocument = completeDocument && /<html\b/i.test(htmlStream.html) && /<body\b/i.test(htmlStream.html) && /<\/html\s*>/i.test(htmlStream.html);
-    const incomplete = Boolean(interrupted || truncated || streamFailure || (htmlStream.started && !htmlStream.complete));
-    const status = incomplete ? "incomplete" : validDocument ? "ready" : "basic";
-    const content = incomplete ? htmlStream.html || basicHtml(report.text) : validDocument ? prepareHtml(htmlStream.html, chunks, citations) : prepareHtml(basicHtml(report.text), chunks, citations);
-    artifacts.push(saveArtifact({ messageId, content, status }));
-  }
   timings.savedMs = Date.now() - startedAt;
   if (usage) { timings.promptTokens = usage.promptTokens; timings.completionTokens = usage.completionTokens; }
   options.onTimings?.({ ...timings });
   if (streamFailure) throw streamFailure;
+  if (options.config?.showMe && !interrupted) {
+    artifacts.push(queueAnswerArtifact({ sessionId: options.sessionId, messageId, question: options.question, text: report.text, chunks, citations, config: options.config }, options.provider));
+  }
 
   return {
     messageId,

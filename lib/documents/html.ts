@@ -21,7 +21,14 @@ export function previewHtml(html: string): string {
     var target=document.getElementById(id);
     if(target){target.scrollIntoView({block:'start',behavior:'instant'});target.setAttribute('tabindex','-1');target.focus({preventScroll:true});}
   },true);
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'){parent.postMessage({type:'weave-artifact-escape'},'*');}});`;
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){parent.postMessage({type:'weave-artifact-escape'},'*');}});
+  if(document.documentElement.getAttribute('data-weave-reading')==='1'){
+    window.addEventListener('message',function(e){
+      if(e.source!==parent||!e.data||e.data.type!=='weave-artifact-theme')return;
+      if(e.data.theme==='light'||e.data.theme==='dark')document.documentElement.setAttribute('data-weave-theme',e.data.theme);
+    });
+    if(parent!==window)parent.postMessage({type:'weave-artifact-ready'},'*');
+  }`;
   document.body.appendChild(bridge);
   return `<!DOCTYPE html>\n${document.documentElement.outerHTML}`;
 }

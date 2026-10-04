@@ -137,6 +137,18 @@ export function countSessions(query = ""): number {
   return getDb().select({ count: sql<number>`count(*)` }).from(chatSessions).where(sessionFilter(query)).get()?.count ?? 0;
 }
 
+function messageCountsForSessions(sessionIds: string[]): Map<string, number> {
+  if (sessionIds.length === 0) return new Map();
+  return new Map(
+    getDb().select({ sessionId: chatMessages.sessionId, count: sql<number>`count(*)` })
+      .from(chatMessages)
+      .where(inArray(chatMessages.sessionId, sessionIds))
+      .groupBy(chatMessages.sessionId)
+      .all()
+      .map((row) => [row.sessionId, row.count]),
+  );
+}
+
 export function listSessions(limit = 100, offset = 0, query = ""): ChatSessionView[] {
   const db = getDb();
   const rows = db
@@ -146,13 +158,13 @@ export function listSessions(limit = 100, offset = 0, query = ""): ChatSessionVi
     .orderBy(desc(chatSessions.updatedAt), desc(chatSessions.id))
     .limit(limit).offset(offset)
     .all();
-  const counts = new Map<string, number>();
-  for (const message of db.select().from(chatMessages).all()) {
-    counts.set(message.sessionId, (counts.get(message.sessionId) ?? 0) + 1);
-  }
+  if (rows.length === 0) return [];
+  const sessionIds = rows.map((row) => row.id);
+  const counts = messageCountsForSessions(sessionIds);
 
   const activeRuns = new Map(
-    db.select().from(chatRuns).where(eq(chatRuns.status, "running")).all()
+    db.select({ sessionId: chatRuns.sessionId, id: chatRuns.id }).from(chatRuns)
+      .where(and(eq(chatRuns.status, "running"), inArray(chatRuns.sessionId, sessionIds))).all()
       .map((run) => [run.sessionId, run.id]),
   );
 
@@ -178,10 +190,7 @@ export function listTrashedSessions(limit = 1000): TrashedChatSessionView[] {
     .orderBy(desc(chatSessions.deletedAt))
     .limit(limit)
     .all();
-  const counts = new Map<string, number>();
-  for (const message of db.select().from(chatMessages).all()) {
-    counts.set(message.sessionId, (counts.get(message.sessionId) ?? 0) + 1);
-  }
+  const counts = messageCountsForSessions(rows.map((row) => row.id));
 
   return rows.map((row) => ({
     ...row,

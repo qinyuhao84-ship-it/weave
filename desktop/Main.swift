@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     var quitDeadline: DispatchWorkItem?
     var terminationReplied = false
     var presentingFailure = false
+    var checkingVaultAccess = false
     var launcherStderrBytes = 0
     var launcherStderrTruncationLogged = false
     var provisionalNavigationURLs: [ObjectIdentifier: String] = [:]
@@ -45,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
 
     func startService() {
-        guard !closing, process?.isRunning != true else { return }
+        guard !closing, !checkingVaultAccess, process?.isRunning != true else { return }
         baseURL = nil; serverPID = nil; buffer = ""
         launcherStderrBytes = 0; launcherStderrTruncationLogged = false
         window.subtitle = "正在打开"
@@ -54,8 +55,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         :root{color-scheme:light dark}body{margin:0;background:#f4f2ed;color:#292b25;font:15px -apple-system,system-ui;display:grid;place-items:center;height:100vh}
         main{text-align:center}svg{width:44px;height:44px;margin-bottom:24px}h1{font-size:23px;font-weight:500;margin:0 0 12px}p{color:#73756a;margin:0}
         @media(prefers-color-scheme:dark){body{background:#1b1e1a;color:#e4e6dc}p{color:#a0a593}}
-        </style><main><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 21L8 18M12 14L21 5M11 27L20 18M24 14L27 11M5 11L14 20M18 24L21 27M11 5L14 8M18 12L27 21"/></svg><h1>织识</h1><p>正在整理本地知识库，请稍候…</p></main></html>
+        </style><main><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 21L8 18M12 14L21 5M11 27L20 18M24 14L27 11M5 11L14 20M18 24L21 27M11 5L14 8M18 12L27 21"/></svg><h1>织识</h1><p>正在打开本地知识库，请稍候…</p><p style="margin-top:12px">如 macOS 询问文件夹访问，请允许读取知识库。</p></main></html>
         """, baseURL: nil)
+        // 系统首次授权可能等待用户很久；取得目录访问后才启动服务计时。
+        checkingVaultAccess = true
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do {
+                try Self.checkVaultAccess()
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.checkingVaultAccess = false
+                    if !self.closing { self.launchService() }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.checkingVaultAccess = false
+                    if !self.closing { self.showFailure("无法读取知识库文件夹。请在系统设置的隐私与安全性中允许织识访问该文件夹，然后重试。\(error.localizedDescription)") }
+                }
+            }
+        }
+    }
+
+    static func checkVaultAccess() throws {
+        let environment = ProcessInfo.processInfo.environment
+        let manager = FileManager.default
+        let home = manager.homeDirectoryForCurrentUser
+        var roots: [URL]
+        if let testRoot = environment["WEAVE_DESKTOP_TEST_ROOT"] {
+            roots = [URL(fileURLWithPath: testRoot).appendingPathComponent("vault")]
+        } else if let root = environment["WEAVE_VAULT"], !root.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            roots = [URL(fileURLWithPath: root.trimmingCharacters(in: .whitespacesAndNewlines))]
+        } else {
+            let configDirectory = environment["WEAVE_CONFIG_DIR"].map { URL(fileURLWithPath: $0) } ?? home.appendingPathComponent("Library/Application Support/Weave")
+            let config = configDirectory.appendingPathComponent("vault-location.json")
+            var location: [String: Any] = [:]
+            if manager.fileExists(atPath: config.path) {
+                location = try JSONSerialization.jsonObject(with: Data(contentsOf: config)) as? [String: Any] ?? [:]
+            }
+            if let move = location["pendingMove"] as? [String: String], let from = move["from"], let to = move["to"] {
+                roots = [URL(fileURLWithPath: from), URL(fileURLWithPath: to)]
+            } else {
+                roots = [(location["activeRoot"] as? String).map { URL(fileURLWithPath: $0) } ?? home.appendingPathComponent("Documents/织识")]
+            }
+        }
+        for root in roots {
+            var directory = root.standardizedFileURL
+            while !manager.fileExists(atPath: directory.path), directory.path != "/" { directory.deleteLastPathComponent() }
+            _ = try manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
+        }
+    }
+
+    func launchService() {
+        guard !closing, process?.isRunning != true else { return }
         let resources = Bundle.main.resourceURL!
         let child = Process(); child.executableURL = resources.appendingPathComponent("runtime/bin/node")
         child.arguments = [resources.appendingPathComponent("launcher.mjs").path]
@@ -298,6 +350,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         if let navigation = navigation { provisionalNavigationURLs.removeValue(forKey: ObjectIdentifier(navigation)) }
+    }
+    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        guard !closing else { completionHandler(); return }
+        let alert = NSAlert(); alert.messageText = "织识"; alert.informativeText = message
+        alert.addButton(withTitle: "知道了")
+        alert.beginSheetModal(for: window) { _ in completionHandler() }
+    }
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        guard !closing else { completionHandler(false); return }
+        let alert = NSAlert(); alert.alertStyle = .warning; alert.messageText = "请确认操作"; alert.informativeText = message
+        alert.addButton(withTitle: "确认"); alert.addButton(withTitle: "取消")
+        alert.beginSheetModal(for: window) { response in completionHandler(response == .alertFirstButtonReturn) }
+    }
+    func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) {
+        guard !closing else { completionHandler(nil); return }
+        let alert = NSAlert(); alert.messageText = "织识"; alert.informativeText = prompt
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24)); input.stringValue = defaultText ?? ""
+        alert.accessoryView = input; alert.addButton(withTitle: "确认"); alert.addButton(withTitle: "取消")
+        alert.window.initialFirstResponder = input
+        alert.beginSheetModal(for: window) { response in completionHandler(response == .alertFirstButtonReturn ? input.stringValue : nil) }
     }
     func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping ([URL]?) -> Void) {
         let panel = NSOpenPanel(); panel.allowsMultipleSelection = parameters.allowsMultipleSelection; panel.canChooseDirectories = parameters.allowsDirectories; panel.canChooseFiles = true

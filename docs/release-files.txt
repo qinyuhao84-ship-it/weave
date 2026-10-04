@@ -35,6 +35,7 @@ app/api/chat/sessions/route.ts
 app/api/chat/sessions/trash/route.ts
 app/api/chat/stop/route.ts
 app/api/graph/route.ts
+app/api/ingest/[id]/ai-review/route.ts
 app/api/ingest/[id]/commit/route.ts
 app/api/ingest/[id]/discard/route.ts
 app/api/ingest/[id]/draft/route.ts
@@ -100,6 +101,7 @@ components/ingest/ingest-provider.tsx
 components/ingest/pick-panel.tsx
 components/ingest/review-panel.tsx
 components/ingest/types.ts
+components/ingest/use-ai-review.ts
 components/ingest/use-ingest-state.ts
 components/ingest/use-review-autosave.ts
 components/jobs/job-indicator.tsx
@@ -261,6 +263,7 @@ docs/quality-audit-2026-10-03.md
 docs/release-audit.md
 docs/release-files.txt
 docs/release-validation-2026-10-03.md
+docs/release-validation-2026-10-05.md
 docs/release-validation-v0.2.1.md
 docs/releasing.md
 docs/retrieval-evaluation.md
@@ -314,12 +317,14 @@ instrumentation.ts
 lib/api.ts
 lib/app-data-versions.ts
 lib/chat/answer.ts
+lib/chat/artifact-generation.ts
 lib/chat/artifacts.ts
 lib/chat/citations.ts
 lib/chat/compress.ts
 lib/chat/config-server.ts
 lib/chat/config.ts
 lib/chat/context.ts
+lib/chat/html-guidance.ts
 lib/chat/progress.ts
 lib/chat/retrieve.ts
 lib/chat/run.ts
@@ -331,6 +336,7 @@ lib/chat/tokens.ts
 lib/db/client.ts
 lib/db/schema.ts
 lib/documents/html.ts
+lib/documents/reading-style.ts
 lib/git/auto-commit.ts
 lib/i18n/en.json
 lib/i18n/errors.ts
@@ -344,9 +350,11 @@ lib/index/reindex.ts
 lib/index/watch-suppression.ts
 lib/index/watcher.ts
 lib/index/wikilink-table.ts
+lib/ingest/ai-review.ts
 lib/ingest/checkpoint.ts
 lib/ingest/knowledge-context.ts
 lib/ingest/long-document.ts
+lib/ingest/normalize-draft.ts
 lib/ingest/parse/docling.ts
 lib/ingest/parse/node-parsers.ts
 lib/ingest/parse/presentation.ts
@@ -395,6 +403,7 @@ lib/vault/wikilinks.ts
 next.config.ts
 package.json
 playwright.config.ts
+playwright.reading.config.ts
 pnpm-lock.yaml
 pnpm-workspace.yaml
 postcss.config.mjs
@@ -422,8 +431,11 @@ scripts/local-host.mjs
 scripts/model-service-smoke.mts
 scripts/package-desktop.mjs
 scripts/performance-benchmark.mts
+scripts/reading-e2e-server.mts
 scripts/retrieval-eval.mts
+scripts/verify-chat-artifact.mts
 scripts/verify-desktop.mjs
+scripts/verify-reading-pages.mts
 scripts/with-docling.mjs
 tests/api-utils.test.ts
 tests/batch.test.ts
@@ -468,6 +480,7 @@ tests/hybrid-retrieval.test.ts
 tests/i18n.test.ts
 tests/index-file.test.ts
 tests/index-identity.test.ts
+tests/ingest-normalize.test.ts
 tests/ingest-questions.test.ts
 tests/ingest-queue.test.ts
 tests/ingest.test.ts
@@ -485,6 +498,8 @@ tests/performance.test.ts
 tests/provider-services.test.ts
 tests/provider.test.ts
 tests/readiness.test.ts
+tests/reading-e2e/reading-pages.spec.ts
+tests/reading-pages.test.ts
 tests/reasoning-capabilities.test.ts
 tests/reindex.test.ts
 tests/remediate.test.ts
@@ -493,6 +508,7 @@ tests/review-questions.test.ts
 tests/review.test.ts
 tests/security.test.ts
 tests/service.test.ts
+tests/session-list-counts.test.ts
 tests/settings-api.test.ts
 tests/setup.ts
 tests/slug.test.ts

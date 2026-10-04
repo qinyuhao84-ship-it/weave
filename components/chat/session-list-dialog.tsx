@@ -20,7 +20,7 @@ export function SessionListDialog({ onClose }: { onClose: () => void }) {
   const search = React.useDeferredValue(query);
   const { data, loading, error, refresh } = useApi<{ sessions: SessionSummary[]; total: number }>(`/api/chat/sessions?limit=20&offset=${page * 20}&q=${encodeURIComponent(search)}`, [dataVersion]);
   return createPortal(<>
-    <div className="fixed inset-0 z-[var(--z-index-overlay)] bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]" aria-hidden />
+    <div data-modal-dismiss onClick={onClose} className="fixed inset-0 z-[var(--z-index-overlay)] bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]" aria-hidden />
     <div ref={panel} role="dialog" aria-modal="true" aria-label={t("chat_session_list_dialog.m001")} tabIndex={-1} className="fixed left-1/2 top-1/2 z-[var(--z-index-modal)] flex max-h-[85dvh] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-[22px] border border-border bg-popover p-5 shadow-dialog focus:outline-none">
       <div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-[15px] font-semibold">{t("chat_session_list_dialog.m001")}</h2><Button variant="ghost" size="sm" aria-label={t("chat_session_list_dialog.m002")} onClick={onClose}><X size={15} /></Button></div>
       <Input value={query} onChange={event => { setQuery(event.target.value); setPage(0); }} placeholder={t("chat_session_list_dialog.m003")} aria-label={t("chat_session_list_dialog.m004")} />

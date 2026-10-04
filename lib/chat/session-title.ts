@@ -67,6 +67,7 @@ export async function summarizePendingSessionTitle(sessionId: string): Promise<s
 
     const provider = createLightProvider();
     const result = await provider.complete({
+      sessionId,
       messages: [
         { role: "system", content: TITLE_PROMPT },
         { role: "user", content: `请为下面这段对话拟一个短标题：\n\n${transcript}` },

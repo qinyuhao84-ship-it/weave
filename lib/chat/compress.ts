@@ -235,6 +235,7 @@ export async function compressHistory(input: {
   let model: string;
   try {
     const result = await provider.complete({
+      sessionId: input.sessionId,
       messages: [{
         role: "user",
         content: buildSummaryPrompt({

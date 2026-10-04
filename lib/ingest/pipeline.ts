@@ -38,6 +38,7 @@ import type { LlmProvider } from "@/lib/llm/types";
 import { combineAnalyses, combineDrafts, splitMarkdown } from "./long-document";
 import { knowledgeContextForDocument } from "./knowledge-context";
 import { loadCheckpoint, saveCheckpoint, clearCheckpoint } from "./checkpoint";
+import { normalizeSourceSummary } from "./normalize-draft";
 
 /**
  * 结构化抽取的单次调用超时。
@@ -128,6 +129,7 @@ export type IngestDraft = {
   /** 升级建议，例如安装 docling */
   upgradeHint: string | null;
   reviewRevision?: number;
+  aiReviewJobId?: string;
   reviewState?: { skippedTitles: string[]; decisions: Array<[number, { decision?: "accepted" | "dismissed"; note: string; answer: string; choiceId: string | null }]> };
 };
 
@@ -456,7 +458,7 @@ export function startIngest(input: StartIngestInput): { jobId: string } {
           if (chunks.length > 1) context.log(`已撰写第 ${index + 1}/${chunks.length} 段。`);
         }
 
-        const draft = combineDrafts(draftParts);
+        const draft = normalizeSourceSummary(combineDrafts(draftParts));
 
         // 引用校验：模型给出的原文片段必须真的存在于原文里
         const verifiedDraft = verifyCitations(draft, parsed.markdown, context, parsed.pageCount);
@@ -787,13 +789,14 @@ function supplementContradictions(
 export async function commitIngest(options: CommitIngestOptions): Promise<CommitIngestResult> {
   const staged = readDraft<IngestDraft>(options.jobId);
   if (!staged) throw new ConflictError("找不到这次导入的草稿，可能已经处理过。", "导入草稿");
+  if (staged.aiReviewJobId && ["queued", "running"].includes(getJob(staged.aiReviewJobId)?.status ?? "")) throw new ConflictError("AI 正在判断这份草稿，请完成或停止后再确认写入。", "导入草稿");
   if (options.reviewRevision !== undefined && options.reviewRevision !== (staged.reviewRevision ?? 0)) throw new ConflictError("草稿已在另一页面更新，请载入已保存版本后再确认写入。", "导入草稿");
   if (!claimAwaitingReview(options.jobId, "committing")) {
     throw new ConflictError("这份草稿已被提交、放弃，或正在由另一个请求处理。", "导入草稿");
   }
 
   try {
-    const draft = verifyCitations(DraftSchema.parse(options.draft), staged.markdown, { log: () => undefined }, staged.source.pageCount);
+    const draft = normalizeSourceSummary(verifyCitations(DraftSchema.parse(options.draft), staged.markdown, { log: () => undefined }, staged.source.pageCount));
     const requestedSkips = options.overrides?.skippedTitles;
     const skipped = new Set(
       (Array.isArray(requestedSkips) ? requestedSkips : [])

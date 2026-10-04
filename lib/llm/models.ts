@@ -2,6 +2,7 @@ import type { ProviderEntry } from "@/lib/settings";
 import { LlmError } from "./types";
 import { REASONING_EFFORTS } from "./types";
 import type { ModelCapability } from "./capabilities";
+import { isOpenCodeGoBaseUrl, OPENCODE_GO_CHAT_COMPLETION_MODELS, OPENCODE_GO_USER_AGENT } from "./presets";
 
 const globalModels = globalThis as unknown as { __weaveModelCapabilities?: Map<string, { model: ModelCapability; at: number }> };
 const capabilities = () => globalModels.__weaveModelCapabilities ??= new Map();
@@ -17,8 +18,9 @@ export async function listProviderModels(provider: Pick<ProviderEntry, "baseUrl"
   let response: Response;
   try {
     response = await fetch(`${provider.baseUrl.replace(/\/+$/, "")}/models`, {
-      headers: { ...(anthropic ? { "anthropic-version": "2023-06-01", ...(provider.apiKey ? { "x-api-key": provider.apiKey } : {}) }
-        : provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}), ...provider.headers },
+      headers: { ...(isOpenCodeGoBaseUrl(provider.baseUrl) ? { "User-Agent": OPENCODE_GO_USER_AGENT } : {}),
+        ...(anthropic ? { "anthropic-version": "2023-06-01", ...(provider.apiKey ? { "x-api-key": provider.apiKey } : {}) }
+          : provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}), ...provider.headers },
       signal: AbortSignal.timeout(10_000), cache: "no-store",
     });
   } catch { throw new LlmError("模型列表连接失败或超时。请检查 API 基础地址、网络与代理；当前输入已保留。"); }
@@ -28,9 +30,11 @@ export async function listProviderModels(provider: Pick<ProviderEntry, "baseUrl"
     : `服务返回 HTTP ${response.status}。请检查地址、模型权限与额度。`, response.status);
   const body = await response.json().catch(() => null) as { data?: Array<{ id?: unknown; context_length?: unknown; context_window?: unknown; reasoning_efforts?: unknown; effort?: unknown }> } | null;
   if (!Array.isArray(body?.data)) return { models: [], supported: false };
-  const models = [...new Set(body.data.flatMap(model => typeof model?.id === "string" && model.id.length <= 200 ? [model.id] : []))].sort();
+  const allowedModels = isOpenCodeGoBaseUrl(provider.baseUrl) ? new Set<string>(OPENCODE_GO_CHAT_COMPLETION_MODELS) : null;
+  const available = allowedModels ? body.data.filter(model => typeof model?.id === "string" && allowedModels.has(model.id)) : body.data;
+  const models = [...new Set(available.flatMap(model => typeof model?.id === "string" && model.id.length <= 200 ? [model.id] : []))].sort();
   const modelIds = new Set(models);
-  const details: ModelCapability[] = body.data.flatMap(model => {
+  const details: ModelCapability[] = available.flatMap(model => {
     if (typeof model.id !== "string" || !modelIds.has(model.id)) return [];
     const window = model.context_length ?? model.context_window;
     const officialEffort = model.effort && typeof model.effort === "object" && "supported_levels" in model.effort ? model.effort.supported_levels : model.effort;

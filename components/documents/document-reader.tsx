@@ -8,12 +8,14 @@ import { Button } from "@/components/ui";
 import { MarkdownRenderer } from "@/components/markdown/renderer";
 import { apiFetch } from "@/hooks/use-api";
 import { useModalFocus } from "@/hooks/use-modal-focus";
+import { useTheme } from "@/hooks/use-theme";
 
-export function DocumentReader({ name, mediaType, status = "ready", contentUrl, downloadUrl, responseFormat = "json", previewClassName, testId }: {
+export function DocumentReader({ name, mediaType, status = "ready", contentUrl, downloadUrl, responseFormat = "json", previewClassName, followAppTheme = false, testId }: {
   name: string; mediaType: string; status?: "ready" | "basic" | "incomplete";
-  contentUrl: string; downloadUrl: string; responseFormat?: "json" | "text"; previewClassName?: string; testId?: string;
+  contentUrl: string; downloadUrl: string; responseFormat?: "json" | "text"; previewClassName?: string; followAppTheme?: boolean; testId?: string;
 }) {
   const { t } = useI18n();
+  const { resolved } = useTheme();
   const [content, setContent] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [fullscreen, setFullscreen] = React.useState(false);
@@ -25,6 +27,9 @@ export function DocumentReader({ name, mediaType, status = "ready", contentUrl, 
   const htmlPreviewUrl = responseFormat === "text" ? contentUrl : `${contentUrl}${contentUrl.includes("?") ? "&" : "?"}preview=1`;
   const canPreview = status !== "incomplete" && ["text/html", "text/markdown"].includes(mediaType);
   const close = React.useCallback(() => setFullscreen(false), []);
+  const syncTheme = React.useCallback((target: Window | null | undefined) => {
+    if (followAppTheme && mediaType === "text/html") target?.postMessage({ type: "weave-artifact-theme", theme: resolved }, "*");
+  }, [followAppTheme, mediaType, resolved]);
   useModalFocus(fullscreen, panel, close);
   React.useEffect(() => {
     if (!canPreview) return;
@@ -40,12 +45,20 @@ export function DocumentReader({ name, mediaType, status = "ready", contentUrl, 
   React.useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.source === fullFrame.current?.contentWindow && event.data?.type === "weave-artifact-escape") close();
+      if (event.data?.type === "weave-artifact-ready") {
+        if (event.source === frame.current?.contentWindow) syncTheme(frame.current?.contentWindow);
+        if (event.source === fullFrame.current?.contentWindow) syncTheme(fullFrame.current?.contentWindow);
+      }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [close]);
+  }, [close, syncTheme]);
+  React.useEffect(() => {
+    syncTheme(frame.current?.contentWindow);
+    syncTheme(fullFrame.current?.contentWindow);
+  }, [syncTheme]);
   const preview = (full: boolean) => mediaType === "text/html"
-    ? <iframe ref={full ? fullFrame : frame} title={full ? t("documents_document_reader.m002", {v0: name}) : t("documents_document_reader.m003", {v0: name})} sandbox="allow-scripts" referrerPolicy="no-referrer" src={htmlPreviewUrl} className={full ? "h-full w-full flex-1 border-0 bg-[#fcfbf9]" : previewClassName ?? "h-[360px] w-full border-0 bg-[#fcfbf9] sm:h-[420px]"} />
+    ? <iframe ref={full ? fullFrame : frame} onLoad={event => syncTheme(event.currentTarget.contentWindow)} title={full ? t("documents_document_reader.m002", {v0: name}) : t("documents_document_reader.m003", {v0: name})} sandbox="allow-scripts" referrerPolicy="no-referrer" src={htmlPreviewUrl} className={full ? "h-full w-full flex-1 border-0 bg-background" : previewClassName ?? "h-[360px] w-full border-0 bg-background sm:h-[420px]"} />
     : <div className={full ? "flex-1 overflow-y-auto p-6 sm:px-12" : "max-h-[420px] overflow-y-auto p-5"}><MarkdownRenderer content={content ?? ""} /></div>;
   const download = <a href={downloadUrl} download className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"><Download size={13} aria-hidden />{t("documents_document_reader.m004")}{mediaType === "text/html" ? " HTML" : t("documents_document_reader.m005")}</a>;
   return <div className="overflow-hidden rounded-xl border border-border" data-testid={testId}>

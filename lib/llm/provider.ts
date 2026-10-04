@@ -9,6 +9,7 @@ import {
 } from "./types";
 import { canonicalReasoningEffort, reasoningCapability, supportsTemperature } from "./capabilities";
 import { cachedModelCapability } from "./models";
+import { isOpenCodeGoBaseUrl, OPENCODE_GO_USER_AGENT } from "./presets";
 
 /**
  * OpenAI 兼容协议的 provider。
@@ -125,7 +126,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     try {
       return await fetch(`${this.config.baseUrl.replace(/\/+$/, "")}/chat/completions`, {
         method: "POST",
-        headers: this.headers(request.headers),
+        headers: this.headers(request.headers, request.sessionId),
         body: JSON.stringify(body),
         signal,
       });
@@ -136,11 +137,14 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     }
   }
 
-  private headers(extra?: Record<string, string>): Record<string, string> {
+  private headers(extra?: Record<string, string>, sessionId?: string): Record<string, string> {
+    const isOpenCodeGo = isOpenCodeGoBaseUrl(this.config.baseUrl);
     return {
       "Content-Type": "application/json",
+      ...(isOpenCodeGo ? { "User-Agent": OPENCODE_GO_USER_AGENT } : {}),
       ...(this.config.apiKey ? { Authorization: `Bearer ${this.config.apiKey}` } : {}),
       ...this.config.headers,
+      ...(isOpenCodeGo && sessionId ? { "x-opencode-session": sessionId } : {}),
       ...extra,
     };
   }
@@ -196,7 +200,19 @@ export class OpenAiCompatibleProvider implements LlmProvider {
       throw new LlmError(formatHttpError(response.status, detail), response.status, retryable);
     }
 
-    const payload = (await response.json()) as ChatCompletionResponse;
+    let payload: ChatCompletionResponse;
+    try {
+      payload = (await response.json()) as ChatCompletionResponse;
+    } catch (error) {
+      if (signal.aborted) throw signal.reason;
+      if (error instanceof TypeError) {
+        throw new LlmError("模型连接在接收回答时中断，请重试。", 502, true);
+      }
+      if (error instanceof SyntaxError) {
+        throw new LlmError("模型返回了无效的 JSON，无法读取回答。", 502);
+      }
+      throw error;
+    }
     const choice = payload.choices?.[0];
     if (!choice) {
       throw new LlmError("模型返回了空的 choices");
@@ -249,36 +265,44 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     let usage: CompletionResult["usage"] = null;
     let finishReason = "";
 
-    for await (const chunk of parseSseStream(response.body)) {
-      if (chunk === "[DONE]") break;
-      let parsed: ChatCompletionChunk;
-      try {
-        parsed = JSON.parse(chunk) as ChatCompletionChunk;
-      } catch {
-        // parseSseStream 已按完整 SSE 事件切分，事件内的坏 JSON 不能静默丢弃。
-        throw new LlmError("模型返回了无效的流式数据，回答尚未完成。请重试。", 502, true);
-      }
-      const choice = parsed.choices?.[0];
+    try {
+      for await (const chunk of parseSseStream(response.body)) {
+        if (chunk === "[DONE]") break;
+        let parsed: ChatCompletionChunk;
+        try {
+          parsed = JSON.parse(chunk) as ChatCompletionChunk;
+        } catch {
+          // parseSseStream 已按完整 SSE 事件切分，事件内的坏 JSON 不能静默丢弃。
+          throw new LlmError("模型返回了无效的流式数据，回答尚未完成。请重试。", 502, true);
+        }
+        const choice = parsed.choices?.[0];
 
-      // 推理增量单独回调，不混进正文 —— 它是思考过程，不是答案
-      const reasoning = choice?.delta?.reasoning_content;
-      if (reasoning) request.onReasoningDelta?.(reasoning);
+        // 推理增量单独回调，不混进正文 —— 它是思考过程，不是答案
+        const reasoning = choice?.delta?.reasoning_content;
+        if (reasoning) request.onReasoningDelta?.(reasoning);
 
-      const delta = choice?.delta?.content;
-      if (typeof delta === "string" && delta) {
-        full += delta;
-        yield delta;
+        const delta = choice?.delta?.content;
+        if (typeof delta === "string" && delta) {
+          full += delta;
+          yield delta;
+        }
+        if (parsed.choices?.[0]?.finish_reason) {
+          finishReason = parsed.choices[0].finish_reason!;
+        }
+        if (parsed.usage) {
+          usage = {
+            promptTokens: parsed.usage.prompt_tokens ?? 0,
+            completionTokens: parsed.usage.completion_tokens ?? 0,
+            totalTokens: parsed.usage.total_tokens ?? 0,
+          };
+        }
       }
-      if (parsed.choices?.[0]?.finish_reason) {
-        finishReason = parsed.choices[0].finish_reason!;
+    } catch (error) {
+      if (signal.aborted) throw signal.reason;
+      if (error instanceof TypeError) {
+        throw new LlmError("模型连接在接收流式回答时中断，请重试。", 502, true);
       }
-      if (parsed.usage) {
-        usage = {
-          promptTokens: parsed.usage.prompt_tokens ?? 0,
-          completionTokens: parsed.usage.completion_tokens ?? 0,
-          totalTokens: parsed.usage.total_tokens ?? 0,
-        };
-      }
+      throw error;
     }
 
     signal.throwIfAborted();

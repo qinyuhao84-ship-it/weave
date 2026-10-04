@@ -170,7 +170,7 @@
     "m007": "Restored “{v0}”.",
     "m008": "Restore did not finish.",
     "m009": "Trash",
-    "m010": "Deleted pages and full vault snapshots made when clearing the knowledge base are kept here.",
+    "m010": "Deleted chats, individually deleted pages, and full vault snapshots made when clearing the knowledge base are kept here.",
     "m011": " archived batches",
     "m012": " deleted pages",
     "m013": "Empty trash",
@@ -195,7 +195,18 @@
     "m032": "Deleted",
     "m033": " · Previously merged into another page",
     "m034": "Restore page",
-    "m035": "Delete"
+    "m035": "Delete",
+    "m036": "deleted chats",
+    "m037": "Deleted chats stay here until restored or permanently deleted. Restored chats return to the chat list.",
+    "m038": "No deleted chats",
+    "m039": "Deleted on {v0}",
+    "m040": "{v0, plural, one {# message} other {# messages}}",
+    "m041": "Restore chat",
+    "m042": "Permanently delete",
+    "m043": "Permanently delete “{v0}”? The chat and its messages cannot be restored.",
+    "m044": "Restored chat “{v0}”.",
+    "m045": "Permanently deleted chat “{v0}”.",
+    "m046": "The chat could not be permanently deleted."
   },
   "wiki_workspace": {
     "m001": "Search unavailable",
@@ -608,7 +619,14 @@
     "m093": "Save as a new page"
   },
   "chat_artifact_card": {
-    "m001": "The interactive reading page is being generated. Open it when complete."
+    "m001": "The interactive page will be generated after the text answer is complete.",
+    "pending": "Your answer is ready. The interactive page is being generated. You can keep chatting.",
+    "failed": "Page generation failed. Your text answer is saved.",
+    "cancelled": "Page generation stopped. Your text answer is saved.",
+    "checkFailed": "Unable to read the page status. Check progress to try again.",
+    "check": "Check progress",
+    "stop": "Stop page generation",
+    "retry": "Generate page again"
   },
   "chat_chat_controls": {
     "m001": "Failed to load the list. You can still use the configured model.",
@@ -800,7 +818,8 @@
     "reindex": "Rebuild index",
     "rebuild_graph": "Rebuild graph",
     "refile": "File pages",
-    "embeddings": "Vector index"
+    "embeddings": "Vector index",
+    "chat_artifact": "Interactive page"
   },
   "reviewKinds": {
     "contradiction": "Contradiction",
@@ -829,7 +848,7 @@
     "off": "Thinking off"
   },
   "html": {
-    "hint": "Adds an interactive reading page with preview, full-screen view and download."
+    "hint": "Returns the text answer first, then generates an interactive page with preview, full-screen view and download."
   },
   "waitingCopy": {
     "m0": "Connecting scattered knowledge.",
@@ -932,6 +951,7 @@
   "providerPresets": {
     "claude": "Anthropic Claude (compatible API)",
     "deepseek": "DeepSeek",
+    "opencode-go": "OpenCode Go",
     "dashscope": "Alibaba Cloud · Qwen",
     "moonshot": "Moonshot · Kimi",
     "zhipu": "Zhipu · GLM",
@@ -980,6 +1000,9 @@
     "indexFailed": "Source preparation is incomplete. Check the connection, then update lookup data to continue. Completed work is preserved."
   },
   "modelAccess": {
+    "cloudKeyHint": "Enter an API key for the selected service. Keys are stored only on this device.",
+    "cloudKeyPlaceholder": "Paste the selected service's API key",
+    "opencodeGoHint": "Get a key from the OpenCode Go console. This connection supports the service's chat models; fetch the model list to choose another model.",
     "deepseekKeyHint": "Use your API platform key here, not your chat account password.",
     "deepseekKeyPlaceholder": "Paste your copied DeepSeek API key",
     "checked": "Prices and entry points checked on 2026-10-02; current provider pages take precedence.",
@@ -1047,7 +1070,11 @@
     "guidance": "Check the summary and possible conflicts first, then review any questions below. Expand other content as needed. Nothing is added to your knowledge base until you confirm the import.",
     "saved": "Draft saved; not yet added to your knowledge base",
     "saving": "Saving draft; not yet added to your knowledge base",
-    "local": "Draft saved only in this browser; not yet added to your knowledge base"
+    "local": "Draft saved only in this browser; not yet added to your knowledge base",
+    "recoverableNotice": "Found {v0} local copies from other tabs. Choose one to restore here; the server changes only after it saves successfully.",
+    "recoverCopy": "Restore copy {v0}: {v1} · {v2}",
+    "untitledCopy": "Untitled draft",
+    "unknownSavedTime": "Time unknown"
   },
   "knowledgeSelection": {
     "label": "Choose the target page",
@@ -1080,6 +1107,14 @@
     "retrying": "Reloading…",
     "loading": "Loading…",
     "refreshing": "Updating…"
+  },
+  "aiIngestReview": {
+    "button": "Let AI decide",
+    "fullOverview": "Show full source overview",
+    "hint": "AI fills unanswered items using the full source and preserves your choices. You can edit the results before confirming the import.",
+    "working": "AI is checking the source and deciding",
+    "stop": "Stop AI review",
+    "generated": "AI decision · editable"
   },
   "vaultStatus": {
     "checking": "Checking knowledge base",

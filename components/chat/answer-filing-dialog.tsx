@@ -116,6 +116,7 @@ export function AnswerFilingDialog({ message: filingMessage, sessionId, onSaved,
   return (
         <>
           <div
+            data-modal-dismiss
             className="fixed inset-0 z-[var(--z-index-overlay)] bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]"
             onClick={() => onClose()}
             aria-hidden

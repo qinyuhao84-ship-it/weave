@@ -18,7 +18,7 @@ type Draft = {
   temperature: string; supportsStrictSchema: boolean; headersText: string; clearApiKey: boolean;
 };
 type Result = { settings: PublicSettings; model: { configured: boolean } };
-const commonPresets = ["deepseek", "openai", "gemini", "claude", "ollama", "lmstudio", "openaiCompatible"];
+const commonPresets = ["deepseek", "opencode-go", "openai", "gemini", "claude", "ollama", "lmstudio", "openaiCompatible"];
 
 function draftFor(provider?: PublicProvider): Draft {
   return {
@@ -67,7 +67,7 @@ export function ModelSection() {
     if (!isPresetKey(key)) return;
     setPresetKey(key);
     const preset = PROVIDER_PRESETS[key];
-    change({ label: preset.label, baseUrl: preset.baseUrl, model: key === "deepseek" ? "deepseek-flash" : "", apiKey: "", clearApiKey: Boolean(editing?.hasApiKey), contextWindow: "32768", lightModel: "", reasoningEffort: "default", supportsStrictSchema: false, headersText: key === "gemini" ? '{"x-goog-api-client":"weave/0.1.0"}' : "{}" });
+    change({ label: preset.label, baseUrl: preset.baseUrl, model: preset.defaultModel || (key === "deepseek" ? "deepseek-flash" : ""), apiKey: "", clearApiKey: Boolean(editing?.hasApiKey), contextWindow: "32768", lightModel: "", reasoningEffort: "default", supportsStrictSchema: false, headersText: JSON.stringify({ ...preset.defaultHeaders, ...(key === "gemini" ? { "x-goog-api-client": "weave/0.1.0" } : {}) }) });
   };
   const edit = (provider?: PublicProvider) => {
     if (draft && !window.confirm(t("settings_model_section.m001"))) return;
@@ -184,10 +184,11 @@ export function ModelSection() {
             <Select aria-label={t("settings_model_section.m031")} disabled={locked("baseUrl") || locked("apiKey") || locked("model")} value={presetKey} onChange={event => selectPreset(event.target.value)}>{Object.entries(PROVIDER_PRESETS).filter(([key]) => commonPresets.includes(key) || key === presetKey).map(([key, preset]) => <option key={key} value={key}>{presetLabel(key, preset.label)}</option>)}</Select>
 
           </Field>
-          <Field label="API Key" overridden={locked("apiKey")} hint={editing?.hasApiKey ? t("settings_model_section.m032") : t(presetKey === "deepseek" ? "modelAccess.deepseekKeyHint" : "settings_model_section.m033")}>
-            <Input aria-label="API Key" type="password" autoComplete="new-password" disabled={locked("apiKey")} value={draft.apiKey} onChange={e => change({ apiKey: e.target.value })} placeholder={draft.clearApiKey ? t("settings_model_section.m034") : editing?.hasApiKey ? t("settings_model_section.m035") : t(presetKey === "deepseek" ? "modelAccess.deepseekKeyPlaceholder" : "settings_model_section.m036")} />
+          <Field label="API Key" overridden={locked("apiKey")} hint={editing?.hasApiKey ? t("settings_model_section.m032") : t(["ollama", "lmstudio", "openaiCompatible"].includes(presetKey) ? "settings_model_section.m033" : "modelAccess.cloudKeyHint")}>
+            <Input aria-label="API Key" type="password" autoComplete="new-password" disabled={locked("apiKey")} value={draft.apiKey} onChange={e => change({ apiKey: e.target.value })} placeholder={draft.clearApiKey ? t("settings_model_section.m034") : editing?.hasApiKey ? t("settings_model_section.m035") : t(["ollama", "lmstudio", "openaiCompatible"].includes(presetKey) ? "settings_model_section.m036" : "modelAccess.cloudKeyPlaceholder")} />
             {presetKey === "deepseek" && <ModelAccessHelp service="deepseek" />}
             {presetKey === "siliconflow" && <ModelAccessHelp service="siliconflow" />}
+            {presetKey === "opencode-go" && <p className="text-[12px] leading-relaxed text-muted-foreground">{t("modelAccess.opencodeGoHint")} <a className="underline underline-offset-4" href={PROVIDER_PRESETS["opencode-go"].docs} target="_blank" rel="noopener noreferrer">{t("modelAccess.docs")}</a></p>}
           </Field>
           {presetKey === "openaiCompatible" && <Field label={t("settings_model_section.m037")}><Input aria-label={t("settings_model_section.m037")} type="url" required disabled={locked("baseUrl")} value={draft.baseUrl} onChange={e => change({ baseUrl: e.target.value })} placeholder="https://your-provider.example/v1" autoCapitalize="none" spellCheck={false} /></Field>}
           <Field label={t("settings_model_section.m013")} overridden={locked("model")}>

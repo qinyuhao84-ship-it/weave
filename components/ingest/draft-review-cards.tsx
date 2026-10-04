@@ -228,10 +228,10 @@ export function ReviewDecisionCard({
   onAnswer: (answer: string, choiceId: string | null) => void;
 }) {
   const { t } = useI18n();
-  const [answerDraft, setAnswerDraft] = React.useState<AnswerDraft>({
+  const answerDraft: AnswerDraft = {
     answer: decision?.answer ?? "",
     choiceId: decision?.choiceId ?? null,
-  });
+  };
 
   // 「碰过了」而不是「裁决过了」：只回答了没裁决的条目也是处理过的，
   // 它会在提交之后由模型接着处理
@@ -275,7 +275,6 @@ export function ReviewDecisionCard({
           options={item.options}
           value={answerDraft}
           onChange={(next) => {
-            setAnswerDraft(next);
             onAnswer(next.answer, next.choiceId);
           }}
         />
@@ -293,16 +292,17 @@ export function ReviewDecisionCard({
           placeholder={t("ingest_ingest_drawer.m115")}
           onChange={(event) => {
             const next = { answer: event.target.value, choiceId: null };
-            setAnswerDraft(next);
             onAnswer(next.answer, next.choiceId);
           }}
         />
         </>
       )}
       {handled && (
-        <p className="mt-2 text-[11.5px] text-[var(--success)]">{t("ingest_ingest_drawer.m116")}</p>
+        <div className="mt-2 space-y-1">
+          <p className="text-[11.5px] text-[var(--success)]">{t(decision?.note === "由 AI 批量判断" ? "aiIngestReview.generated" : "ingest_ingest_drawer.m116")}</p>
+          {decision?.note === "由 AI 批量判断" && answerDraft.choiceId && <p className="text-[12px] leading-relaxed text-foreground">{answerDraft.answer}</p>}
+        </div>
       )}
     </div>
   );
 }
-

@@ -126,7 +126,7 @@ export function validateCitations(
   answer: string,
   chunks: ContextChunk[],
 ): ValidationReport {
-  const maxIndex = chunks.length;
+  const maxIndex = Math.max(0, ...chunks.map(chunk => chunk.index));
   const allowed = new Set(chunks.map((c) => c.index));
 
   // ① 范围展开

@@ -33,7 +33,7 @@ gitleaks git --redact=100 --log-opts="--all"
 
 ## 公开历史与后续更新
 
-v0.1.0 首次发布使用独立公开仓库；后续更新沿用该仓库完整历史。当前仓库为 [qinyuhao84-ship-it/weave](https://github.com/qinyuhao84-ship-it/weave)，当前桌面安装入口为 [Release](https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.2)。不复制本地开发 `.git`，不推送知识库内部 Git；使用 GitHub noreply 作者邮箱，不修改全局 Git 身份。
+v0.1.0 首次发布使用独立公开仓库；后续更新沿用该仓库完整历史。当前仓库为 [qinyuhao84-ship-it/weave](https://github.com/qinyuhao84-ship-it/weave)，当前桌面安装入口为 [Release](https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.3)。不复制本地开发 `.git`，不推送知识库内部 Git；使用 GitHub noreply 作者邮箱，不修改全局 Git 身份。
 
 后续提交在独立克隆中准备，按文件范围核对后推送；源码变更执行完整回归，纯文档变更核对链接、事实和 GitHub Markdown 实际渲染。指标名称使用行内代码，例如 `Recall@10`，避免孤立的 `@10` 被识别为用户提及。保留历史验收结果，当前说明链接最新验收。
 

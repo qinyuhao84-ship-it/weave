@@ -43,5 +43,5 @@ export type ChatArtifact = {
   messageId: string;
   name: string;
   mediaType: string;
-  status: "ready" | "basic" | "incomplete";
+  status: "ready" | "basic" | "incomplete" | "pending" | "failed" | "cancelled";
 };

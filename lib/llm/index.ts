@@ -3,6 +3,7 @@ import { OpenAiCompatibleProvider, PROVIDER_PRESETS, isPresetKey } from "./provi
 import { LlmError, type LlmProvider, type ReasoningEffort } from "./types";
 import { canonicalReasoningEffort, lightReasoningEffort } from "./capabilities";
 import { cachedModelCapability } from "./models";
+import { isOpenCodeGoBaseUrl, OPENCODE_GO_CHAT_COMPLETION_MODELS } from "./presets";
 
 export * from "./types";
 export { OpenAiCompatibleProvider, PROVIDER_PRESETS, isPresetKey } from "./provider";
@@ -28,6 +29,9 @@ function toSdkProvider(
   }
 
   const model = modelOverride || entry.model;
+  if (isOpenCodeGoBaseUrl(entry.baseUrl) && !OPENCODE_GO_CHAT_COMPLETION_MODELS.includes(model as typeof OPENCODE_GO_CHAT_COMPLETION_MODELS[number])) {
+    throw new LlmError("织识只支持 OpenCode Go 中使用 Chat Completions 接口的模型，请从可用模型列表中选择。", 400);
+  }
   const effort = canonicalReasoningEffort(entry.baseUrl, model, effortOverride ?? entry.reasoningEffort, cachedModelCapability(entry.baseUrl, model));
   return new OpenAiCompatibleProvider({
     baseUrl: entry.baseUrl.replace(/\/$/, ""),
@@ -106,6 +110,7 @@ export function applyPreset(presetKey: string): {
   baseUrl: string;
   model: string;
   supportsStrictSchema: boolean;
+  headers?: Record<string, string>;
 } {
   if (!isPresetKey(presetKey)) {
     return { baseUrl: "", model: "", supportsStrictSchema: false };
@@ -115,6 +120,7 @@ export function applyPreset(presetKey: string): {
     baseUrl: preset.baseUrl,
     model: preset.defaultModel,
     supportsStrictSchema: preset.supportsStrictSchema,
+    ...(Object.keys(preset.defaultHeaders).length > 0 ? { headers: preset.defaultHeaders } : {}),
   };
 }
 

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronDown, ShieldCheck, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useJobs, type ActiveJob } from "./jobs-provider";
+import { useIngest } from "@/components/ingest/ingest-provider";
 
 /**
  * 后台任务的常驻指示器（侧栏底部）。
@@ -28,6 +29,7 @@ const KIND_META: Record<string, { label: string; icon: React.ElementType; href: 
   review_batch: { label: "jobKinds.review_batch", icon: Sparkles, href: "/review" },
   reindex: { label: "jobKinds.reindex", icon: Sparkles, href: "/settings" },
   embeddings: { label: "jobKinds.embeddings", icon: Sparkles, href: "/settings" },
+  chat_artifact: { label: "jobKinds.chat_artifact", icon: Sparkles, href: "/chat" },
   rebuild_graph: { label: "jobKinds.rebuild_graph", icon: Sparkles, href: "/settings" },
   refile: { label: "jobKinds.refile", icon: Sparkles, href: "/wiki" },
 };
@@ -58,6 +60,7 @@ export function JobIndicators() {
 
 function JobRow({ job }: { job: ActiveJob }) {
   const { t, locale } = useI18n();
+  const { adoptExistingJob } = useIngest();
   const meta = KIND_META[job.kind] ?? { label: job.kind, icon: Sparkles, href: "/wiki" };
   const Icon = meta.icon;
   const running = job.status === "running";
@@ -69,7 +72,13 @@ function JobRow({ job }: { job: ActiveJob }) {
 
   return (
     <Link
-      href={meta.href}
+      href={job.kind === "chat_artifact" && job.payload?.sessionId ? `/chat?s=${encodeURIComponent(job.payload.sessionId)}` : meta.href}
+      onClick={event => {
+        if (job.kind === "ingest_review" && job.payload?.ingestId) {
+          event.preventDefault();
+          adoptExistingJob(job.payload.ingestId, job.payload.title?.replace(/^AI 批量判断 · /, "") ?? "");
+        }
+      }}
       // 阶段信息收进悬浮提示：想知道它卡在哪一步，把鼠标停上去，或者点进去看过程记录
       title={job.stageLabel ? `${label} · ${locale === "en" && t.has("stages." + job.stage) ? t("stages." + job.stage) : job.stageLabel}` : label}
       className="flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[12.5px] text-muted-foreground transition-colors duration-150 hover:bg-[var(--muted)] hover:text-foreground"

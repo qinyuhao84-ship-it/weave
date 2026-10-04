@@ -1,12 +1,12 @@
 "use client";
 import { useI18n } from "@/components/i18n-provider";
 
-import { Badge, ProgressBar, Textarea } from "@/components/ui";
+import { Badge, Button, ProgressBar, Textarea } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { diffLines } from "diff";
 import {
   ChevronRight,
-  Pencil
+  Pencil, Sparkles
 } from "lucide-react";
 import * as React from "react";
 import {
@@ -30,6 +30,10 @@ export function ReviewPanel({
   onChange,
   committing,
   commitProgress,
+  aiReviewBusy,
+  aiReviewProgress,
+  onAiReview,
+  onStopAiReview,
 }: {
   draft: IngestDraft;
   recovered: boolean;
@@ -41,6 +45,10 @@ export function ReviewPanel({
   onChange: (next: Draft) => void;
   committing: boolean;
   commitProgress: number;
+  aiReviewBusy: boolean;
+  aiReviewProgress: number;
+  onAiReview: () => void;
+  onStopAiReview: () => void;
 }) {
   const { t } = useI18n();
   const data = draft;
@@ -70,7 +78,8 @@ export function ReviewPanel({
       {/* 概览：一眼看清「这份资料是什么、会动到多少东西」 */}
       <div className="rounded-[16px] border border-border bg-card p-4">
         <h3 className="mb-2 text-[13px] font-semibold">{t("draftReview.overview")}</h3>
-        <p className="text-[13px] leading-relaxed text-foreground">{analysis.gist}</p>
+        <p className="text-[13px] leading-relaxed text-foreground">{analysis.gist.length > 600 ? analysis.gist.slice(0, 600) + "…" : analysis.gist}</p>
+        {analysis.gist.length > 600 && <details className="mt-2 text-[12px] leading-relaxed text-muted-foreground"><summary className="cursor-pointer">{t("aiIngestReview.fullOverview")}</summary><p className="mt-2 whitespace-pre-wrap">{analysis.gist}</p></details>}
         <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{t("draftReview.guidance")}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <Badge tone="neutral">{createdCount} {t("ingest_ingest_drawer.m073")}</Badge>
@@ -102,7 +111,17 @@ export function ReviewPanel({
 
       {/* 待你判断的事项：需要用户做决定，默认展开 */}
       {items.length > 0 && (
-        <Section title={t("ingest_ingest_drawer.m081")} count={items.length} hint={t("ingest_ingest_drawer.m082")}>
+        <Section title={t("ingest_ingest_drawer.m081")} count={items.length} hint={t("ingest_ingest_drawer.m082")} action={
+          <Button size="sm" variant="secondary" loading={aiReviewBusy} disabled={committing || items.every((_item, index) => Boolean(decisions.get(index)?.answer.trim() || decisions.get(index)?.decision))} onClick={onAiReview} icon={<Sparkles size={13} />}>
+            {t("aiIngestReview.button")}
+          </Button>
+        }>
+          <p className="text-[12px] text-muted-foreground">{t("aiIngestReview.hint")}</p>
+          {aiReviewBusy && <div role="status" className="space-y-2">
+            <ProgressBar value={aiReviewProgress} max={100} label={t("aiIngestReview.working")} />
+            <Button size="sm" variant="ghost" onClick={onStopAiReview}>{t("aiIngestReview.stop")}</Button>
+          </div>}
+          <fieldset disabled={aiReviewBusy || committing} className="min-w-0 space-y-3 disabled:opacity-70">
           {items.map((item, index) => (
             <ReviewDecisionCard
               key={index}
@@ -111,10 +130,12 @@ export function ReviewPanel({
               onAnswer={(text, choiceId) => onAnswer(index, text, choiceId)}
             />
           ))}
+          </fieldset>
         </Section>
       )}
 
       {/* 新建词条：折叠行，需要时展开看正文 */}
+      <fieldset disabled={aiReviewBusy || committing} className="min-w-0">
       <Section
         title={t("ingest_ingest_drawer.m083")}
         count={newPages.length}
@@ -305,6 +326,7 @@ export function ReviewPanel({
         />
       </Section>
 
+      </fieldset>
       {committing && (
         <div className="mt-5">
           <ProgressBar value={commitProgress} max={100} label={t("ingest_ingest_drawer.m099")} />

@@ -35,9 +35,14 @@ function openLog(support) {
   };
 }
 
-async function availablePort() {
+async function availablePort(preferred = 0) {
   const probe = net.createServer();
-  await new Promise((resolve, reject) => { probe.once('error', reject); probe.listen(0, '127.0.0.1', resolve); });
+  try {
+    await new Promise((resolve, reject) => { probe.once('error', reject); probe.listen(preferred, '127.0.0.1', resolve); });
+  } catch (error) {
+    if (preferred && error.code === 'EADDRINUSE') return availablePort();
+    throw error;
+  }
   const port = probe.address().port;
   await new Promise((resolve, reject) => probe.close(error => error ? reject(error) : resolve()));
   return port;
@@ -48,6 +53,9 @@ export async function launchDesktop({ resources = defaultResources, environment 
   const testRoot = environment.WEAVE_DESKTOP_TEST_ROOT;
   const support = testRoot || path.join(os.homedir(), 'Library', 'Application Support', 'Weave');
   const log = openLog(support);
+  const portFile = path.join(support, 'desktop-port.json');
+  const preferredPort = fs.existsSync(portFile) ? JSON.parse(fs.readFileSync(portFile, 'utf8')).port : 0;
+  if (!Number.isInteger(preferredPort) || preferredPort < 0 || preferredPort > 65535) throw new Error('桌面端口配置无效，请检查 desktop-port.json。');
   const started = Date.now();
   let server;
   let stopping = false;
@@ -69,7 +77,7 @@ export async function launchDesktop({ resources = defaultResources, environment 
   };
   process.once('SIGTERM', stop); process.once('SIGINT', stop);
   try {
-    const port = await availablePort();
+    const port = await availablePort(preferredPort);
     const childEnvironment = { ...environment, PORT: String(port), HOSTNAME: '127.0.0.1', NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1', PATH: `${path.join(resources, 'runtime', 'bin')}:/usr/bin:/bin:/usr/sbin:/sbin` };
     for (const key of Object.keys(childEnvironment)) if (key.startsWith('WEAVE_EVAL_')) delete childEnvironment[key];
     if (testRoot) {
@@ -103,6 +111,8 @@ export async function launchDesktop({ resources = defaultResources, environment 
       try { await delay(Math.min(100, Math.max(1, deadline - Date.now())), undefined, { signal: startupAbort.signal }); } catch { break; }
     }
     if (healthy && !stopping && !exited) {
+      // 固定站点地址，才能在重启后沿用浏览器保存的侧栏、主题与草稿输入。
+      fs.writeFileSync(portFile, JSON.stringify({ port }), { mode: 0o600 });
       log.write(`[desktop] 就绪，用时 ${Date.now() - started} ms。\n`);
       onReady({ url, startupMs: String(Date.now() - started), serverPid: String(server.pid) });
     } else if (!stopping && !exited) {

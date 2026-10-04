@@ -96,6 +96,7 @@ export type IngestDraft = {
   upgradeHint: string | null;
   sourceSummarySnapshot?: { pageId: string; expectedHash: string };
   reviewRevision?: number;
+  aiReviewJobId?: string;
   reviewState?: { skippedTitles: string[]; decisions: Array<[number, ReviewDecisionDraft]> };
 };
 
@@ -121,4 +122,3 @@ export type CommitResult = {
   commitSha: string | null;
   conflicts: string[];
 };
-

@@ -2,29 +2,25 @@
 
 [![检查状态](https://github.com/qinyuhao84-ship-it/weave/actions/workflows/ci.yml/badge.svg)](https://github.com/qinyuhao84-ship-it/weave/actions/workflows/ci.yml) · [MIT](LICENSE) · Next.js / TypeScript / SQLite
 
-**把分散的学习资料，整理成持续生长的个人知识库。**
+**让知识整理从一份资料开始，形成可以持续维护的个人知识库。**
 
-织识面向围绕一个主题持续学习和研究的个人使用者，例如学生、教师与独立研究者。导入一组资料后，模型协助提炼相互关联的知识词条；你可以核对来源、审阅修改，用带引用的问答理解主题，并在需要时生成交互图解，再把有用的答案归档回知识库。
+*A local-first knowledge wiki that brings document import, review, cited answers, and ongoing maintenance into one desktop workflow.*
 
-织识是开源、本地运行的单人桌面知识工具，受 [Andrej Karpathy 提出的 LLM Wiki（由模型持续整理和维护的专题知识库）思路](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)启发。导入新资料时，模型协助整理知识词条、提出已有内容的更新建议，并提示潜在矛盾；写入内容由你审阅确认。知识以开放的 Markdown 文件保存，便于自行阅读和编辑。
+本地知识工具，把资料导入、审阅、引用问答与持续维护放进同一个桌面流程。
 
-### 织识的特点
+织识是一个 **开源、本地运行、单用户**的知识管理工具，受 [Karpathy 的 LLM Wiki 理念](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)启发。模型从资料中生成 Markdown 词条，经人工审阅写入，再用于检索问答与知识库体检。使用者自行配置模型服务，资料保存在自己的电脑上。
 
-- **让整理成果不断累积**：把原始资料转成有关联的词条。新资料可以接着补充已有主题，问答中的有用结论可以归档，之后继续修改和使用。
-- **让理解过程看得见**：你可以为适合图解的问题生成交互式阅读页面，用关系图、步骤讲解或对照视图展开内容；答案仍可回到引用来源核对。
-- **把重要决定留给使用者**：原始资料与修改草稿分开保存。你可以检查模型建议并确认写入，知识文件留在自己的电脑里。
-
-第一次使用需要配置所选模型服务及密钥；远程服务会收到完成任务所需的内容，并可能按用量收费。桌面应用内置运行环境，浏览、编辑和搜索不需要打开终端。
+织识的核心理念是**降低知识整理的使用门槛**：让有学习、研究和资料整理需求的人，可以通过导入、审阅、提问和归档完成工作。应用负责连接这些步骤，使用者负责判断内容、确认修改，决定知识库保存什么。
 
 ## 下载桌面应用
 
-[下载 macOS Apple Silicon 安装包](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.2/Weave-0.2.2-macOS-arm64.dmg) · [更新说明与校验和](https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.2) · [安装说明](docs/desktop.md)
+[下载 macOS Apple Silicon 安装包](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.3/Weave-0.2.3-macOS-arm64.dmg) · [更新说明与校验和](https://github.com/qinyuhao84-ship-it/weave/releases/tag/v0.2.3) · [安装说明](docs/desktop.md)
 
 打开 `.dmg`，将「织识」拖到「Applications」，再从应用程序打开。内置 Node 与本地备份所需的 Git，日常使用无需安装 Node、pnpm 或启动终端。此版为未经过 Apple 公证的桌面预览版，仅提供 Apple Silicon 包；实际验收环境为 macOS 15.7.4。模型仍需在应用设置中自行配置。
 
-## 从资料到自己的知识
+## 为什么做织识
 
-围绕一个主题学习时，同一个概念会出现在不同资料中，值得保存的结论也会不断变化。织识让你把资料整理成可检查、可修改、可继续补充的知识库：
+收藏文件不等于形成知识：同一个概念散落在不同资料里，相关结论难以连接，资料更新后也很难发现旧知识已经过时。织识把“读资料”延伸成一个可以回溯的循环：
 
 ```mermaid
 flowchart LR
@@ -36,13 +32,28 @@ flowchart LR
   F --> D
 ```
 
-例如，整理一门课程的讲义和论文时，织识可以把重复出现的概念组织成词条，围绕问题找出可核对的引用，再把有用结论归档。加入新资料后，可以审阅词条更新建议和潜在矛盾。
-
-这个流程尤其适合需要反复理解同一主题的学习和研究。它保存的是你审阅过的知识整理过程，便于回看、修改和延续。
+你可以先整理一组学习笔记，把重复出现的概念编译为词条，再围绕问题检索证据；新增资料时继续补充知识，并由体检流程协助发现死链、重复与潜在矛盾。
 
 ![织识 v0.2.2 知识库：搜索、类型筛选和导入入口](docs/screenshots/knowledge.png)
 
 > 界面截图来自公开的 v0.2.2 桌面包，使用独立示例知识库；问答与导入草稿通过真实模型生成。截图展示当前操作流程，正式质量指标见冻结评测。[截图来源与复现](docs/screenshots/README.md)
+
+## 产品价值与取舍
+
+织识把资料整理、写入确认、证据问答与后续维护放在同一个工具中。适合愿意持续整理一个主题、希望保留可修改文件的人。核心价值是减少安装与流程衔接步骤，让每次导入和问答都能继续补充知识库。
+
+- **打开应用开始整理**：桌面包内置运行环境，浏览、编辑和搜索无需终端；配置模型后可以导入资料和提问。
+- **边阅读，边决定保存什么**：模型先生成草稿，用户可以核对原文、编辑内容，再确认写入。
+- **让已有整理继续有用**：通过双链连接词条，从问答回到证据，并把有用的结论继续归档和维护。
+
+| 产品选择 | 使用价值 | 取舍与证据 |
+| --- | --- | --- |
+| 原件、草稿与词条分开保存，人工确认写入 | 可以核对来源、修改建议，并决定保存什么 | 审阅需要时间；[导入实现](lib/ingest/pipeline.ts)与[流程测试](tests/e2e/delivery.spec.ts) |
+| Markdown 词条、双链和答案归档 | 内容可以外部编辑，问答结论可以继续维护 | 会话与任务还需备份 SQLite；[架构与数据分工](docs/architecture.md) |
+| 单用户本机运行，桌面包内置 Node 与 Git | 基础使用可直接打开应用，减少安装步骤 | 模型仍需自行配置，云端调用会发送所需内容；[安装与隐私](docs/desktop.md) |
+| 引用检查、冲突检测、事务恢复和回收站 | 帮助发现无效引用，保护已有编辑并恢复中断写入 | 引用有效性不保证事实正确；设备故障仍需完整备份；[证据与边界](docs/project-introduction.md) |
+
+这些能力的组合构成产品定位。“降低知识整理的使用门槛”是设计目标，现有实现支持减少基础安装步骤、在界面中完成主要操作；首次模型配置、人工审阅和完整备份仍需使用者完成。当前没有用户留存、任务耗时对照或商业竞品比较数据。[核心理念、实现证据与取舍](docs/project-introduction.md)。
 
 ## 核心流程
 
@@ -76,7 +87,7 @@ Markdown 是词条真源，可用 Obsidian 或文本编辑器打开。SQLite 还
 
 ### 安装桌面版
 
-1. [下载 macOS Apple Silicon 安装包](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.2/Weave-0.2.2-macOS-arm64.dmg)。
+1. [下载 macOS Apple Silicon 安装包](https://github.com/qinyuhao84-ship-it/weave/releases/download/v0.2.3/Weave-0.2.3-macOS-arm64.dmg)。
 2. 打开 `.dmg`，将「织识」拖入「Applications」，弹出磁盘映像。
 3. 从应用程序打开织识，在「设置 → 模型服务」配置自己的服务与型号。
 
@@ -188,7 +199,7 @@ pnpm start
 
 ## 工程与贡献
 
-采用 Next.js App Router、React、TypeScript、Drizzle 和 SQLite。项目介绍与技术要点见 [项目说明](docs/project-introduction.md)。架构与取舍见 [架构说明](docs/architecture.md)，复测方法见 [性能基准](docs/performance-audit.md)，当前交付结果见 [v0.2.2 验收](docs/release-validation-2026-10-03.md)，历史结果见 [首版验收](docs/validation.md)与[代码审计](docs/release-audit.md)。上线回归状态见 [GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)。
+采用 Next.js App Router、React、TypeScript、Drizzle 和 SQLite。项目介绍与技术要点见 [项目说明](docs/project-introduction.md)。架构与取舍见 [架构说明](docs/architecture.md)，复测方法见 [性能基准](docs/performance-audit.md)，当前交付结果见 [v0.2.3 验收](docs/release-validation-2026-10-05.md)，历史结果见 [首版验收](docs/validation.md)与[代码审计](docs/release-audit.md)。上线回归状态见 [GitHub Actions](https://github.com/qinyuhao84-ship-it/weave/actions)。
 
 ```bash
 pnpm lint

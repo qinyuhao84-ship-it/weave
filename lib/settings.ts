@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PROVIDER_PRESETS } from "./llm/presets";
+import { isOpenCodeGoBaseUrl, PROVIDER_PRESETS } from "./llm/presets";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { settings as settingsTable } from "@/lib/db/schema";
@@ -248,7 +248,6 @@ function effectiveModelEnv(stored: AppSettings): ReturnType<typeof envOverrides>
 export const BUILTIN_PROVIDERS = [
   ...Object.entries(PROVIDER_PRESETS).map(([id, preset]) => ({ id, ...preset })),
   { id: "deepseek-official", ...PROVIDER_PRESETS.deepseek },
-  { id: "opencode-go", label: "OpenCode 网关", baseUrl: "https://opencode.ai/zen/go/v1", note: "请求头和模型权限以网关文档为准。" },
 ];
 
 /** 读取并兼容迁移原始设置，不合并环境变量，供读取和保存共用。 */
@@ -301,8 +300,8 @@ export function getSettings(): AppSettings {
         temperature: 0.3,
         reasoningEffort: env.reasoningEffort ?? "default",
         contextWindow: env.contextWindow ?? DEFAULT_CONTEXT_WINDOW,
-        // 请求头由使用者明确配置，不按厂商猜测。
-        headers: env.headers ?? {},
+        // 只复用已知预设明确声明的请求头；环境变量可以覆盖。
+        headers: { ...(matched?.id === "opencode-go" && isOpenCodeGoBaseUrl(env.baseUrl) ? matched.defaultHeaders : {}), ...(env.headers ?? {}) },
       },
     ];
   }

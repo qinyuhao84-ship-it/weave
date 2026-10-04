@@ -13,7 +13,7 @@ export function useModalFocus(open: boolean, panelRef: React.RefObject<HTMLEleme
     let branch: HTMLElement = panel;
     while (branch.parentElement) {
       for (const sibling of branch.parentElement.children) {
-        if (sibling instanceof HTMLElement && sibling !== branch) {
+        if (sibling instanceof HTMLElement && sibling !== branch && !sibling.hasAttribute("data-modal-dismiss")) {
           background.set(sibling, sibling.inert);
           // 操作真实 DOM 的可访问性状态，不修改 React props；关闭时恢复原值。
           // eslint-disable-next-line react-hooks/immutability
@@ -37,10 +37,11 @@ export function useModalFocus(open: boolean, panelRef: React.RefObject<HTMLEleme
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close.current(); }
       if (event.key !== "Tab") return;
       const items = focusable();
-      const first = items[0]; const last = items.at(-1);
-      if (!first || !last) { event.preventDefault(); panel.focus(); return; }
-      if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+      event.preventDefault();
+      if (!items.length) { panel.focus(); return; }
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      const next = index < 0 ? (event.shiftKey ? items.length - 1 : 0) : (index + (event.shiftKey ? -1 : 1) + items.length) % items.length;
+      items[next].focus();
     };
     document.addEventListener("keydown", onKey);
     return () => {

@@ -865,7 +865,7 @@ export function ChatWorkspace() {
       {/* 引用详情抽屉 */}
       {openCitation && (
         <div ref={citationPanel} role="dialog" aria-modal="true" aria-label={t("chat_workspace.m045", {v0: openCitation.index, v1: openCitation.pageTitle})} tabIndex={-1} className="fixed inset-0 z-[var(--z-index-modal)] outline-none">
-          <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]" onClick={closeCitation} aria-hidden />
+          <div data-modal-dismiss className="absolute inset-0 bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]" onClick={closeCitation} aria-hidden />
           <aside className="panel-in absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto border-l border-border bg-background p-5 shadow-dialog">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>

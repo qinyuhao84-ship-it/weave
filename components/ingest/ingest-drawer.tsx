@@ -7,7 +7,8 @@ import { AiWorkingFrame, Badge, Button, ProgressBar } from "@/components/ui";
 import { useApi } from "@/hooks/use-api";
 import { useModalFocus } from "@/hooks/use-modal-focus";
 import { ingestFileAccept } from "@/lib/ingest/parse/presentation";
-import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+import { cn, truncate } from "@/lib/utils";
 import {
   AlertTriangle,
   Check,
@@ -35,7 +36,8 @@ export function IngestDrawer({ onCommitted }: { onCommitted?: () => void }) {
     queueFiles, queuedCount, queueItems, queueUploading, removeQueueItem, continueQueue,
     toggleSkip, removePage, answer, updateDraft, commit, discard,
     batchJobId, batchStage, batchProgress, batchPlan, batchBusy, applyBatchPlan, cancelBatchPlan,
-    draftSaveStatus, draftSaveError, retryDraftSave, reloadSavedDraft,
+    draftSaveStatus, draftSaveError, recoverableDrafts, recoverLocalDraft, retryDraftSave, reloadSavedDraft,
+    aiReviewBusy, aiReviewProgress, startAiReview, stopAiReview,
   } = useIngest();
 
   const { dataVersion } = useAppData();
@@ -60,6 +62,7 @@ export function IngestDrawer({ onCommitted }: { onCommitted?: () => void }) {
   return (
     <>
       <div
+        data-modal-dismiss
         className="fixed inset-0 z-[var(--z-index-overlay)] bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]"
         onClick={closeDrawer}
         aria-hidden
@@ -89,6 +92,22 @@ export function IngestDrawer({ onCommitted }: { onCommitted?: () => void }) {
               <Button size="sm" variant="secondary" onClick={() => void retryDraftSave().catch(() => undefined)}>{t("ingest_ingest_drawer.m005")}</Button>
               <Button size="sm" variant="ghost" onClick={() => void reloadSavedDraft()}>{t("ingest_ingest_drawer.m006")}</Button>
             </div></div>}
+          </div>}
+          {phase === "review" && recoverableDrafts.length > 0 && <div className="mx-5 mt-3 rounded-[12px] border border-border bg-card px-3.5 py-3" role="status">
+            <p className="text-[12px] leading-relaxed text-muted-foreground">{t("draftReview.recoverableNotice", {v0: recoverableDrafts.length})}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {recoverableDrafts.map((copy, index) => <Button
+                key={copy.key}
+                size="sm"
+                variant="secondary"
+                className="max-w-full"
+                onClick={() => recoverLocalDraft(copy.key)}
+              ><span className="max-w-[65vw] truncate sm:max-w-[420px]">{t("draftReview.recoverCopy", {
+                v0: index + 1,
+                v1: truncate(copy.title || t("draftReview.untitledCopy"), 36),
+                v2: copy.savedAt ? formatDate(new Date(copy.savedAt).toISOString(), locale) : t("draftReview.unknownSavedTime"),
+              })}</span></Button>)}
+            </div>
           </div>}
           {/* 错误统一显示在这里，所有相都能看见。
               以前只有「选文件」与「审阅」两相里有错误位，于是**在运行中点停止失败时
@@ -181,6 +200,10 @@ export function IngestDrawer({ onCommitted }: { onCommitted?: () => void }) {
               onChange={updateDraft}
               committing={committing}
               commitProgress={commitProgress}
+              aiReviewBusy={aiReviewBusy}
+              aiReviewProgress={aiReviewProgress}
+              onAiReview={() => void startAiReview()}
+              onStopAiReview={() => void stopAiReview()}
             />
           )}
 
@@ -292,7 +315,7 @@ export function IngestDrawer({ onCommitted }: { onCommitted?: () => void }) {
                 variant="ghost"
                 size="sm"
                 onClick={() => void discard()}
-                disabled={committing}
+                disabled={committing || aiReviewBusy}
               >
                 {t("ingest_ingest_drawer.m032")}</Button>
               <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
@@ -305,6 +328,7 @@ export function IngestDrawer({ onCommitted }: { onCommitted?: () => void }) {
                   variant="primary"
                   size="md"
                   loading={committing}
+                  disabled={aiReviewBusy}
                   onClick={() => {
                     void commit().then(() => onCommitted?.()).catch(() => undefined);
                   }}
